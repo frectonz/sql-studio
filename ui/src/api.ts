@@ -1,6 +1,6 @@
-import { createFetch } from "@better-fetch/fetch";
-import type { FetchSchema, Strict } from "@better-fetch/fetch/typed";
 import { z } from "zod";
+import { createFetch } from "@better-fetch/fetch";
+import type { FetchSchema } from "@better-fetch/fetch/typed";
 
 const routes = {
   "/": {
@@ -8,8 +8,14 @@ const routes = {
       file_name: z.string(),
       sqlite_version: z.string(),
       file_size: z.string(),
-      created: z.date(),
-      modified: z.date(),
+      created: z
+        .string()
+        .datetime()
+        .transform((x) => new Date(x)),
+      modified: z
+        .string()
+        .datetime()
+        .transform((x) => new Date(x)),
       tables: z.number(),
       indexes: z.number(),
       triggers: z.number(),
@@ -18,7 +24,10 @@ const routes = {
   },
 } satisfies FetchSchema;
 
-export const $fetch = createFetch<Strict<typeof routes>>({
-  baseURL: "http://localhost:3030/api",
-  throw: true,
-});
+export const $fetch = createFetch(
+  {
+    baseURL: "http://localhost:3030/api",
+    throw: true,
+  },
+  routes,
+);
