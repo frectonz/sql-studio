@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createZodFetcher } from "zod-fetch";
 
-const BASE_URL = "http://localhost:3030/api";
+const BASE_URL = import.meta.env.PROD ? "/api" : "http://localhost:3030/api";
 
 const overview = z.object({
   file_name: z.string(),

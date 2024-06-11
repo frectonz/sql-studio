@@ -1,9 +1,17 @@
+import React from "react";
 import { Menu, Database } from "lucide-react";
 import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+
+const TanStackRouterDevtools = import.meta.env.PROD
+  ? () => null // Render nothing in production
+  : React.lazy(() =>
+      import("@tanstack/router-devtools").then((res) => ({
+        default: res.TanStackRouterDevtools,
+      })),
+    );
 
 export const Route = createRootRoute({
   component: Root,
