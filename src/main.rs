@@ -171,9 +171,60 @@ impl TheDB {
 
         Ok(responses::TableNames { names })
     }
+
+    async fn get_table(&self, name: String) -> color_eyre::Result<responses::Table> {
+        let conn = self.conn.clone();
+        let (name, sql, columns, rows) = tokio::task::spawn_blocking(move || {
+            let conn = conn.lock().or_else(|e| {
+                tracing::error!("could not get lock: {e}");
+                color_eyre::eyre::bail!("could not get lock: {e}")
+            })?;
+
+            let sql = conn.query_row(
+                r#"
+                SELECT sql FROM sqlite_master WHERE type="table" AND name = ?1
+            "#,
+                [&name],
+                |r| r.get::<_, String>(0),
+            )?;
+
+            let mut stmt = conn.prepare(&format!("SELECT * FROM {name}"))?;
+            let columns = stmt
+                .column_names()
+                .into_iter()
+                .map(ToOwned::to_owned)
+                .collect::<Vec<_>>();
+
+            let columns_len = columns.len();
+
+            let rows = stmt
+                .query_map((), |r| {
+                    let mut rows = Vec::with_capacity(columns_len);
+                    for i in 0..columns_len {
+                        let val = helpers::value_to_json(r.get_ref(i)?);
+                        rows.push(val);
+                    }
+                    Ok(rows)
+                })?
+                .filter_map(|x| x.ok())
+                .collect::<Vec<_>>();
+
+            color_eyre::eyre::Ok((name, sql, columns, rows))
+        })
+        .await??;
+
+        Ok(responses::Table {
+            name,
+            sql,
+            columns,
+            rows,
+        })
+    }
 }
 
 mod helpers {
+    use rusqlite::types::ValueRef;
+
     pub fn format_size(size: u64) -> String {
         const UNITS: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
         let mut size = size as f64;
@@ -185,6 +236,16 @@ mod helpers {
         }
 
         format!("{:.2} {}", size, UNITS[unit])
+    }
+
+    pub fn value_to_json(v: ValueRef) -> serde_json::Value {
+        match v {
+            ValueRef::Null => serde_json::Value::Null,
+            ValueRef::Integer(x) => serde_json::json!(x),
+            ValueRef::Real(x) => serde_json::json!(x),
+            ValueRef::Text(s) => serde_json::Value::String(String::from_utf8_lossy(s).into_owned()),
+            ValueRef::Blob(s) => serde_json::json!(s),
+        }
     }
 }
 
@@ -216,6 +277,14 @@ mod responses {
     pub struct TableNames {
         pub names: Vec<String>,
     }
+
+    #[derive(Serialize)]
+    pub struct Table {
+        pub name: String,
+        pub sql: String,
+        pub columns: Vec<String>,
+        pub rows: Vec<Vec<serde_json::Value>>,
+    }
 }
 
 mod handlers {
@@ -237,12 +306,16 @@ mod handlers {
             .and(warp::get())
             .and(with_state(&db))
             .and_then(overview);
-        let tables = warp::path("tables")
+        let tables = warp::path!("tables")
             .and(warp::get())
             .and(with_state(&db))
             .and_then(tables);
+        let table = warp::get()
+            .and(with_state(&db))
+            .and(warp::path!("tables" / String))
+            .and_then(table);
 
-        overview.or(tables)
+        overview.or(tables).or(table)
     }
 
     async fn overview(db: TheDB) -> Result<impl warp::Reply, warp::Rejection> {
@@ -256,6 +329,14 @@ mod handlers {
     async fn tables(db: TheDB) -> Result<impl warp::Reply, warp::Rejection> {
         let tables = db.table_names().await.map_err(|e| {
             tracing::error!("error while getting table names: {e}");
+            warp::reject::custom(rejections::InternalServerError)
+        })?;
+        Ok(warp::reply::json(&tables))
+    }
+
+    async fn table(db: TheDB, name: String) -> Result<impl warp::Reply, warp::Rejection> {
+        let tables = db.get_table(name).await.map_err(|e| {
+            tracing::error!("error while getting table: {e}");
             warp::reject::custom(rejections::InternalServerError)
         })?;
         Ok(warp::reply::json(&tables))

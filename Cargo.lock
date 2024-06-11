@@ -1124,6 +1124,7 @@ dependencies = [
  "color-eyre",
  "rusqlite",
  "serde",
+ "serde_json",
  "tokio",
  "tracing",
  "tracing-subscriber",
