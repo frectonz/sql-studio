@@ -11,7 +11,6 @@
     "format": "prettier -w ."
   },
   "dependencies": {
-    "@better-fetch/fetch": "file:/home/frectonz/workspace/better-fetch",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-slot": "^1.0.2",
     "@radix-ui/react-tabs": "^1.0.4",
@@ -25,7 +24,8 @@
     "recharts": "^2.12.7",
     "tailwind-merge": "^2.3.0",
     "tailwindcss-animate": "^1.0.7",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "zod-fetch": "^0.1.1"
   },
   "devDependencies": {
     "@tanstack/router-devtools": "^1.35.3",

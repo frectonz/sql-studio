@@ -7,7 +7,7 @@ import {
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { createFileRoute } from "@tanstack/react-router";
 
-import { $fetch } from "@/api";
+import { fetchOverview } from "@/api";
 import {
   Card,
   CardContent,
@@ -19,17 +19,17 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 
 export const Route = createFileRoute("/")({
   component: Index,
-  loader: () => $fetch("/"),
+  loader: () => fetchOverview(),
   errorComponent: () => <h1>Error</h1>,
 });
 
 function Index() {
-  const { data } = Route.useLoaderData();
+  const data = Route.useLoaderData();
 
   return (
     <>
       <h2 className="scroll-m-20 border-b pb-2 text-3xl tracking-tight first:mt-0">
-        Exploring <span className="font-bold">{data?.file_name}</span>
+        Exploring <span className="font-bold">{data.file_name}</span>
       </h2>
 
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
@@ -39,7 +39,7 @@ function Index() {
             <TableIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data?.tables}</div>
+            <div className="text-2xl font-bold">{data.tables}</div>
             <p className="text-xs text-muted-foreground">
               The number of tables in the DB.
             </p>
@@ -51,7 +51,7 @@ function Index() {
             <DatabaseZap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data?.indexes}</div>
+            <div className="text-2xl font-bold">{data.indexes}</div>
             <p className="text-xs text-muted-foreground">
               The number of indexes across the whole DB.
             </p>
@@ -63,7 +63,7 @@ function Index() {
             <TextSearch className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data?.views}</div>
+            <div className="text-2xl font-bold">{data.views}</div>
             <p className="text-xs text-muted-foreground">
               The number of views in the DB.
             </p>
@@ -75,7 +75,7 @@ function Index() {
             <Workflow className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data?.triggers}</div>
+            <div className="text-2xl font-bold">{data.triggers}</div>
             <p className="text-xs text-muted-foreground">
               The number of triggers in the DB.
             </p>
@@ -89,7 +89,7 @@ function Index() {
             <CardTitle>Rows Per Table</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
-            <TheBarChart counts={data?.counts ?? []} />
+            <TheBarChart counts={data.counts} />
           </CardContent>
         </Card>
         <Card className="xl:col-span-3">
@@ -109,9 +109,7 @@ function Index() {
                       The size of the DB on disk.
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
-                    {data?.file_size}
-                  </TableCell>
+                  <TableCell className="text-right">{data.file_size}</TableCell>
                 </TableRow>
 
                 <TableRow>
@@ -122,7 +120,7 @@ function Index() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    {data?.sqlite_version}
+                    {data.sqlite_version}
                   </TableCell>
                 </TableRow>
 
@@ -134,7 +132,7 @@ function Index() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    {data?.created.toUTCString()}
+                    {data.created.toUTCString()}
                   </TableCell>
                 </TableRow>
 
@@ -146,7 +144,7 @@ function Index() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    {data?.modified.toUTCString()}
+                    {data.modified.toUTCString()}
                   </TableCell>
                 </TableRow>
               </TableBody>

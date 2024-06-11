@@ -5,9 +5,6 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
-  "@better-fetch/fetch":
-    specifier: file:/home/frectonz/workspace/better-fetch
-    version: file:../../better-fetch
   "@radix-ui/react-dialog":
     specifier: ^1.0.5
     version: 1.0.5(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1)(react@18.3.1)
@@ -50,6 +47,9 @@ dependencies:
   zod:
     specifier: ^3.23.8
     version: 3.23.8
+  zod-fetch:
+    specifier: ^0.1.1
+    version: 0.1.1
 
 devDependencies:
   "@tanstack/router-devtools":
@@ -4582,13 +4582,15 @@ packages:
     engines: { node: ">=10" }
     dev: true
 
+  /zod-fetch@0.1.1:
+    resolution:
+      {
+        integrity: sha512-1YqEhqjIQuatiHGCiKceAEzLrd2PZAN/Y8lWSlhkec2nDuImePieFWX33WSB+c1E4P/kEiai7rb8upBMdjFo1w==,
+      }
+    dev: false
+
   /zod@3.23.8:
     resolution:
       {
         integrity: sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g==,
       }
-
-  file:../../better-fetch:
-    resolution: { directory: ../../better-fetch, type: directory }
-    name: "@better-fetch/fetch"
-    dev: false
