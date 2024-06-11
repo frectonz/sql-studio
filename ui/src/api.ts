@@ -28,6 +28,11 @@ const routes = {
       ),
     }),
   },
+  "/tables": {
+    output: z.object({
+      names: z.array(z.string()),
+    }),
+  },
 } satisfies FetchSchema;
 
 export const $fetch = createFetch(

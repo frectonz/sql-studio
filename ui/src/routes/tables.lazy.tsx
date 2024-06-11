@@ -1,5 +1,26 @@
-import { createLazyRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createLazyRoute("/tables")({
-  component: () => <h1 className="text-4xl">Tables</h1>,
+import { $fetch } from "@/api";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+export const Route = createFileRoute("/tables")({
+  component: Tables,
+  loader: () => $fetch("/tables"),
 });
+
+function Tables() {
+  const { data } = Route.useLoaderData();
+  data?.names.sort();
+
+  return (
+    <Tabs defaultValue="0" className="p-2 w-full overflow-x-scroll">
+      <TabsList>
+        {data?.names.map((n, i) => (
+          <TabsTrigger key={i} value={i.toString()}>
+            {n}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
+  );
+}
