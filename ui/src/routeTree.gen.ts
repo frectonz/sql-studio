@@ -16,9 +16,21 @@ import { Route as rootRoute } from "./routes/__root";
 
 // Create Virtual Routes
 
+const TablesLazyImport = createFileRoute("/tables")();
+const QueryLazyImport = createFileRoute("/query")();
 const IndexLazyImport = createFileRoute("/")();
 
 // Create/Update Routes
+
+const TablesLazyRoute = TablesLazyImport.update({
+  path: "/tables",
+  getParentRoute: () => rootRoute,
+} as any).lazy(() => import("./routes/tables.lazy").then((d) => d.Route));
+
+const QueryLazyRoute = QueryLazyImport.update({
+  path: "/query",
+  getParentRoute: () => rootRoute,
+} as any).lazy(() => import("./routes/query.lazy").then((d) => d.Route));
 
 const IndexLazyRoute = IndexLazyImport.update({
   path: "/",
@@ -36,12 +48,30 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof IndexLazyImport;
       parentRoute: typeof rootRoute;
     };
+    "/query": {
+      id: "/query";
+      path: "/query";
+      fullPath: "/query";
+      preLoaderRoute: typeof QueryLazyImport;
+      parentRoute: typeof rootRoute;
+    };
+    "/tables": {
+      id: "/tables";
+      path: "/tables";
+      fullPath: "/tables";
+      preLoaderRoute: typeof TablesLazyImport;
+      parentRoute: typeof rootRoute;
+    };
   }
 }
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({ IndexLazyRoute });
+export const routeTree = rootRoute.addChildren({
+  IndexLazyRoute,
+  QueryLazyRoute,
+  TablesLazyRoute,
+});
 
 /* prettier-ignore-end */
 
@@ -51,11 +81,19 @@ export const routeTree = rootRoute.addChildren({ IndexLazyRoute });
     "__root__": {
       "filePath": "__root.tsx",
       "children": [
-        "/"
+        "/",
+        "/query",
+        "/tables"
       ]
     },
     "/": {
       "filePath": "index.lazy.tsx"
+    },
+    "/query": {
+      "filePath": "query.lazy.tsx"
+    },
+    "/tables": {
+      "filePath": "tables.lazy.tsx"
     }
   }
 }

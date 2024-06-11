@@ -14,7 +14,7 @@ export function Root() {
     <>
       <div className="flex min-h-screen w-full flex-col">
         <header className="sticky top-0 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
-          <nav className="hidden flex-col gap-6 text-lg font-medium md:flex md:flex-row md:items-center md:gap-5 md:text-sm lg:gap-6">
+          <nav className="hidden flex-col gap-6 text-lg font-medium sm:flex sm:flex-row sm:items-center sm:gap-5 sm:text-sm md:gap-6">
             <Link
               to="/"
               className="flex items-center gap-2 text-lg font-semibold md:text-base"
@@ -29,13 +29,13 @@ export function Root() {
               Overview
             </Link>
             <Link
-              href="/"
+              to="/tables"
               className="[&.active]:text-foreground text-muted-foreground transition-colors hover:text-foreground"
             >
               Tables
             </Link>
             <Link
-              href="/"
+              to="/query"
               className="[&.active]:text-foreground text-muted-foreground transition-colors hover:text-foreground"
             >
               Query
@@ -46,7 +46,7 @@ export function Root() {
               <Button
                 variant="outline"
                 size="icon"
-                className="shrink-0 md:hidden"
+                className="shrink-0 sm:hidden"
               >
                 <Menu className="h-5 w-5" />
                 <span className="sr-only">Toggle navigation menu</span>
@@ -59,22 +59,22 @@ export function Root() {
                   className="flex items-center gap-2 text-lg font-semibold"
                 >
                   <Database className="h-6 w-6" />
-                  <span className="sr-only">Acme Inc</span>
+                  <span className="sr-only">SQLite Studio</span>
                 </Link>
                 <Link
-                  href="/"
+                  to="/"
                   className="[&.active]:text-foreground text-muted-foreground hover:text-foreground"
                 >
                   Overview
                 </Link>
                 <Link
-                  href="/"
+                  to="/tables"
                   className="[&.active]:text-foreground text-muted-foreground hover:text-foreground"
                 >
                   Tables
                 </Link>
                 <Link
-                  href="/"
+                  to="/query"
                   className="[&.active]:text-foreground text-muted-foreground hover:text-foreground"
                 >
                   Query
