@@ -116,7 +116,7 @@ impl TheDB {
             )?;
 
             let mut stmt = conn.prepare(r#"SELECT name FROM sqlite_master WHERE type="table""#)?;
-            let table_names = stmt.query_map([], |row| Ok(row.get::<_, String>(0)?))?;
+            let table_names = stmt.query_map([], |row| row.get::<_, String>(0))?;
 
             let mut table_counts = HashMap::with_capacity(tables as usize);
             for name in table_names {
@@ -149,6 +149,27 @@ impl TheDB {
             views,
             counts,
         })
+    }
+
+    async fn table_names(&self) -> color_eyre::Result<responses::TableNames> {
+        let conn = self.conn.clone();
+        let names = tokio::task::spawn_blocking(move || {
+            let conn = conn.lock().or_else(|e| {
+                tracing::error!("could not get lock: {e}");
+                color_eyre::eyre::bail!("could not get lock: {e}")
+            })?;
+
+            let mut stmt = conn.prepare(r#"SELECT name FROM sqlite_master WHERE type="table""#)?;
+            let table_names = stmt
+                .query_map([], |row| row.get::<_, String>(0))?
+                .filter_map(|r| r.ok())
+                .collect::<Vec<_>>();
+
+            color_eyre::eyre::Ok(table_names)
+        })
+        .await??;
+
+        Ok(responses::TableNames { names })
     }
 }
 
@@ -190,6 +211,11 @@ mod responses {
         pub name: String,
         pub count: i32,
     }
+
+    #[derive(Serialize)]
+    pub struct TableNames {
+        pub names: Vec<String>,
+    }
 }
 
 mod handlers {
@@ -198,18 +224,25 @@ mod handlers {
     use crate::{rejections, TheDB};
 
     fn with_state<T: Clone + Send>(
-        state: T,
+        state: &T,
     ) -> impl Filter<Extract = (T,), Error = std::convert::Infallible> + Clone {
+        let state = state.to_owned();
         warp::any().map(move || state.clone())
     }
 
     pub fn routes(
         db: TheDB,
     ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
-        warp::path::end()
+        let overview = warp::path::end()
             .and(warp::get())
-            .and(with_state(db))
-            .and_then(overview)
+            .and(with_state(&db))
+            .and_then(overview);
+        let tables = warp::path("tables")
+            .and(warp::get())
+            .and(with_state(&db))
+            .and_then(tables);
+
+        overview.or(tables)
     }
 
     async fn overview(db: TheDB) -> Result<impl warp::Reply, warp::Rejection> {
@@ -218,6 +251,14 @@ mod handlers {
             warp::reject::custom(rejections::InternalServerError)
         })?;
         Ok(warp::reply::json(&overview))
+    }
+
+    async fn tables(db: TheDB) -> Result<impl warp::Reply, warp::Rejection> {
+        let tables = db.table_names().await.map_err(|e| {
+            tracing::error!("error while getting table names: {e}");
+            warp::reject::custom(rejections::InternalServerError)
+        })?;
+        Ok(warp::reply::json(&tables))
     }
 }
 
