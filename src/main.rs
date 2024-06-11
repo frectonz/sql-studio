@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     path::Path,
     sync::{Arc, Mutex},
 };
@@ -31,7 +32,6 @@ async fn main() -> color_eyre::Result<()> {
         .init();
 
     let args = Args::parse();
-
     let db = TheDB::open(args.database)?;
 
     let api = warp::path("api")
@@ -76,7 +76,7 @@ impl TheDB {
         let created = metadata.created()?.into();
 
         let conn = self.conn.clone();
-        let (tables, indexes, triggers, views) = tokio::task::spawn_blocking(move || {
+        let (tables, indexes, triggers, views, counts) = tokio::task::spawn_blocking(move || {
             let conn = conn.lock().or_else(|e| {
                 tracing::error!("could not get lock: {e}");
                 color_eyre::eyre::bail!("could not get lock: {e}")
@@ -98,7 +98,7 @@ impl TheDB {
                 (),
                 |r| r.get::<_, i32>(0),
             )?;
-            let triggers: i32 = conn.query_row(
+            let triggers = conn.query_row(
                 r#"
             SELECT count(*) FROM sqlite_master
             WHERE type="trigger"
@@ -106,7 +106,7 @@ impl TheDB {
                 (),
                 |r| r.get::<_, i32>(0),
             )?;
-            let views: i32 = conn.query_row(
+            let views = conn.query_row(
                 r#"
             SELECT count(*) FROM sqlite_master
             WHERE type="view"
@@ -115,7 +115,25 @@ impl TheDB {
                 |r| r.get::<_, i32>(0),
             )?;
 
-            color_eyre::eyre::Ok((tables, indexes, triggers, views))
+            let mut stmt = conn.prepare(r#"SELECT name FROM sqlite_master WHERE type="table""#)?;
+            let table_names = stmt.query_map([], |row| Ok(row.get::<_, String>(0)?))?;
+
+            let mut table_counts = HashMap::with_capacity(tables as usize);
+            for name in table_names {
+                let name = name?;
+                let count = conn.query_row(&format!("SELECT count(*) FROM {name}"), (), |r| {
+                    r.get::<_, i32>(0)
+                })?;
+
+                table_counts.insert(name, count);
+            }
+
+            let counts = table_counts
+                .into_iter()
+                .map(|(name, count)| responses::RowCount { name, count })
+                .collect::<Vec<_>>();
+
+            color_eyre::eyre::Ok((tables, indexes, triggers, views, counts))
         })
         .await??;
 
@@ -129,6 +147,7 @@ impl TheDB {
             indexes,
             triggers,
             views,
+            counts,
         })
     }
 }
@@ -163,6 +182,13 @@ mod responses {
         pub indexes: i32,
         pub triggers: i32,
         pub views: i32,
+        pub counts: Vec<RowCount>,
+    }
+
+    #[derive(Serialize)]
+    pub struct RowCount {
+        pub name: String,
+        pub count: i32,
     }
 }
 

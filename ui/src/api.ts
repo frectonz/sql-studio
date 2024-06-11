@@ -20,6 +20,12 @@ const routes = {
       indexes: z.number(),
       triggers: z.number(),
       views: z.number(),
+      counts: z.array(
+        z.object({
+          name: z.string(),
+          count: z.number(),
+        }),
+      ),
     }),
   },
 } satisfies FetchSchema;
