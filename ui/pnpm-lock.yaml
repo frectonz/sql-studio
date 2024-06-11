@@ -17,6 +17,9 @@ dependencies:
   "@radix-ui/react-tabs":
     specifier: ^1.0.4
     version: 1.0.4(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1)(react@18.3.1)
+  "@tanstack/react-query":
+    specifier: ^5.44.0
+    version: 5.44.0(react@18.3.1)
   "@tanstack/react-router":
     specifier: ^1.35.3
     version: 1.35.3(react-dom@18.3.1)(react@18.3.1)
@@ -1637,6 +1640,25 @@ packages:
         integrity: sha512-rahAZXlR879P7dngDH7BZwGYiODA9D5Hqo6nUHn9GAURcqZU5IW0ZiT54dPtV5EPES7muZZmknReYueDHs7FFQ==,
       }
     engines: { node: ">=12" }
+
+  /@tanstack/query-core@5.44.0:
+    resolution:
+      {
+        integrity: sha512-Fa1J7iEEyJnjXG1N4+Fz4OXNH/INve3XSn0Htms3X4wgRsXHxMDwqBE2XtDCts7swkwSIs4izEtaFqWVFr/eLQ==,
+      }
+    dev: false
+
+  /@tanstack/react-query@5.44.0(react@18.3.1):
+    resolution:
+      {
+        integrity: sha512-zmaD6cw8P2cBOfRHhqRmwvDsAi56gqbiwG2CDR6oQOCXSDOvRagvpP6RUStn+RrfcVUrNjKsxBmrgG6Za8p5zg==,
+      }
+    peerDependencies:
+      react: ^18.0.0
+    dependencies:
+      "@tanstack/query-core": 5.44.0
+      react: 18.3.1
+    dev: false
 
   /@tanstack/react-router@1.35.3(react-dom@18.3.1)(react@18.3.1):
     resolution:
