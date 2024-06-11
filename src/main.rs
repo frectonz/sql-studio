@@ -36,13 +36,78 @@ async fn main() -> color_eyre::Result<()> {
 
     let api = warp::path("api")
         .and(handlers::routes(db))
-        .recover(rejections::handle_rejection)
         .with(warp::cors().allow_any_origin());
+    let homepage = warp::get().and_then(statics::homepage);
+    let statics = statics::routes();
+
+    let routes = api
+        .or(statics)
+        .or(homepage)
+        .recover(rejections::handle_rejection);
 
     let address = args.address.parse::<std::net::SocketAddr>()?;
-    warp::serve(api).run(address).await;
+    warp::serve(routes).run(address).await;
 
     Ok(())
+}
+
+mod statics {
+    use std::path::Path;
+
+    use include_dir::{include_dir, Dir};
+    use warp::{
+        http::{
+            header::{CACHE_CONTROL, CONTENT_TYPE},
+            Response,
+        },
+        Filter,
+    };
+
+    static STATIC_DIR: Dir = include_dir!("ui/dist");
+
+    async fn send_file(path: warp::path::Tail) -> Result<impl warp::Reply, warp::Rejection> {
+        let path = Path::new(path.as_str());
+        let file = STATIC_DIR
+            .get_file(path)
+            .ok_or_else(warp::reject::not_found)?;
+
+        let content_type = match file.path().extension() {
+            Some(ext) if ext == "css" => "text/css",
+            Some(ext) if ext == "svg" => "image/svg+xml",
+            Some(ext) if ext == "js" => "text/javascript",
+            Some(ext) if ext == "html" => "text/html",
+            _ => "application/octet-stream",
+        };
+
+        let resp = Response::builder()
+            .header(CONTENT_TYPE, content_type)
+            .header(CACHE_CONTROL, "max-age=3600, must-revalidate")
+            .body(file.contents())
+            .unwrap();
+
+        Ok(resp)
+    }
+
+    pub async fn homepage() -> Result<impl warp::Reply, warp::Rejection> {
+        let file = STATIC_DIR
+            .get_file("index.html")
+            .ok_or_else(warp::reject::not_found)?;
+
+        let resp = Response::builder()
+            .header(CONTENT_TYPE, "text/html")
+            .header(CACHE_CONTROL, "max-age=3600, must-revalidate")
+            .body(file.contents())
+            .unwrap();
+
+        Ok(resp)
+    }
+
+    pub fn routes() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
+        let index = warp::path::end().and_then(homepage);
+        let other = warp::path::tail().and_then(send_file);
+
+        index.or(other)
+    }
 }
 
 #[derive(Clone)]
