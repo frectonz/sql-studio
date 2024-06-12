@@ -257,7 +257,8 @@ impl TheDB {
 
     async fn get_table(&self, name: String) -> color_eyre::Result<responses::Table> {
         let conn = self.conn.clone();
-        let (name, sql, columns, rows) = tokio::task::spawn_blocking(move || {
+
+        tokio::task::spawn_blocking(move || {
             let conn = conn.lock().or_else(|e| {
                 tracing::error!("could not get lock: {e}");
                 color_eyre::eyre::bail!("could not get lock: {e}")
@@ -271,6 +272,10 @@ impl TheDB {
                 |r| r.get::<_, String>(0),
             )?;
 
+            let row_count = conn.query_row(&format!("SELECT count(*) FROM {name}"), (), |r| {
+                r.get::<_, i32>(0)
+            })?;
+
             let mut stmt = conn.prepare(&format!("SELECT * FROM {name}"))?;
             let columns = stmt
                 .column_names()
@@ -278,8 +283,21 @@ impl TheDB {
                 .map(ToOwned::to_owned)
                 .collect::<Vec<_>>();
 
-            let columns_len = columns.len();
+            let table_size = conn.query_row(
+                "SELECT SUM(pgsize) FROM dbstat WHERE name = ?1",
+                [&name],
+                |r| r.get::<_, i32>(0),
+            )?;
+            let table_size = helpers::format_size(table_size as u64);
 
+            let mut indexes_query =
+                conn.prepare("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name=?1")?;
+            let indexes = indexes_query
+                .query_map([&name], |r| r.get::<_, String>(0))?
+                .filter_map(|r| r.ok())
+                .collect::<Vec<_>>();
+
+            let columns_len = columns.len();
             let rows = stmt
                 .query_map((), |r| {
                     let mut rows = Vec::with_capacity(columns_len);
@@ -292,16 +310,18 @@ impl TheDB {
                 .filter_map(|x| x.ok())
                 .collect::<Vec<_>>();
 
-            color_eyre::eyre::Ok((name, sql, columns, rows))
+            let resp = responses::Table {
+                name,
+                sql,
+                row_count,
+                table_size,
+                indexes,
+                columns,
+                rows,
+            };
+            color_eyre::eyre::Ok(resp)
         })
-        .await??;
-
-        Ok(responses::Table {
-            name,
-            sql,
-            columns,
-            rows,
-        })
+        .await?
     }
 }
 
@@ -365,6 +385,9 @@ mod responses {
     pub struct Table {
         pub name: String,
         pub sql: String,
+        pub row_count: i32,
+        pub table_size: String,
+        pub indexes: Vec<String>,
         pub columns: Vec<String>,
         pub rows: Vec<Vec<serde_json::Value>>,
     }

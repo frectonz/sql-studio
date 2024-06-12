@@ -39,6 +39,9 @@ const tables = z.object({
 const table = z.object({
   name: z.string(),
   sql: z.string(),
+  row_count: z.number(),
+  table_size: z.string(),
+  indexes: z.array(z.string()),
   columns: z.array(z.string()),
   rows: z.array(z.array(z.any())),
 });
