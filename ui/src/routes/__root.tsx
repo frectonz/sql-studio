@@ -28,7 +28,7 @@ export function Root() {
               className="flex items-center gap-2 text-lg font-semibold md:text-base"
             >
               <Database className="h-6 w-6" />
-              <span className="sr-only">SQLite Studio</span>
+              <span className="text-foreground">SQLite Studio</span>
             </Link>
             <Link
               to="/"
@@ -49,6 +49,7 @@ export function Root() {
               Query
             </Link>
           </nav>
+
           <Sheet>
             <SheetTrigger asChild>
               <Button
@@ -67,7 +68,7 @@ export function Root() {
                   className="flex items-center gap-2 text-lg font-semibold"
                 >
                   <Database className="h-6 w-6" />
-                  <span className="sr-only">SQLite Studio</span>
+                  <span className="text-foreground">SQLite Studio</span>
                 </Link>
                 <Link
                   to="/"
@@ -90,6 +91,14 @@ export function Root() {
               </nav>
             </SheetContent>
           </Sheet>
+
+          <Link
+            to="/"
+            className="flex sm:hidden items-center gap-2 text-lg font-semibold md:text-base"
+          >
+            <Database className="h-6 w-6" />
+            <span className="text-foreground">SQLite Studio</span>
+          </Link>
         </header>
         <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
           <Outlet />
