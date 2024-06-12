@@ -4,8 +4,8 @@ import {
   DatabaseZap,
   Table as TableIcon,
 } from "lucide-react";
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { createFileRoute } from "@tanstack/react-router";
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 
 import { fetchOverview } from "@/api";
 import {

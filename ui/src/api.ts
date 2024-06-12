@@ -28,12 +28,20 @@ const overview = z.object({
 });
 
 const tables = z.object({
-  names: z.array(z.string()),
+  tables: z.array(
+    z.object({
+      name: z.string(),
+      count: z.number(),
+    }),
+  ),
 });
 
 const table = z.object({
   name: z.string(),
   sql: z.string(),
+  row_count: z.number(),
+  table_size: z.string(),
+  indexes: z.array(z.string()),
   columns: z.array(z.string()),
   rows: z.array(z.array(z.any())),
 });

@@ -30,7 +30,6 @@
         src = pkgs.lib.cleanSourceWith {
           src = ./.;
           filter = path: type:
-            (pkgs.lib.hasSuffix "\.sql" path) ||
             (pkgs.lib.hasSuffix "\.css" path) ||
             (pkgs.lib.hasSuffix "\.js" path) ||
             (pkgs.lib.hasSuffix "\.svg" path) ||
@@ -39,9 +38,22 @@
         };
         commonArgs = { inherit src; };
 
+        ui = pkgs.buildNpmPackage {
+          pname = "ui";
+          version = "0.0.0";
+          src = ./ui;
+          npmDepsHash = "sha256-fIz4WWvzPzQS4CCXvXtf87+ailmDDri1ACnzaB5TP7Y=";
+          installPhase = ''
+            cp -pr --reflink=auto -- dist "$out/"
+          '';
+        };
+
         cargoArtifacts = craneLib.buildDepsOnly commonArgs;
         bin = craneLib.buildPackage (commonArgs // {
           inherit cargoArtifacts;
+          preBuild = ''
+            cp -pr --reflink=auto -- ${ui} ui/dist
+          '';
         });
       in
       {
@@ -52,7 +64,6 @@
         devShells.default = pkgs.mkShell {
           buildInputs = [
             pkgs.emmet-ls
-            pkgs.sqlx-cli
             pkgs.cargo-watch
             pkgs.rust-analyzer
             rustToolchain
@@ -62,7 +73,6 @@
             pkgs.nodePackages."@tailwindcss/language-server"
 
             pkgs.nodejs
-            pkgs.nodePackages.pnpm
 
             pkgs.httpie
           ];
