@@ -64,7 +64,6 @@
         devShells.default = pkgs.mkShell {
           buildInputs = [
             pkgs.emmet-ls
-            pkgs.sqlx-cli
             pkgs.cargo-watch
             pkgs.rust-analyzer
             rustToolchain
