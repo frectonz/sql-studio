@@ -20,15 +20,15 @@ function Tables() {
   return (
     <Tabs defaultValue="0">
       <TabsList>
-        {data.names.map((n, i) => (
+        {data.tables.map((n, i) => (
           <TabsTrigger key={i} value={i.toString()}>
-            {n}
+            {n.name} ({n.count})
           </TabsTrigger>
         ))}
       </TabsList>
-      {data.names.map((n, i) => (
+      {data.tables.map(({ name }, i) => (
         <TabsContent key={i} value={i.toString()} className="py-4">
-          <Table name={n} />
+          <Table name={name} />
         </TabsContent>
       ))}
     </Tabs>

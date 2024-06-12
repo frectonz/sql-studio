@@ -28,7 +28,12 @@ const overview = z.object({
 });
 
 const tables = z.object({
-  names: z.array(z.string()),
+  tables: z.array(
+    z.object({
+      name: z.string(),
+      count: z.number(),
+    }),
+  ),
 });
 
 const table = z.object({

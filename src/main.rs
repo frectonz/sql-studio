@@ -193,10 +193,12 @@ impl TheDB {
                 table_counts.insert(name, count);
             }
 
-            let counts = table_counts
+            let mut counts = table_counts
                 .into_iter()
                 .map(|(name, count)| responses::RowCount { name, count })
                 .collect::<Vec<_>>();
+
+            counts.sort_by(|a, b| b.count.cmp(&a.count));
 
             color_eyre::eyre::Ok((tables, indexes, triggers, views, counts))
         })
@@ -216,9 +218,9 @@ impl TheDB {
         })
     }
 
-    async fn table_names(&self) -> color_eyre::Result<responses::TableNames> {
+    async fn tables(&self) -> color_eyre::Result<responses::Tables> {
         let conn = self.conn.clone();
-        let names = tokio::task::spawn_blocking(move || {
+        let tables = tokio::task::spawn_blocking(move || {
             let conn = conn.lock().or_else(|e| {
                 tracing::error!("could not get lock: {e}");
                 color_eyre::eyre::bail!("could not get lock: {e}")
@@ -227,14 +229,30 @@ impl TheDB {
             let mut stmt = conn.prepare(r#"SELECT name FROM sqlite_master WHERE type="table""#)?;
             let table_names = stmt
                 .query_map([], |row| row.get::<_, String>(0))?
-                .filter_map(|r| r.ok())
                 .collect::<Vec<_>>();
 
-            color_eyre::eyre::Ok(table_names)
+            let mut table_counts = HashMap::with_capacity(table_names.len());
+            for name in table_names {
+                let name = name?;
+                let count = conn.query_row(&format!("SELECT count(*) FROM {name}"), (), |r| {
+                    r.get::<_, i32>(0)
+                })?;
+
+                table_counts.insert(name, count);
+            }
+
+            let mut counts = table_counts
+                .into_iter()
+                .map(|(name, count)| responses::RowCount { name, count })
+                .collect::<Vec<_>>();
+
+            counts.sort_by_key(|r| r.count);
+
+            color_eyre::eyre::Ok(counts)
         })
         .await??;
 
-        Ok(responses::TableNames { names })
+        Ok(responses::Tables { tables })
     }
 
     async fn get_table(&self, name: String) -> color_eyre::Result<responses::Table> {
@@ -339,8 +357,8 @@ mod responses {
     }
 
     #[derive(Serialize)]
-    pub struct TableNames {
-        pub names: Vec<String>,
+    pub struct Tables {
+        pub tables: Vec<RowCount>,
     }
 
     #[derive(Serialize)]
@@ -392,8 +410,8 @@ mod handlers {
     }
 
     async fn tables(db: TheDB) -> Result<impl warp::Reply, warp::Rejection> {
-        let tables = db.table_names().await.map_err(|e| {
-            tracing::error!("error while getting table names: {e}");
+        let tables = db.tables().await.map_err(|e| {
+            tracing::error!("error while getting tables: {e}");
             warp::reject::custom(rejections::InternalServerError)
         })?;
         Ok(warp::reply::json(&tables))
