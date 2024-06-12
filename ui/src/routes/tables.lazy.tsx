@@ -1,7 +1,7 @@
 import "react-data-grid/lib/styles.css";
 
 import DataGrid from "react-data-grid";
-import { CodeBlock } from "react-code-blocks";
+import { CopyBlock } from "react-code-blocks";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
@@ -59,10 +59,10 @@ function Table({ name }: Props) {
       <h2 className="px-2 scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0">
         {data.name}
       </h2>
-      <Card>
-        <CodeBlock text={data.sql} language="sql" showLineNumbers={false} />
+      <Card className="font-mono text-sm">
+        <CopyBlock text={data.sql} language="sql" showLineNumbers={false} />
       </Card>
-      <DataGrid columns={columns} rows={rows} className="rdg-light" />;
+      <DataGrid columns={columns} rows={rows} className="rdg-light" />
     </div>
   );
 }
