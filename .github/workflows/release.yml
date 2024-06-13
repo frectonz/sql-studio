@@ -1,0 +1,95 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+
+    - name: Install npm dependencies
+      run: |
+        cd ui
+        npm install
+
+    - name: Build npm project
+      run: |
+        cd ui
+        npm run build
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+
+    - name: Build for Linux
+      id: build-linux
+      uses: rust-build/rust-build.action@v1
+      with:
+        target: x86_64-unknown-linux-gnu
+
+    - name: Build for Windows
+      id: build-windows
+      uses: rust-build/rust-build.action@v1
+      with:
+        target: x86_64-pc-windows-msvc
+
+    - name: Build for macOS
+      id: build-macos
+      uses: rust-build/rust-build.action@v1
+      with:
+        target: x86_64-apple-darwin
+
+    - name: Upload Linux artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: sqlite-studio-linux
+        path: target/x86_64-unknown-linux-gnu/release/sqlite-studio
+
+    - name: Upload Windows artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: sqlite-studio-windows
+        path: target/x86_64-pc-windows-msvc/release/sqlite-studio.exe
+
+    - name: Upload macOS artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: sqlite-studio-macos
+        path: target/x86_64-apple-darwin/release/sqlite-studio
+
+    - name: Upload Release Assets - Linux
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: target/x86_64-unknown-linux-gnu/release/sqlite-studio
+        asset_name: sqlite-studio-linux
+        asset_content_type: application/octet-stream
+
+    - name: Upload Release Assets - Windows
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: target/x86_64-pc-windows-msvc/release/sqlite-studio.exe
+        asset_name: sqlite-studio-windows.exe
+        asset_content_type: application/octet-stream
+
+    - name: Upload Release Assets - macOS
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: target/x86_64-apple-darwin/release/sqlite-studio
+        asset_name: sqlite-studio-macos
+        asset_content_type: application/octet-stream
