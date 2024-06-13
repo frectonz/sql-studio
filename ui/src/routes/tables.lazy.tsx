@@ -85,7 +85,7 @@ function Table({ name }: Props) {
             <DatabaseZap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.indexes.length}</div>
+            <div className="text-2xl font-bold">{data.index_count}</div>
             <p className="text-xs text-muted-foreground">
               The number of indexes in the table.
             </p>

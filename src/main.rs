@@ -255,7 +255,7 @@ impl TheDB {
         Ok(responses::Tables { tables })
     }
 
-    async fn get_table(&self, name: String) -> color_eyre::Result<responses::Table> {
+    async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
         let conn = self.conn.clone();
 
         tokio::task::spawn_blocking(move || {
@@ -290,12 +290,20 @@ impl TheDB {
             )?;
             let table_size = helpers::format_size(table_size as u64);
 
-            let mut indexes_query =
-                conn.prepare("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name=?1")?;
-            let indexes = indexes_query
-                .query_map([&name], |r| r.get::<_, String>(0))?
-                .filter_map(|r| r.ok())
-                .collect::<Vec<_>>();
+            let index_count = conn.query_row(
+                "SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=?1",
+                [&name],
+                |r| r.get::<_, i32>(0),
+            )?;
+            let has_primary_key =
+                conn.query_row(&format!("PRAGMA table_info({name})"), [], |r| {
+                    r.get::<_, i32>(5)
+                })? == 1;
+            let index_count = if has_primary_key {
+                index_count + 1
+            } else {
+                index_count
+            };
 
             let columns_len = columns.len();
             let rows = stmt
@@ -315,7 +323,7 @@ impl TheDB {
                 sql,
                 row_count,
                 table_size,
-                indexes,
+                index_count,
                 columns,
                 rows,
             };
@@ -386,8 +394,8 @@ mod responses {
         pub name: String,
         pub sql: String,
         pub row_count: i32,
+        pub index_count: i32,
         pub table_size: String,
-        pub indexes: Vec<String>,
         pub columns: Vec<String>,
         pub rows: Vec<Vec<serde_json::Value>>,
     }
@@ -441,7 +449,7 @@ mod handlers {
     }
 
     async fn table(db: TheDB, name: String) -> Result<impl warp::Reply, warp::Rejection> {
-        let tables = db.get_table(name).await.map_err(|e| {
+        let tables = db.table(name).await.map_err(|e| {
             tracing::error!("error while getting table: {e}");
             warp::reject::custom(rejections::InternalServerError)
         })?;
