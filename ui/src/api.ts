@@ -7,12 +7,11 @@ const overview = z.object({
   file_name: z.string(),
   sqlite_version: z.string(),
   file_size: z.string(),
-  created: z.optional(
-    z
-      .string()
-      .datetime()
-      .transform((x) => new Date(x)),
-  ),
+  created: z
+    .string()
+    .datetime()
+    .transform((x) => new Date(x))
+    .nullable(),
   modified: z
     .string()
     .datetime()
