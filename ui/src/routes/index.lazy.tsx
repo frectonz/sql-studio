@@ -124,17 +124,19 @@ function Index() {
                   </TableCell>
                 </TableRow>
 
-                <TableRow>
-                  <TableCell>
-                    <div className="font-medium">Created on</div>
-                    <div className="text-sm text-muted-foreground md:inline">
-                      The date and time when the DB was created.
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {data.created.toUTCString()}
-                  </TableCell>
-                </TableRow>
+                {data.created && (
+                  <TableRow>
+                    <TableCell>
+                      <div className="font-medium">Created on</div>
+                      <div className="text-sm text-muted-foreground md:inline">
+                        The date and time when the DB was created.
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {data.created.toUTCString()}
+                    </TableCell>
+                  </TableRow>
+                )}
 
                 <TableRow>
                   <TableCell>

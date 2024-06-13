@@ -138,7 +138,7 @@ impl TheDB {
         let sqlite_version = rusqlite::version().to_owned();
         let file_size = helpers::format_size(metadata.len());
         let modified = metadata.modified()?.into();
-        let created = metadata.created()?.into();
+        let created = metadata.created().ok().map(Into::into);
 
         let conn = self.conn.clone();
         let (tables, indexes, triggers, views, counts) = tokio::task::spawn_blocking(move || {
@@ -369,7 +369,7 @@ mod responses {
         pub file_name: String,
         pub sqlite_version: String,
         pub file_size: String,
-        pub created: DateTime<Utc>,
+        pub created: Option<DateTime<Utc>>,
         pub modified: DateTime<Utc>,
         pub tables: i32,
         pub indexes: i32,
