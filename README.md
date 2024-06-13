@@ -4,7 +4,7 @@ SQLite database explorer
 
 ## How To Run It
 
-## Nix
+### Nix
 
 If you are using [Nix](https://nixos.org/), to build it from source.
 
@@ -13,7 +13,7 @@ nix shell github:frectonz/sqlite-studio
 sqlite-studio
 ```
 
-## Pre-Built Binaries
+### Pre-Built Binaries
 
 You can find pre-built binaries for the following targets on the [releases](https://github.com/frectonz/sqlite-studio/releases) page.
 
