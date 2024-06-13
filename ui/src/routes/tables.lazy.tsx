@@ -1,19 +1,18 @@
-import "react-data-grid/lib/styles.css";
-
 import {
   HardDrive,
   DatabaseZap,
   TableProperties,
   Table as TableIcon,
 } from "lucide-react";
-import DataGrid from "react-data-grid";
 import { CodeBlock } from "react-code-blocks";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { ColumnDef } from "@tanstack/react-table";
 
 import { fetchTable, fetchTables } from "@/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsContent, TabsTrigger } from "@/components/ui/tabs";
+import { DataTable } from "@/components/ui/data-table";
 
 export const Route = createFileRoute("/tables")({
   component: Tables,
@@ -52,7 +51,13 @@ function Table({ name }: Props) {
 
   if (!data) return;
 
-  const columns = data.columns.map((col) => ({ key: col, name: col }));
+  type Column = {
+    [key: string]: string;
+  };
+  const columns: ColumnDef<Column>[] = data.columns.map((col) => ({
+    accessorKey: col.toLowerCase(),
+    header: col,
+  }));
   const rows = data.rows.map((row) =>
     row.reduce((acc, curr, i) => {
       acc[data.columns[i]] = curr;
@@ -120,8 +125,7 @@ function Table({ name }: Props) {
       <Card className="font-mono text-sm">
         <CodeBlock text={data.sql} language="sql" showLineNumbers={false} />
       </Card>
-
-      <DataGrid columns={columns} rows={rows} className="rdg-light" />
+      <DataTable columns={columns} data={rows} />
     </div>
   );
 }
