@@ -34,9 +34,11 @@ async fn main() -> color_eyre::Result<()> {
     let args = Args::parse();
     let db = TheDB::open(args.database)?;
 
-    let api = warp::path("api")
-        .and(handlers::routes(db))
-        .with(warp::cors().allow_any_origin());
+    let cors = warp::cors()
+        .allow_any_origin()
+        .allow_methods(vec!["GET", "POST", "DELETE"])
+        .allow_headers(vec!["Content-Length", "Content-Type"]);
+    let api = warp::path("api").and(handlers::routes(db)).with(cors);
     let homepage = warp::get().and_then(statics::homepage);
     let statics = statics::routes();
 
@@ -318,7 +320,7 @@ impl TheDB {
                 .filter_map(|x| x.ok())
                 .collect::<Vec<_>>();
 
-            let resp = responses::Table {
+            color_eyre::eyre::Ok(responses::Table {
                 name,
                 sql,
                 row_count,
@@ -326,8 +328,41 @@ impl TheDB {
                 index_count,
                 columns,
                 rows,
-            };
-            color_eyre::eyre::Ok(resp)
+            })
+        })
+        .await?
+    }
+
+    async fn query(&self, query: String) -> color_eyre::Result<responses::Query> {
+        let conn = self.conn.clone();
+
+        tokio::task::spawn_blocking(move || {
+            let conn = conn.lock().or_else(|e| {
+                tracing::error!("could not get lock: {e}");
+                color_eyre::eyre::bail!("could not get lock: {e}")
+            })?;
+
+            let mut stmt = conn.prepare(&query)?;
+            let columns = stmt
+                .column_names()
+                .into_iter()
+                .map(ToOwned::to_owned)
+                .collect::<Vec<_>>();
+
+            let columns_len = columns.len();
+            let rows = stmt
+                .query_map((), |r| {
+                    let mut rows = Vec::with_capacity(columns_len);
+                    for i in 0..columns_len {
+                        let val = helpers::value_to_json(r.get_ref(i)?);
+                        rows.push(val);
+                    }
+                    Ok(rows)
+                })?
+                .filter_map(|x| x.ok())
+                .collect::<Vec<_>>();
+
+            color_eyre::eyre::Ok(responses::Query { columns, rows })
         })
         .await?
     }
@@ -399,9 +434,16 @@ mod responses {
         pub columns: Vec<String>,
         pub rows: Vec<Vec<serde_json::Value>>,
     }
+
+    #[derive(Serialize)]
+    pub struct Query {
+        pub columns: Vec<String>,
+        pub rows: Vec<Vec<serde_json::Value>>,
+    }
 }
 
 mod handlers {
+    use serde::Deserialize;
     use warp::Filter;
 
     use crate::{rejections, TheDB};
@@ -428,8 +470,18 @@ mod handlers {
             .and(with_state(&db))
             .and(warp::path!("tables" / String))
             .and_then(table);
+        let query = warp::post()
+            .and(with_state(&db))
+            .and(warp::path!("query"))
+            .and(warp::body::json::<QueryBody>())
+            .and_then(query);
 
-        overview.or(tables).or(table)
+        overview.or(tables).or(table).or(query)
+    }
+
+    #[derive(Deserialize)]
+    pub struct QueryBody {
+        pub query: String,
     }
 
     async fn overview(db: TheDB) -> Result<impl warp::Reply, warp::Rejection> {
@@ -453,6 +505,14 @@ mod handlers {
             tracing::error!("error while getting table: {e}");
             warp::reject::custom(rejections::InternalServerError)
         })?;
+        Ok(warp::reply::json(&tables))
+    }
+
+    async fn query(db: TheDB, query: QueryBody) -> Result<impl warp::Reply, warp::Rejection> {
+        let tables = db
+            .query(query.query)
+            .await
+            .map_err(|_| warp::reject::custom(rejections::InternalServerError))?;
         Ok(warp::reply::json(&tables))
     }
 }

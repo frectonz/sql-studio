@@ -116,9 +116,11 @@ function Table({ name }: Props) {
           </CardContent>
         </Card>
       </div>
+
       <Card className="font-mono text-sm">
         <CodeBlock text={data.sql} language="sql" showLineNumbers={false} />
       </Card>
+
       <DataGrid columns={columns} rows={rows} className="rdg-light" />
     </div>
   );
