@@ -1,9 +1,9 @@
 import "react-data-grid/lib/styles.css";
 
 import {
-  Workflow,
-  TextSearch,
+  HardDrive,
   DatabaseZap,
+  TableProperties,
   Table as TableIcon,
 } from "lucide-react";
 import DataGrid from "react-data-grid";
@@ -94,7 +94,7 @@ function Table({ name }: Props) {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Columns</CardTitle>
-            <TextSearch className="h-4 w-4 text-muted-foreground" />
+            <TableProperties className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.columns.length}</div>
@@ -106,7 +106,7 @@ function Table({ name }: Props) {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Table Size</CardTitle>
-            <Workflow className="h-4 w-4 text-muted-foreground" />
+            <HardDrive className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.table_size}</div>
