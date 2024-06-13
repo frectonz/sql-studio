@@ -17,3 +17,9 @@ tokio = { version = "1.38.0", features = ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 warp = "0.3.7"
+
+[profile.release]
+strip = true
+opt-level = "z"
+lto = true
+codegen-units = 1
