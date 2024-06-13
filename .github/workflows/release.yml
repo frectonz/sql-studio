@@ -42,3 +42,5 @@ jobs:
         with:
           RUSTTARGET: ${{ matrix.target }}
           ARCHIVE_TYPES: ${{ matrix.archive }}
+          MINIFY: true
+          TOOLCHAIN_VERSION: 1.74
