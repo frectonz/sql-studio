@@ -315,12 +315,16 @@ impl TheDB {
                 index_count
             };
 
+            let mut columns = conn.prepare(&format!("PRAGMA table_info({name})"))?;
+            let column_count = columns.query_map((), |r| r.get::<_, String>(1))?.count() as i32;
+
             color_eyre::eyre::Ok(responses::Table {
                 name,
                 sql,
                 row_count,
                 table_size,
                 index_count,
+                column_count,
             })
         })
         .await?
@@ -474,6 +478,7 @@ mod responses {
         pub sql: String,
         pub row_count: i32,
         pub index_count: i32,
+        pub column_count: i32,
         pub table_size: String,
     }
 
