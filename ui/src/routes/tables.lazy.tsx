@@ -1,24 +1,25 @@
+import "react-data-grid/lib/styles.css";
+
 import {
   HardDrive,
   DatabaseZap,
   TableProperties,
   Table as TableIcon,
 } from "lucide-react";
+import DataGrid from "react-data-grid";
 import { CodeBlock } from "react-code-blocks";
-import { useQuery } from "@tanstack/react-query";
-import { ColumnDef } from "@tanstack/react-table";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { fetchTable, fetchTables, fetchTableData } from "@/api";
 
-import { DataTable } from "@/components/ui/data-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsContent, TabsTrigger } from "@/components/ui/tabs";
-import { useState } from "react";
 
 export const Route = createFileRoute("/tables")({
   component: Tables,
   loader: () => fetchTables(),
+  pendingComponent: () => <h1>Loading..</h1>,
 });
 
 function Tables() {
@@ -119,35 +120,53 @@ function Table({ name }: Props) {
   );
 }
 
+function isAtBottom({ currentTarget }: React.UIEvent<HTMLDivElement>): boolean {
+  return (
+    currentTarget.scrollTop + 10 >=
+    currentTarget.scrollHeight - currentTarget.clientHeight
+  );
+}
+
 type TableDataProps = {
   name: string;
 };
 
 function TableData({ name }: TableDataProps) {
-  const [page, setPage] = useState(1);
-
-  const { data } = useQuery({
-    queryKey: ["tables", name, page],
-    queryFn: () => fetchTableData(name, page),
+  const { isLoading, data, fetchNextPage, hasNextPage } = useInfiniteQuery({
+    queryKey: ["tables", "data", name],
+    queryFn: ({ pageParam }) => fetchTableData(name, pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, _, lastPageParams) => {
+      if (lastPage.rows.length === 0) return undefined;
+      return lastPageParams + 1;
+    },
   });
 
   if (!data) return <p>Loading...</p>;
 
-  type Column = {
-    [key: string]: string;
-  };
+  function handleScroll(event: React.UIEvent<HTMLDivElement>) {
+    if (isLoading || !isAtBottom(event) || !hasNextPage) return;
+    fetchNextPage();
+  }
 
-  const columns: ColumnDef<Column>[] = data.columns.map((col) => ({
-    accessorKey: col,
-    header: col,
-  }));
+  const columns = data.pages[0].columns.map((col) => ({ key: col, name: col }));
 
-  const rows = data.rows.map((row) =>
-    row.reduce((acc, curr, i) => {
-      acc[data.columns[i]] = curr;
-      return acc;
-    }, {}),
+  const grouped = data.pages.map((page) =>
+    page.rows.map((row) =>
+      row.reduce((acc, curr, i) => {
+        acc[page.columns[i]] = curr;
+        return acc;
+      }, {}),
+    ),
+  ) as never[][];
+  const rows = [].concat(...grouped);
+
+  return (
+    <DataGrid
+      rows={rows}
+      columns={columns}
+      onScroll={handleScroll}
+      className="rdg-light"
+    />
   );
-
-  return <DataTable columns={columns} data={rows} />;
 }
