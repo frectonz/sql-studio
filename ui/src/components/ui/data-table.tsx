@@ -115,27 +115,29 @@ export function DataTable<TData, TValue>({
             Next
           </Button>
         </div>
-        <Select
-          onValueChange={(pageSize) => table.setPageSize(Number(pageSize))}
-          defaultValue="10"
-        >
-          <SelectTrigger className="text-sm">
-            <SelectValue>
-              Rows per page: {table.getState().pagination.pageSize}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {[10, 20, 30, 40, 50, 100].map((pageSize) => (
-              <SelectItem
-                key={pageSize}
-                onClick={() => table.setPageSize(pageSize)}
-                value={String(pageSize)}
-              >
-                {pageSize}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div>
+          <Select
+            onValueChange={(pageSize) => table.setPageSize(Number(pageSize))}
+            defaultValue="10"
+          >
+            <SelectTrigger className="text-sm">
+              <SelectValue>
+                Rows per page: {table.getState().pagination.pageSize}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {[10, 20, 30, 40, 50, 100].map((pageSize) => (
+                <SelectItem
+                  key={pageSize}
+                  onClick={() => table.setPageSize(pageSize)}
+                  value={String(pageSize)}
+                >
+                  {pageSize}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     </div>
   );

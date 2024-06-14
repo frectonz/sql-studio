@@ -55,7 +55,7 @@ function Table({ name }: Props) {
     [key: string]: string;
   };
   const columns: ColumnDef<Column>[] = data.columns.map((col) => ({
-    accessorKey: col.toLowerCase(),
+    accessorKey: col,
     header: col,
   }));
   const rows = data.rows.map((row) =>
