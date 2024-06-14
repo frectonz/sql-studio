@@ -1,5 +1,5 @@
 import React from "react";
-import { Menu, Database, Frown } from "lucide-react";
+import { Menu, Database, Frown, Cat } from "lucide-react";
 import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ const TanStackRouterDevtools = import.meta.env.PROD
 export const Route = createRootRoute({
   component: Root,
   errorComponent: ErrorComponent,
+  notFoundComponent: NotFoundComponent,
 });
 
 export function Root() {
@@ -138,6 +139,17 @@ function ErrorComponent() {
       <Frown className="w-12 h-12" />
       <h1 className="scroll-m-20 text-3xl tracking-tight lg:text-4xl">
         Something Went Wrong.
+      </h1>
+    </div>
+  );
+}
+
+function NotFoundComponent() {
+  return (
+    <div className="py-52 w-full h-full flex flex-col items-center justify-center gap-6">
+      <Cat className="w-20 h-20" />
+      <h1 className="scroll-m-20 text-3xl tracking-tight lg:text-4xl">
+        Page Not Found
       </h1>
     </div>
   );
