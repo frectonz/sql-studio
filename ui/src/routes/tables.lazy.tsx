@@ -30,7 +30,7 @@ function Tables() {
       <TabsList>
         {data.tables.map((n, i) => (
           <TabsTrigger key={i} value={i.toString()}>
-            {n.name} ({n.count})
+            {n.name} ({n.count.toLocaleString()})
           </TabsTrigger>
         ))}
       </TabsList>
@@ -67,7 +67,9 @@ function Table({ name }: Props) {
             <TableIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.row_count}</div>
+            <div className="text-2xl font-bold">
+              {data.row_count.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               The number of rows in the table.
             </p>
@@ -79,7 +81,9 @@ function Table({ name }: Props) {
             <DatabaseZap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.index_count}</div>
+            <div className="text-2xl font-bold">
+              {data.index_count.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               The number of indexes in the table.
             </p>
@@ -91,7 +95,9 @@ function Table({ name }: Props) {
             <TableProperties className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.column_count}</div>
+            <div className="text-2xl font-bold">
+              {data.column_count.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               The number of columns in the table.
             </p>

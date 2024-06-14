@@ -38,7 +38,9 @@ function Index() {
             <TableIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.tables}</div>
+            <div className="text-2xl font-bold">
+              {data.tables.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               The number of tables in the DB.
             </p>
@@ -50,7 +52,9 @@ function Index() {
             <DatabaseZap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.indexes}</div>
+            <div className="text-2xl font-bold">
+              {data.indexes.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               The number of indexes across the whole DB.
             </p>
@@ -62,7 +66,9 @@ function Index() {
             <TextSearch className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.views}</div>
+            <div className="text-2xl font-bold">
+              {data.views.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               The number of views in the DB.
             </p>
@@ -74,7 +80,9 @@ function Index() {
             <Workflow className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.triggers}</div>
+            <div className="text-2xl font-bold">
+              {data.triggers.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               The number of triggers in the DB.
             </p>
