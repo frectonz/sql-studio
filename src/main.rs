@@ -9,6 +9,8 @@ use color_eyre::eyre::OptionExt;
 use rusqlite::{Connection, OpenFlags};
 use warp::Filter;
 
+const ROWS_PER_PAGE: i32 = 50;
+
 /// Web based SQLite database browser.
 #[derive(Parser, Debug)]
 struct Args {
@@ -290,17 +292,10 @@ impl TheDB {
                 r.get::<_, i32>(0)
             })?;
 
-            let mut stmt = conn.prepare(&format!("SELECT * FROM {name}"))?;
-            let columns = stmt
-                .column_names()
-                .into_iter()
-                .map(ToOwned::to_owned)
-                .collect::<Vec<_>>();
-
             let table_size = conn.query_row(
                 "SELECT SUM(pgsize) FROM dbstat WHERE name = ?1",
                 [&name],
-                |r| r.get::<_, i32>(0),
+                |r| r.get::<_, i64>(0),
             )?;
             let table_size = helpers::format_size(table_size as u64);
 
@@ -309,6 +304,7 @@ impl TheDB {
                 [&name],
                 |r| r.get::<_, i32>(0),
             )?;
+
             let has_primary_key =
                 conn.query_row(&format!("PRAGMA table_info({name})"), [], |r| {
                     r.get::<_, i32>(5)
@@ -318,6 +314,50 @@ impl TheDB {
             } else {
                 index_count
             };
+
+            color_eyre::eyre::Ok(responses::Table {
+                name,
+                sql,
+                row_count,
+                table_size,
+                index_count,
+            })
+        })
+        .await?
+    }
+
+    async fn table_data(
+        &self,
+        name: String,
+        page: i32,
+    ) -> color_eyre::Result<responses::TableData> {
+        let conn = self.conn.clone();
+
+        tokio::task::spawn_blocking(move || {
+            let conn = conn.lock().or_else(|e| {
+                tracing::error!("could not get lock: {e}");
+                color_eyre::eyre::bail!("could not get lock: {e}")
+            })?;
+
+            let first_column = conn.query_row(&format!("PRAGMA table_info({name})"), [], |r| {
+                r.get::<_, String>(1)
+            })?;
+
+            let offset = (page - 1) * ROWS_PER_PAGE;
+            let mut stmt = conn.prepare(&format!(
+                r#"
+                SELECT *
+                FROM {name}
+                ORDER BY {first_column}
+                LIMIT {ROWS_PER_PAGE}
+                OFFSET {offset}
+                "#
+            ))?;
+            let columns = stmt
+                .column_names()
+                .into_iter()
+                .map(ToOwned::to_owned)
+                .collect::<Vec<_>>();
 
             let columns_len = columns.len();
             let rows = stmt
@@ -332,15 +372,7 @@ impl TheDB {
                 .filter_map(|x| x.ok())
                 .collect::<Vec<_>>();
 
-            color_eyre::eyre::Ok(responses::Table {
-                name,
-                sql,
-                row_count,
-                table_size,
-                index_count,
-                columns,
-                rows,
-            })
+            color_eyre::eyre::Ok(responses::TableData { columns, rows })
         })
         .await?
     }
@@ -443,6 +475,10 @@ mod responses {
         pub row_count: i32,
         pub index_count: i32,
         pub table_size: String,
+    }
+
+    #[derive(Serialize)]
+    pub struct TableData {
         pub columns: Vec<String>,
         pub rows: Vec<Vec<serde_json::Value>>,
     }
@@ -482,18 +518,28 @@ mod handlers {
             .and(with_state(&db))
             .and(warp::path!("tables" / String))
             .and_then(table);
+        let data = warp::get()
+            .and(with_state(&db))
+            .and(warp::path!("tables" / String / "data"))
+            .and(warp::query::<PageQuery>())
+            .and_then(table_data);
         let query = warp::post()
             .and(with_state(&db))
             .and(warp::path!("query"))
             .and(warp::body::json::<QueryBody>())
             .and_then(query);
 
-        overview.or(tables).or(table).or(query)
+        overview.or(tables).or(table).or(query).or(data)
     }
 
     #[derive(Deserialize)]
     pub struct QueryBody {
         pub query: String,
+    }
+
+    #[derive(Deserialize)]
+    pub struct PageQuery {
+        pub page: Option<i32>,
     }
 
     async fn overview(db: TheDB) -> Result<impl warp::Reply, warp::Rejection> {
@@ -518,6 +564,21 @@ mod handlers {
             warp::reject::custom(rejections::InternalServerError)
         })?;
         Ok(warp::reply::json(&tables))
+    }
+
+    async fn table_data(
+        db: TheDB,
+        name: String,
+        data: PageQuery,
+    ) -> Result<impl warp::Reply, warp::Rejection> {
+        let data = db
+            .table_data(name, data.page.unwrap_or(1))
+            .await
+            .map_err(|e| {
+                tracing::error!("error while getting table: {e}");
+                warp::reject::custom(rejections::InternalServerError)
+            })?;
+        Ok(warp::reply::json(&data))
     }
 
     async fn query(db: TheDB, query: QueryBody) -> Result<impl warp::Reply, warp::Rejection> {
