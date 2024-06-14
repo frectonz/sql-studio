@@ -20,7 +20,6 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 export const Route = createFileRoute("/")({
   component: Index,
   loader: () => fetchOverview(),
-  errorComponent: () => <h1>Error</h1>,
 });
 
 function Index() {

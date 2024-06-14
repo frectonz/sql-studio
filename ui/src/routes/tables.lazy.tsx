@@ -6,13 +6,15 @@ import {
 } from "lucide-react";
 import { CodeBlock } from "react-code-blocks";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
 import { ColumnDef } from "@tanstack/react-table";
+import { createFileRoute } from "@tanstack/react-router";
 
-import { fetchTable, fetchTables } from "@/api";
+import { fetchTable, fetchTables, fetchTableData } from "@/api";
+
+import { DataTable } from "@/components/ui/data-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsContent, TabsTrigger } from "@/components/ui/tabs";
-import { DataTable } from "@/components/ui/data-table";
+import { useState } from "react";
 
 export const Route = createFileRoute("/tables")({
   component: Tables,
@@ -49,21 +51,7 @@ function Table({ name }: Props) {
     queryFn: () => fetchTable(name),
   });
 
-  if (!data) return;
-
-  type Column = {
-    [key: string]: string;
-  };
-  const columns: ColumnDef<Column>[] = data.columns.map((col) => ({
-    accessorKey: col,
-    header: col,
-  }));
-  const rows = data.rows.map((row) =>
-    row.reduce((acc, curr, i) => {
-      acc[data.columns[i]] = curr;
-      return acc;
-    }, {}),
-  );
+  if (!data) return <p>Loading...</p>;
 
   return (
     <div className="flex flex-1 flex-col gap-4 md:gap-8">
@@ -102,7 +90,7 @@ function Table({ name }: Props) {
             <TableProperties className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.columns.length}</div>
+            <div className="text-2xl font-bold">{data.column_count}</div>
             <p className="text-xs text-muted-foreground">
               The number of columns in the table.
             </p>
@@ -125,7 +113,41 @@ function Table({ name }: Props) {
       <Card className="font-mono text-sm">
         <CodeBlock text={data.sql} language="sql" showLineNumbers={false} />
       </Card>
-      <DataTable columns={columns} data={rows} />
+
+      <TableData name={data.name} />
     </div>
   );
+}
+
+type TableDataProps = {
+  name: string;
+};
+
+function TableData({ name }: TableDataProps) {
+  const [page, setPage] = useState(1);
+
+  const { data } = useQuery({
+    queryKey: ["tables", name, page],
+    queryFn: () => fetchTableData(name, page),
+  });
+
+  if (!data) return <p>Loading...</p>;
+
+  type Column = {
+    [key: string]: string;
+  };
+
+  const columns: ColumnDef<Column>[] = data.columns.map((col) => ({
+    accessorKey: col,
+    header: col,
+  }));
+
+  const rows = data.rows.map((row) =>
+    row.reduce((acc, curr, i) => {
+      acc[data.columns[i]] = curr;
+      return acc;
+    }, {}),
+  );
+
+  return <DataTable columns={columns} data={rows} />;
 }

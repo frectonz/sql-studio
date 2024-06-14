@@ -42,7 +42,11 @@ const table = z.object({
   sql: z.string(),
   row_count: z.number(),
   index_count: z.number(),
+  column_count: z.number(),
   table_size: z.string(),
+});
+
+const tableData = z.object({
   columns: z.string().array(),
   rows: z.any().array().array(),
 });
@@ -58,6 +62,8 @@ export const fetchOverview = () => $fetch(overview, `${BASE_URL}/`);
 export const fetchTables = () => $fetch(tables, `${BASE_URL}/tables`);
 export const fetchTable = (name: string) =>
   $fetch(table, `${BASE_URL}/tables/${name}`);
+export const fetchTableData = (name: string, page: number) =>
+  $fetch(tableData, `${BASE_URL}/tables/${name}/data?page=${page}`);
 export const fetchQuery = (value: string) =>
   $fetch(query, `${BASE_URL}/query`, {
     method: "POST",
