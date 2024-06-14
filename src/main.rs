@@ -272,6 +272,9 @@ impl TheDB {
     }
 
     async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
+        let metadata = tokio::fs::metadata(&self.path).await?;
+        let more_than_five = metadata.len() > 5_000_000_000;
+
         Ok(self
             .conn
             .call(move |conn| {
@@ -288,12 +291,16 @@ impl TheDB {
                         r.get::<_, i32>(0)
                     })?;
 
-                let table_size = conn.query_row(
-                    "SELECT SUM(pgsize) FROM dbstat WHERE name = ?1",
-                    [&name],
-                    |r| r.get::<_, i64>(0),
-                )?;
-                let table_size = helpers::format_size(table_size as f64);
+                let table_size = if more_than_five {
+                    "---".to_owned()
+                } else {
+                    let table_size = conn.query_row(
+                        "SELECT SUM(pgsize) FROM dbstat WHERE name = ?1",
+                        [&name],
+                        |r| r.get::<_, i64>(0),
+                    )?;
+                    helpers::format_size(table_size as f64)
+                };
 
                 let index_count = conn.query_row(
                     "SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=?1",
