@@ -68,13 +68,13 @@
             pkgs.rust-analyzer
             rustToolchain
 
+            pkgs.nodejs
             pkgs.nodePackages.typescript-language-server
             pkgs.nodePackages.vscode-langservers-extracted
             pkgs.nodePackages."@tailwindcss/language-server"
 
-            pkgs.nodejs
-
             pkgs.httpie
+            pkgs.sqlite
           ];
         };
 
