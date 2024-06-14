@@ -121,6 +121,18 @@ struct TheDB {
 impl TheDB {
     fn open(path: String) -> color_eyre::Result<Self> {
         let conn = Connection::open_with_flags(&path, OpenFlags::SQLITE_OPEN_READ_WRITE)?;
+
+        // This is meant to test if the file at path is actually a DB.
+        let tables = conn.query_row(
+            r#"
+        SELECT count(*) FROM sqlite_master
+        WHERE type="table"
+            "#,
+            (),
+            |r| r.get::<_, i32>(0),
+        )?;
+        tracing::info!("found {tables} tables in {path}");
+
         Ok(Self {
             path,
             conn: Arc::new(Mutex::new(conn)),
