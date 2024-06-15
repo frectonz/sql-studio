@@ -7,6 +7,7 @@ import { createLazyRoute } from "@tanstack/react-router";
 
 import { fetchQuery } from "@/api";
 import { Editor } from "@/components/editor";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createLazyRoute("/query")({
   component: Query,
@@ -20,14 +21,15 @@ function Query() {
     queryFn: () => fetchQuery(code),
   });
 
-  const columns = data?.columns.map((col) => ({ key: col, name: col })) ?? [];
-  const rows =
-    data?.rows.map((row) =>
-      row.reduce((acc, curr, i) => {
-        acc[data.columns[i]] = curr;
-        return acc;
-      }, {}),
-    ) ?? [];
+  if (!data) return <QuerySkeleton />;
+
+  const columns = data.columns.map((col) => ({ key: col, name: col }));
+  const rows = data.rows.map((row) =>
+    row.reduce((acc, curr, i) => {
+      acc[data.columns[i]] = curr;
+      return acc;
+    }, {}),
+  );
 
   return (
     <>
@@ -36,6 +38,15 @@ function Query() {
       </div>
 
       <DataGrid columns={columns} rows={rows} className="rdg-light" />
+    </>
+  );
+}
+
+function QuerySkeleton() {
+  return (
+    <>
+      <Skeleton className="w-full h-[200px]" />
+      <Skeleton className="w-full h-[300px]" />
     </>
   );
 }
