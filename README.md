@@ -22,3 +22,18 @@ You can find pre-built binaries for the following targets on the [releases](http
 - MacOS x86 `sqlite-studio_<release>_x86_64-apple-darwin.zip`
 
 After downloading the ZIP archive, you can extract it and get the binary.
+
+## Contributing
+
+Before executing `cargo run` you need to build the UI because the rust app statically embedded the UI files in the binary.
+
+```bash
+git clone git@github.com:frectonz/sqlite-studio.git
+cd sqlite-studio
+nix develop # if you use nix
+cd ui
+npm install
+npm run build
+cd ..
+cargo run <sqlite_db>
+```
