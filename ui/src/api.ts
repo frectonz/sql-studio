@@ -72,5 +72,4 @@ export const fetchQuery = (value: string) =>
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ query: value }),
-    credentials: "omit",
   });

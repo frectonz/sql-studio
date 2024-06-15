@@ -36,14 +36,16 @@ async fn main() -> color_eyre::Result<()> {
         .allow_any_origin()
         .allow_methods(vec!["GET", "POST", "DELETE"])
         .allow_headers(vec!["Content-Length", "Content-Type"]);
-    let api = warp::path("api").and(handlers::routes(db)).with(cors);
+
+    let api = warp::path("api").and(handlers::routes(db));
     let homepage = warp::get().and_then(statics::homepage);
     let statics = statics::routes();
 
     let routes = api
         .or(statics)
         .or(homepage)
-        .recover(rejections::handle_rejection);
+        .recover(rejections::handle_rejection)
+        .with(cors);
 
     let address = args.address.parse::<std::net::SocketAddr>()?;
     warp::serve(routes).run(address).await;

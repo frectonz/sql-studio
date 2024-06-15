@@ -14,21 +14,26 @@ export const Route = createLazyRoute("/query")({
 });
 
 function Query() {
-  const [code, setCode] = useState("SELECT 1 + 1");
+  const [code, setCode] = useState("select 1 + 1");
 
   const { data } = useQuery({
     queryKey: ["query", code],
     queryFn: () => fetchQuery(code),
   });
 
-  if (!data) return <QuerySkeleton />;
-
-  const columns = data.columns.map((col) => ({ key: col, name: col }));
-  const rows = data.rows.map((row) =>
-    row.reduce((acc, curr, i) => {
-      acc[data.columns[i]] = curr;
-      return acc;
-    }, {}),
+  const grid = !data ? (
+    <Skeleton className="w-full h-[300px]" />
+  ) : (
+    <DataGrid
+      columns={data.columns.map((col) => ({ key: col, name: col }))}
+      rows={data.rows.map((row) =>
+        row.reduce((acc, curr, i) => {
+          acc[data.columns[i]] = curr;
+          return acc;
+        }, {}),
+      )}
+      className="rdg-light"
+    />
   );
 
   return (
@@ -37,16 +42,7 @@ function Query() {
         <Editor value={code} onChange={(v) => setCode(v)} />
       </div>
 
-      <DataGrid columns={columns} rows={rows} className="rdg-light" />
-    </>
-  );
-}
-
-function QuerySkeleton() {
-  return (
-    <>
-      <Skeleton className="w-full h-[200px]" />
-      <Skeleton className="w-full h-[300px]" />
+      {grid}
     </>
   );
 }
