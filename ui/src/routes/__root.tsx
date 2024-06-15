@@ -138,7 +138,7 @@ function ErrorComponent() {
     <div className="w-screen h-screen text-red-500 flex flex-col items-center justify-center gap-6">
       <Frown className="w-12 h-12" />
       <h1 className="scroll-m-20 text-3xl tracking-tight lg:text-4xl">
-        Something Went Wrong.
+        Something Went Wrong
       </h1>
     </div>
   );

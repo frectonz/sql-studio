@@ -15,11 +15,13 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 
 export const Route = createFileRoute("/")({
   component: Index,
   loader: () => fetchOverview(),
+  pendingComponent: IndexSkeleton,
 });
 
 function Index() {
@@ -197,5 +199,28 @@ export function TheBarChart({ counts }: TheBarChartProps) {
         />
       </BarChart>
     </ResponsiveContainer>
+  );
+}
+
+function IndexSkeleton() {
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <Skeleton className="w-[50vw] h-[50px]" />
+        <span className="border-b" />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+        <Skeleton className="h-[100px]" />
+        <Skeleton className="h-[100px]" />
+        <Skeleton className="h-[100px]" />
+        <Skeleton className="h-[100px]" />
+      </div>
+
+      <div className="w-full grid gap-4 lg:grid-cols-2 xl:grid-cols-7">
+        <Skeleton className="xl:col-span-4 h-[400px]" />
+        <Skeleton className="xl:col-span-3 h-[400px]" />
+      </div>
+    </>
   );
 }
