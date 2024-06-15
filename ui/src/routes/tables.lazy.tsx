@@ -13,13 +13,14 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { fetchTable, fetchTables, fetchTableData } from "@/api";
 
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsContent, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/tables")({
   component: Tables,
   loader: () => fetchTables(),
-  pendingComponent: () => <h1>Loading..</h1>,
+  pendingComponent: TablesSkeleton,
 });
 
 function Tables() {
@@ -43,6 +44,10 @@ function Tables() {
   );
 }
 
+function TablesSkeleton() {
+  return <Skeleton className="w-[70vw] h-[30px]" />;
+}
+
 type Props = {
   name: string;
 };
@@ -52,7 +57,7 @@ function Table({ name }: Props) {
     queryFn: () => fetchTable(name),
   });
 
-  if (!data) return <p>Loading...</p>;
+  if (!data) return <TableSkeleton />;
 
   return (
     <div className="flex flex-1 flex-col gap-4 md:gap-8">
@@ -126,6 +131,27 @@ function Table({ name }: Props) {
   );
 }
 
+function TableSkeleton() {
+  return (
+    <div className="flex flex-1 flex-col gap-4 md:gap-8">
+      <div className="flex flex-col gap-2">
+        <Skeleton className="w-[50vw] h-[50px]" />
+        <span className="border-b" />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+        <Skeleton className="h-[100px]" />
+        <Skeleton className="h-[100px]" />
+        <Skeleton className="h-[100px]" />
+        <Skeleton className="h-[100px]" />
+      </div>
+
+      <Skeleton className="h-[400px]" />
+      <Skeleton className="h-[400px]" />
+    </div>
+  );
+}
+
 function isAtBottom({ currentTarget }: React.UIEvent<HTMLDivElement>): boolean {
   return (
     currentTarget.scrollTop + 10 >=
@@ -136,7 +162,6 @@ function isAtBottom({ currentTarget }: React.UIEvent<HTMLDivElement>): boolean {
 type TableDataProps = {
   name: string;
 };
-
 function TableData({ name }: TableDataProps) {
   const { isLoading, data, fetchNextPage, hasNextPage } = useInfiniteQuery({
     queryKey: ["tables", "data", name],
