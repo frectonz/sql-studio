@@ -33,6 +33,7 @@
             (pkgs.lib.hasSuffix "\.css" path) ||
             (pkgs.lib.hasSuffix "\.js" path) ||
             (pkgs.lib.hasSuffix "\.svg" path) ||
+            (pkgs.lib.hasSuffix "\.sqlite3" path) ||
             (craneLib.filterCargoSources path type)
           ;
         };
@@ -55,10 +56,19 @@
             cp -pr --reflink=auto -- ${ui} ui/dist
           '';
         });
+
+        docker = pkgs.dockerTools.buildLayeredImage {
+          name = "sqlite-studio";
+          tag = "latest";
+          created = "now";
+          config.Cmd = [ "${bin}/bin/sqlite-studio" "preview" "--address=0.0.0.0:3030" ];
+          config.Expose = "3030";
+        };
       in
       {
         packages = {
           default = bin;
+          docker = docker;
         };
 
         devShells.default = pkgs.mkShell {

@@ -6,11 +6,13 @@ use tokio_rusqlite::{Connection, OpenFlags};
 use warp::Filter;
 
 const ROWS_PER_PAGE: i32 = 50;
+const SAMPLE_DB: &[u8] = include_bytes!("../sample.sqlite3");
 
 /// Web based SQLite database browser.
 #[derive(Parser, Debug)]
 struct Args {
-    /// Path to the sqlite database file.
+    /// Path to the sqlite database file. [use the path "preview" if you don't have an sqlite db at
+    /// hand, a sample db will be created for you]
     database: String,
 
     /// The address to bind to.
@@ -30,7 +32,12 @@ async fn main() -> color_eyre::Result<()> {
         .init();
 
     let args = Args::parse();
-    let db = TheDB::open(args.database).await?;
+    let db = if args.database == "preview" {
+        tokio::fs::write("sample.db", SAMPLE_DB).await?;
+        TheDB::open("sample.db".to_string()).await?
+    } else {
+        TheDB::open(args.database).await?
+    };
 
     let cors = warp::cors()
         .allow_any_origin()
