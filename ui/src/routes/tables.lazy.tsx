@@ -6,10 +6,11 @@ import {
   TableProperties,
   Table as TableIcon,
 } from "lucide-react";
+import { z } from "zod";
 import DataGrid from "react-data-grid";
 import { CodeBlock } from "react-code-blocks";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 
 import { fetchTable, fetchTables, fetchTableData } from "@/api";
 
@@ -21,17 +22,25 @@ export const Route = createFileRoute("/tables")({
   component: Tables,
   loader: () => fetchTables(),
   pendingComponent: TablesSkeleton,
+  validateSearch: z.object({ table: z.string().optional() }),
 });
 
 function Tables() {
   const data = Route.useLoaderData();
+  const { table } = Route.useSearch();
+
+  const tab = table
+    ? data.tables.findIndex(({ name }) => name === table).toString()
+    : "0";
 
   return (
-    <Tabs defaultValue="0">
+    <Tabs defaultValue={tab}>
       <TabsList>
         {data.tables.map((n, i) => (
           <TabsTrigger key={i} value={i.toString()}>
-            {n.name} ({n.count.toLocaleString()})
+            <Link search={{ table: n.name }}>
+              {n.name} ({n.count.toLocaleString()})
+            </Link>
           </TabsTrigger>
         ))}
       </TabsList>
