@@ -13,7 +13,7 @@ sqlite-studio <sqlite_db>
 - Infinite scroll rows view.
 - A custom query page that gives you more access to your db.
 
-More features available on the [releases page](https://hub.docker.com/r/frectonz/sqlite-studio).
+More features available on the [releases page](https://github.com/frectonz/sqlite-studio/releases).
 
 ## How To Run It
 
