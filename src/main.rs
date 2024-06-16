@@ -120,7 +120,7 @@ struct TheDB {
 
 impl TheDB {
     async fn open(path: String) -> color_eyre::Result<Self> {
-        let conn = Connection::open_with_flags(&path, OpenFlags::SQLITE_OPEN_READ_WRITE).await?;
+        let conn = Connection::open_with_flags(&path, OpenFlags::SQLITE_OPEN_READ_ONLY).await?;
 
         // This is meant to test if the file at path is actually a DB.
         let tables = conn
