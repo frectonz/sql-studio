@@ -1,6 +1,19 @@
 # SQLite Studio
 
-SQLite database explorer
+Single binary, single command SQLite database explorer.
+
+```bash
+sqlite-studio <sqlite_db>
+```
+
+## Features
+
+- Overview page with common metadata.
+- Tables page with each table's metadata, including the disk size being used by each table.
+- Infinite scroll rows view.
+- A custom query page that gives you more access to your db.
+
+More features available on the [releases page](https://hub.docker.com/r/frectonz/sqlite-studio).
 
 ## How To Run It
 
@@ -10,7 +23,7 @@ If you are using [Nix](https://nixos.org/), to build it from source.
 
 ```bash
 nix shell github:frectonz/sqlite-studio
-sqlite-studio
+sqlite-studio <sqlite_db>
 ```
 
 ### Pre-Built Binaries
