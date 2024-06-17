@@ -29,7 +29,7 @@ function Query() {
         row.reduce((acc, curr, i) => {
           acc[data.columns[i]] = curr;
           return acc;
-        }, {})
+        }, {}),
       )}
       className="rdg-light"
     />
