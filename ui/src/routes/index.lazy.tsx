@@ -190,6 +190,7 @@ export function TheBarChart({ counts }: TheBarChartProps) {
           fontSize={12}
           tickLine={false}
           axisLine={false}
+          tickFormatter={(number) => Intl.NumberFormat("en-US", {notation: "compact", maximumFractionDigits: 1}).format(number)}
         />
         <Bar
           dataKey="count"
