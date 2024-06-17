@@ -213,7 +213,7 @@ impl TheDB {
                 for name in table_names {
                     let name = name?;
                     let count =
-                        conn.query_row(&format!("SELECT count(*) FROM {name}"), (), |r| {
+                        conn.query_row(&format!("SELECT count(*) FROM '{name}'"), (), |r| {
                             r.get::<_, i32>(0)
                         })?;
 
@@ -259,7 +259,7 @@ impl TheDB {
                 for name in table_names {
                     let name = name?;
                     let count =
-                        conn.query_row(&format!("SELECT count(*) FROM {name}"), (), |r| {
+                        conn.query_row(&format!("SELECT count(*) FROM '{name}'"), (), |r| {
                             r.get::<_, i32>(0)
                         })?;
 
@@ -296,7 +296,7 @@ impl TheDB {
                 )?;
 
                 let row_count =
-                    conn.query_row(&format!("SELECT count(*) FROM {name}"), (), |r| {
+                    conn.query_row(&format!("SELECT count(*) FROM '{name}'"), (), |r| {
                         r.get::<_, i32>(0)
                     })?;
 
@@ -318,7 +318,7 @@ impl TheDB {
                 )?;
 
                 let has_primary_key =
-                    conn.query_row(&format!("PRAGMA table_info({name})"), [], |r| {
+                    conn.query_row(&format!("PRAGMA table_info('{name}')"), [], |r| {
                         r.get::<_, i32>(5)
                     })? == 1;
                 let index_count = if has_primary_key {
@@ -327,7 +327,7 @@ impl TheDB {
                     index_count
                 };
 
-                let mut columns = conn.prepare(&format!("PRAGMA table_info({name})"))?;
+                let mut columns = conn.prepare(&format!("PRAGMA table_info('{name}')"))?;
                 let column_count = columns.query_map((), |r| r.get::<_, String>(1))?.count() as i32;
 
                 Ok(responses::Table {
@@ -351,7 +351,7 @@ impl TheDB {
             .conn
             .call(move |conn| {
                 let first_column =
-                    conn.query_row(&format!("PRAGMA table_info({name})"), [], |r| {
+                    conn.query_row(&format!("PRAGMA table_info('{name}')"), [], |r| {
                         r.get::<_, String>(1)
                     })?;
 
@@ -359,8 +359,8 @@ impl TheDB {
                 let mut stmt = conn.prepare(&format!(
                     r#"
                 SELECT *
-                FROM {name}
-                ORDER BY {first_column}
+                FROM '{name}'
+                ORDER BY '{first_column}'
                 LIMIT {ROWS_PER_PAGE}
                 OFFSET {offset}
                 "#
