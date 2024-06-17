@@ -21,16 +21,7 @@ function Query() {
     queryFn: () => fetchQuery(code),
   });
   const grid = !data ? (
-    error ? (
-      <div>
-        {/* We can have stacktrace displayed here based on the response from backend */}
-        <p className="text-destructive">
-          No such resource returned from this query :({" "}
-        </p>
-      </div>
-    ) : (
-      <Skeleton className="w-full h-[300px]" />
-    )
+    !error && <Skeleton className="w-full h-[300px]" />
   ) : (
     <DataGrid
       columns={data.columns.map((col) => ({ key: col, name: col }))}
