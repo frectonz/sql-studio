@@ -174,6 +174,11 @@ type TheBarChartProps = {
   }[];
 };
 
+const compactrer = Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
 export function TheBarChart({ counts }: TheBarChartProps) {
   return (
     <ResponsiveContainer width="100%" height={350}>
@@ -190,12 +195,7 @@ export function TheBarChart({ counts }: TheBarChartProps) {
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(number) =>
-            Intl.NumberFormat("en-US", {
-              notation: "compact",
-              maximumFractionDigits: 1,
-            }).format(number)
-          }
+          tickFormatter={(number) => compactrer.format(number)}
         />
         <Bar
           dataKey="count"
