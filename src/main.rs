@@ -2,7 +2,6 @@ use std::{collections::HashMap, path::Path, sync::Arc};
 
 use clap::Parser;
 use color_eyre::eyre::OptionExt;
-use open::that;
 use tokio_rusqlite::{Connection, OpenFlags};
 use warp::Filter;
 const ROWS_PER_PAGE: i32 = 50;
@@ -53,6 +52,9 @@ async fn main() -> color_eyre::Result<()> {
         .or(homepage)
         .recover(rejections::handle_rejection)
         .with(cors);
+
+    let res = open::that(format!("http://{}", args.address));
+    tracing::info!("tried to open in browser: {res:?}");
 
     let address = args.address.parse::<std::net::SocketAddr>()?;
     warp::serve(routes).run(address).await;
@@ -144,7 +146,6 @@ impl TheDB {
             .await?;
 
         tracing::info!("found {tables} tables in {path}");
-        that("http://127.0.0.1:3030").expect("Failed to open browser");
         Ok(Self {
             path,
             conn: Arc::new(conn),
