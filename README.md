@@ -33,15 +33,6 @@ More features available on the [releases page](https://github.com/frectonz/sqlit
 
 ## How To Run It
 
-### Nix
-
-If you are using [Nix](https://nixos.org/), to build it from source.
-
-```bash
-nix shell github:frectonz/sqlite-studio
-sqlite-studio <sqlite_db>
-```
-
 ### Pre-Built Binaries
 
 You can find pre-built binaries for the following targets on the [releases](https://github.com/frectonz/sqlite-studio/releases) page.
@@ -51,6 +42,15 @@ You can find pre-built binaries for the following targets on the [releases](http
 - MacOS x86 `sqlite-studio_<release>_x86_64-apple-darwin.zip`
 
 After downloading the ZIP archive, you can extract it and get the binary.
+
+### Nix
+
+If you are using [Nix](https://nixos.org/), to build it from source.
+
+```bash
+nix shell github:frectonz/sqlite-studio
+sqlite-studio <sqlite_db>
+```
 
 ## Contributing
 
