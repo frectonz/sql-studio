@@ -2,9 +2,9 @@ use std::{collections::HashMap, path::Path, sync::Arc};
 
 use clap::Parser;
 use color_eyre::eyre::OptionExt;
+use open::that;
 use tokio_rusqlite::{Connection, OpenFlags};
 use warp::Filter;
-
 const ROWS_PER_PAGE: i32 = 50;
 const SAMPLE_DB: &[u8] = include_bytes!("../sample.sqlite3");
 
@@ -144,7 +144,7 @@ impl TheDB {
             .await?;
 
         tracing::info!("found {tables} tables in {path}");
-
+        that("http://127.0.0.1:3030").expect("Failed to open browser");
         Ok(Self {
             path,
             conn: Arc::new(conn),

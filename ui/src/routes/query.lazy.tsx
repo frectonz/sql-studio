@@ -16,13 +16,21 @@ export const Route = createLazyRoute("/query")({
 function Query() {
   const [code, setCode] = useState("select 1 + 1");
 
-  const { data } = useQuery({
+  const { data, error } = useQuery({
     queryKey: ["query", code],
     queryFn: () => fetchQuery(code),
   });
-
   const grid = !data ? (
-    <Skeleton className="w-full h-[300px]" />
+    error ? (
+      <div>
+        {/* We can have stacktrace displayed here based on the response from backend */}
+        <p className="text-destructive">
+          No such resource returned from this query :({" "}
+        </p>
+      </div>
+    ) : (
+      <Skeleton className="w-full h-[300px]" />
+    )
   ) : (
     <DataGrid
       columns={data.columns.map((col) => ({ key: col, name: col }))}
@@ -30,7 +38,7 @@ function Query() {
         row.reduce((acc, curr, i) => {
           acc[data.columns[i]] = curr;
           return acc;
-        }, {}),
+        }, {})
       )}
       className="rdg-light"
     />
