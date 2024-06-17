@@ -15,6 +15,20 @@ sqlite-studio <sqlite_db>
 
 More features available on the [releases page](https://github.com/frectonz/sqlite-studio/releases).
 
+## Screenshots
+
+### Home Page
+
+![homepage](./screenshots/homepage.png)
+
+### Tables Page
+
+![tables](./screenshots/tables.png)
+
+### Query Page
+
+![query](./screenshots/query.png)
+
 ## How To Run It
 
 ### Nix
