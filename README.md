@@ -24,10 +24,12 @@ More features available on the [releases page](https://github.com/frectonz/sqlit
 ### Tables Page
 
 ![tables](./screenshots/tables.png)
+![infinite scroll](https://github.com/frectonz/sqlite-studio/assets/53809656/b6d8f627-4a21-46c2-bef7-8dea206b3689)
 
 ### Query Page
 
 ![query](./screenshots/query.png)
+![query gif](https://github.com/frectonz/sqlite-studio/assets/53809656/3e47a890-ddd9-4c7f-be88-53e30cc23b15)
 
 ## How To Run It
 
