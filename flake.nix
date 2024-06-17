@@ -33,6 +33,7 @@
             (pkgs.lib.hasSuffix "\.css" path) ||
             (pkgs.lib.hasSuffix "\.js" path) ||
             (pkgs.lib.hasSuffix "\.svg" path) ||
+            (pkgs.lib.hasSuffix "\.sqlite3" path) ||
             (craneLib.filterCargoSources path type)
           ;
         };
@@ -42,7 +43,7 @@
           pname = "ui";
           version = "0.0.0";
           src = ./ui;
-          npmDepsHash = "sha256-fIz4WWvzPzQS4CCXvXtf87+ailmDDri1ACnzaB5TP7Y=";
+          npmDepsHash = "sha256-Q7AVCPU+rZhsMRts3Sn/P2G22pePOI0BAnMrcXkUgUo=";
           installPhase = ''
             cp -pr --reflink=auto -- dist "$out/"
           '';
@@ -55,10 +56,19 @@
             cp -pr --reflink=auto -- ${ui} ui/dist
           '';
         });
+
+        docker = pkgs.dockerTools.buildLayeredImage {
+          name = "sqlite-studio";
+          tag = "latest";
+          created = "now";
+          config.Cmd = [ "${bin}/bin/sqlite-studio" "preview" "--address=0.0.0.0:3030" ];
+          config.Expose = "3030";
+        };
       in
       {
         packages = {
           default = bin;
+          docker = docker;
         };
 
         devShells.default = pkgs.mkShell {
@@ -68,13 +78,13 @@
             pkgs.rust-analyzer
             rustToolchain
 
+            pkgs.nodejs
             pkgs.nodePackages.typescript-language-server
             pkgs.nodePackages.vscode-langservers-extracted
             pkgs.nodePackages."@tailwindcss/language-server"
 
-            pkgs.nodejs
-
             pkgs.httpie
+            pkgs.sqlite
           ];
         };
 

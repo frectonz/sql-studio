@@ -15,12 +15,13 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 
 export const Route = createFileRoute("/")({
   component: Index,
   loader: () => fetchOverview(),
-  errorComponent: () => <h1>Error</h1>,
+  pendingComponent: IndexSkeleton,
 });
 
 function Index() {
@@ -39,7 +40,9 @@ function Index() {
             <TableIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.tables}</div>
+            <div className="text-2xl font-bold">
+              {data.tables.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               The number of tables in the DB.
             </p>
@@ -51,7 +54,9 @@ function Index() {
             <DatabaseZap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.indexes}</div>
+            <div className="text-2xl font-bold">
+              {data.indexes.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               The number of indexes across the whole DB.
             </p>
@@ -63,7 +68,9 @@ function Index() {
             <TextSearch className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.views}</div>
+            <div className="text-2xl font-bold">
+              {data.views.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               The number of views in the DB.
             </p>
@@ -75,7 +82,9 @@ function Index() {
             <Workflow className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.triggers}</div>
+            <div className="text-2xl font-bold">
+              {data.triggers.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               The number of triggers in the DB.
             </p>
@@ -124,17 +133,19 @@ function Index() {
                   </TableCell>
                 </TableRow>
 
-                <TableRow>
-                  <TableCell>
-                    <div className="font-medium">Created on</div>
-                    <div className="text-sm text-muted-foreground md:inline">
-                      The date and time when the DB was created.
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {data.created.toUTCString()}
-                  </TableCell>
-                </TableRow>
+                {data.created && (
+                  <TableRow>
+                    <TableCell>
+                      <div className="font-medium">Created on</div>
+                      <div className="text-sm text-muted-foreground md:inline">
+                        The date and time when the DB was created.
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {data.created.toUTCString()}
+                    </TableCell>
+                  </TableRow>
+                )}
 
                 <TableRow>
                   <TableCell>
@@ -188,5 +199,28 @@ export function TheBarChart({ counts }: TheBarChartProps) {
         />
       </BarChart>
     </ResponsiveContainer>
+  );
+}
+
+function IndexSkeleton() {
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <Skeleton className="w-[50vw] h-[50px]" />
+        <span className="border-b" />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+        <Skeleton className="h-[100px]" />
+        <Skeleton className="h-[100px]" />
+        <Skeleton className="h-[100px]" />
+        <Skeleton className="h-[100px]" />
+      </div>
+
+      <div className="w-full grid gap-4 lg:grid-cols-2 xl:grid-cols-7">
+        <Skeleton className="xl:col-span-4 h-[400px]" />
+        <Skeleton className="xl:col-span-3 h-[400px]" />
+      </div>
+    </>
   );
 }
