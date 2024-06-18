@@ -17,6 +17,7 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 warp = "0.3.7"
 open = "3.2.0"
+async-trait = "0.1.80"
 
 [profile.release]
 strip = true
