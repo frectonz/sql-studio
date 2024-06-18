@@ -1,12 +1,12 @@
 import "./index.css";
 
-import React from "react";
-import { StrictMode } from "react";
-import ReactDOM from "react-dom/client";
-import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { RouterProvider, createRouter } from "@tanstack/react-router";
+import React, { StrictMode } from "react";
+import ReactDOM from "react-dom/client";
 
 // Import the generated route tree
+import { ThemeProvider } from "./provider/theme.provider";
 import { routeTree } from "./routeTree.gen";
 
 // Create a new router instance
@@ -24,7 +24,7 @@ const ReactQueryDevtools = import.meta.env.PROD
   : React.lazy(() =>
       import("@tanstack/react-query-devtools").then((res) => ({
         default: res.ReactQueryDevtools,
-      })),
+      }))
     );
 
 const queryClient = new QueryClient();
@@ -36,9 +36,11 @@ if (!rootElement.innerHTML) {
   root.render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
+        <ThemeProvider>
+          <RouterProvider router={router} />
+        </ThemeProvider>
         <ReactQueryDevtools />
       </QueryClientProvider>
-    </StrictMode>,
+    </StrictMode>
   );
 }

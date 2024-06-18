@@ -1,7 +1,8 @@
 import "@/editorWorker";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
-import { FunctionComponent, useRef, useState, useEffect } from "react";
+import { FunctionComponent, useEffect, useRef, useState } from "react";
 
+import { useTheme } from "@/provider/theme.provider";
 import { Card } from "./ui/card";
 
 type Props = {
@@ -10,8 +11,8 @@ type Props = {
 };
 
 export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
-  const [editor, setEditor] =
-    useState<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const currentTheme = useTheme();
+  const [editor, setEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoEl = useRef(null);
 
   useEffect(() => {
@@ -30,6 +31,7 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
             top: 20,
             bottom: 20,
           },
+          cursorStyle: "block",
           automaticLayout: true,
           readOnly: onChange === undefined,
         });
@@ -38,6 +40,8 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
           onChange?.(newEditor.getValue());
         });
 
+        // set theme
+        editor;
         return newEditor;
       });
     }
@@ -45,9 +49,15 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
     return () => editor?.dispose();
   }, [monacoEl.current]);
 
+  useEffect(() => {
+    if (monacoEl.current) {
+      monaco.editor.setTheme(currentTheme === "light" ? "vs" : "vs-dark");
+    }
+  }, [currentTheme]);
+
   return (
     <Card className="p-1">
-      <div className="w-full h-[200px]" ref={monacoEl}></div>
+      <div className="w-full h-[200px] bg-background" ref={monacoEl}></div>
     </Card>
   );
 };

@@ -1,16 +1,18 @@
+import { Link, Outlet, createRootRoute } from "@tanstack/react-router";
+import { Cat, Database, Frown, Menu, Moon, Sun } from "lucide-react";
 import React from "react";
-import { Menu, Database, Frown, Cat } from "lucide-react";
-import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
+import { setTheme, useTheme } from "@/provider/theme.provider";
 
 const TanStackRouterDevtools = import.meta.env.PROD
   ? () => null // Render nothing in production
   : React.lazy(() =>
       import("@tanstack/router-devtools").then((res) => ({
         default: res.TanStackRouterDevtools,
-      })),
+      }))
     );
 
 export const Route = createRootRoute({
@@ -20,16 +22,15 @@ export const Route = createRootRoute({
 });
 
 export function Root() {
+  const theme = useTheme();
+  const changeTheme = setTheme();
   return (
     <>
-      <div className="flex min-h-screen w-full flex-col">
-        <header className="sticky top-0 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6 z-50">
+      <div className={cn("flex min-h-screen w-full flex-col bg-background", theme === "dark" && "dark")}>
+        <header className="sticky top-0 flex h-16 items- justify-between gap-4 border-b bg-background px-4 md:px-6 z-50">
           <nav className="hidden flex-col gap-6 text-lg font-medium sm:flex sm:flex-row sm:items-center sm:gap-5 sm:text-sm md:gap-6">
-            <Link
-              to="/"
-              className="flex items-center gap-2 text-lg font-semibold md:text-base"
-            >
-              <Database className="h-6 w-6" />
+            <Link to="/" className="flex items-center gap-2 text-lg font-semibold md:text-base">
+              <Database className="h-6 w-6 text-foreground" />
               <span className="text-foreground">SQLite Studio</span>
             </Link>
             <Link
@@ -52,63 +53,25 @@ export function Root() {
             </Link>
           </nav>
 
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="shrink-0 sm:hidden"
-              >
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle navigation menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left">
-              <nav className="grid gap-6 text-lg font-medium">
-                <Link
-                  href="#"
-                  className="flex items-center gap-2 text-lg font-semibold"
-                >
-                  <Database className="h-6 w-6" />
-                  <span className="text-foreground">SQLite Studio</span>
-                </Link>
-                <Link
-                  to="/"
-                  className="[&.active]:text-foreground text-muted-foreground hover:text-foreground"
-                >
-                  Overview
-                </Link>
-                <Link
-                  to="/tables"
-                  className="[&.active]:text-foreground text-muted-foreground hover:text-foreground"
-                >
-                  Tables
-                </Link>
-                <Link
-                  to="/query"
-                  className="[&.active]:text-foreground text-muted-foreground hover:text-foreground"
-                >
-                  Query
-                </Link>
-              </nav>
-            </SheetContent>
-          </Sheet>
+          <MobileNav />
 
-          <Link
-            to="/"
-            className="flex sm:hidden items-center gap-2 text-lg font-semibold md:text-base"
-          >
-            <Database className="h-6 w-6" />
-            <span className="text-foreground">SQLite Studio</span>
-          </Link>
-
-          <a
-            target="_blank"
-            href="https://github.com/frectonz/sqlite-studio"
-            className="flex flex-1 items-center justify-end gap-2 text-lg font-semibold md:text-base"
-          >
-            <Github className="h-6 w-6" />
-          </a>
+          <div className="flex gap-6">
+            <button
+              className="text-foreground"
+              onClick={() => {
+                changeTheme(theme === "dark" ? "light" : "dark");
+              }}
+            >
+              {theme === "dark" ? <Sun /> : <Moon />}
+            </button>
+            <a
+              target="_blank"
+              href="https://github.com/frectonz/sqlite-studio"
+              className="flex  items-center justify-end gap-2 text-lg font-semibold md:text-base"
+            >
+              <Github className="h-6 w-6 " />
+            </a>
+          </div>
         </header>
         <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
           <Outlet />
@@ -119,11 +82,49 @@ export function Root() {
   );
 }
 
+function MobileNav() {
+  const theme = useTheme();
+  return (
+    <div className="sm:hidden items-center flex gap-4 justify-start w-full">
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button variant="outline" size="icon">
+            <Menu className="siz5 text-foreground" />
+            <span className="sr-only">Toggle navigation menu</span>
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className={theme}>
+          <nav className="grid gap-6 text-lg font-medium text-foreground">
+            <Link href="#" className="flex items-center gap-2 text-lg font-semibold">
+              <Database className="size-6 text-foreground" />
+              <span className="text-foreground">SQLite Studio</span>
+            </Link>
+            <Link to="/" className="[&.active]:text-foreground text-foreground">
+              Overview
+            </Link>
+            <Link to="/tables" className="[&.active]:text-foreground text-foreground">
+              Tables
+            </Link>
+            <Link to="/query" className="[&.active]:text-foreground text-foreground">
+              Query
+            </Link>
+          </nav>
+        </SheetContent>
+      </Sheet>
+
+      <Link to="/" className="flex sm:hidden items-center gap-2 text-lg font-semibold md:text-base">
+        <Database className="h-6 w-6 text-foreground" />
+        <span className="text-foreground">SQLite Studio</span>
+      </Link>
+    </div>
+  );
+}
+
 function Github({ className }: { className: string }) {
   return (
     <svg
       role="img"
-      className={className}
+      className={cn("fill-black dark:fill-white", className)}
       viewBox="0 0 24 24"
       xmlns="http://www.w3.org/2000/svg"
     >
@@ -137,9 +138,7 @@ function ErrorComponent() {
   return (
     <div className="w-screen h-screen text-red-500 flex flex-col items-center justify-center gap-6">
       <Frown className="w-12 h-12" />
-      <h1 className="scroll-m-20 text-3xl tracking-tight lg:text-4xl">
-        Something Went Wrong
-      </h1>
+      <h1 className="scroll-m-20 text-3xl tracking-tight lg:text-4xl">Something Went Wrong</h1>
     </div>
   );
 }
@@ -148,9 +147,7 @@ function NotFoundComponent() {
   return (
     <div className="py-52 w-full h-full flex flex-col items-center justify-center gap-6">
       <Cat className="w-20 h-20" />
-      <h1 className="scroll-m-20 text-3xl tracking-tight lg:text-4xl">
-        Page Not Found
-      </h1>
+      <h1 className="scroll-m-20 text-3xl tracking-tight lg:text-4xl">Page Not Found</h1>
     </div>
   );
 }

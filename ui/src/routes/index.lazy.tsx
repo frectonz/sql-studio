@@ -1,24 +1,13 @@
-import {
-  Workflow,
-  TextSearch,
-  DatabaseZap,
-  Table as TableIcon,
-} from "lucide-react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute } from "@tanstack/react-router";
+import { DatabaseZap, Table as TableIcon, TextSearch, Workflow } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 
 import { fetchOverview } from "@/api";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 
-export const Route = createFileRoute("/")({
+export const Route = createLazyFileRoute("/")({
   component: Index,
   loader: () => fetchOverview(),
   pendingComponent: IndexSkeleton,
@@ -29,8 +18,8 @@ function Index() {
 
   return (
     <>
-      <h2 className="scroll-m-20 border-b pb-2 text-3xl tracking-tight first:mt-0">
-        Exploring <span className="font-bold">{data.file_name}</span>
+      <h2 className="scroll-m-20 border-b pb-2 text-muted-foreground text-3xl tracking-tight first:mt-0">
+        Exploring <span className="font-bold text-foreground">{data.file_name}</span>
       </h2>
 
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
@@ -40,12 +29,8 @@ function Index() {
             <TableIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {data.tables.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              The number of tables in the DB.
-            </p>
+            <div className="text-2xl font-bold">{data.tables.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">The number of tables in the DB.</p>
           </CardContent>
         </Card>
         <Card>
@@ -54,12 +39,8 @@ function Index() {
             <DatabaseZap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {data.indexes.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              The number of indexes across the whole DB.
-            </p>
+            <div className="text-2xl font-bold">{data.indexes.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">The number of indexes across the whole DB.</p>
           </CardContent>
         </Card>
         <Card>
@@ -68,12 +49,8 @@ function Index() {
             <TextSearch className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {data.views.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              The number of views in the DB.
-            </p>
+            <div className="text-2xl font-bold">{data.views.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">The number of views in the DB.</p>
           </CardContent>
         </Card>
         <Card>
@@ -82,12 +59,8 @@ function Index() {
             <Workflow className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {data.triggers.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              The number of triggers in the DB.
-            </p>
+            <div className="text-2xl font-bold">{data.triggers.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">The number of triggers in the DB.</p>
           </CardContent>
         </Card>
       </div>
@@ -114,9 +87,7 @@ function Index() {
                 <TableRow>
                   <TableCell>
                     <div className="font-medium">File size</div>
-                    <div className="text-sm text-muted-foreground md:inline">
-                      The size of the DB on disk.
-                    </div>
+                    <div className="text-sm text-muted-foreground md:inline">The size of the DB on disk.</div>
                   </TableCell>
                   <TableCell className="text-right">{data.file_size}</TableCell>
                 </TableRow>
@@ -128,9 +99,7 @@ function Index() {
                       The SQLite version the DB was created with.
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
-                    {data.sqlite_version}
-                  </TableCell>
+                  <TableCell className="text-right">{data.sqlite_version}</TableCell>
                 </TableRow>
 
                 {data.created && (
@@ -141,9 +110,7 @@ function Index() {
                         The date and time when the DB was created.
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">
-                      {data.created.toUTCString()}
-                    </TableCell>
+                    <TableCell className="text-right">{data.created.toUTCString()}</TableCell>
                   </TableRow>
                 )}
 
@@ -154,9 +121,7 @@ function Index() {
                       The date and time when the DB was last modified.
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
-                    {data.modified.toUTCString()}
-                  </TableCell>
+                  <TableCell className="text-right">{data.modified.toUTCString()}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
@@ -183,13 +148,7 @@ export function TheBarChart({ counts }: TheBarChartProps) {
   return (
     <ResponsiveContainer width="100%" height={350}>
       <BarChart data={counts}>
-        <XAxis
-          dataKey="name"
-          stroke="#888888"
-          fontSize={12}
-          tickLine={false}
-          axisLine={false}
-        />
+        <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
         <YAxis
           stroke="#888888"
           fontSize={12}
@@ -203,6 +162,7 @@ export function TheBarChart({ counts }: TheBarChartProps) {
           radius={[4, 4, 0, 0]}
           className="fill-primary"
         />
+        <Bar dataKey="count" fill="currentColor" radius={[4, 4, 0, 0]} className="fill-primary" />
       </BarChart>
     </ResponsiveContainer>
   );

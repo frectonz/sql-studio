@@ -1,19 +1,22 @@
 import "react-data-grid/lib/styles.css";
 
-import { useState } from "react";
-import DataGrid from "react-data-grid";
 import { useQuery } from "@tanstack/react-query";
 import { createLazyRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import DataGrid from "react-data-grid";
 
 import { fetchQuery } from "@/api";
 import { Editor } from "@/components/editor";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { useTheme } from "@/provider/theme.provider";
 
 export const Route = createLazyRoute("/query")({
   component: Query,
 });
 
 function Query() {
+  const currentTheme = useTheme();
   const [code, setCode] = useState("select 1 + 1");
 
   const { data, error } = useQuery({
@@ -31,7 +34,7 @@ function Query() {
           return acc;
         }, {}),
       )}
-      className="rdg-light"
+      className={cn(currentTheme === "light" ? "rdg-light" : "rdg-dark")}
     />
   );
 
