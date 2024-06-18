@@ -361,7 +361,7 @@ impl TheDB {
                     r#"
                 SELECT *
                 FROM '{name}'
-                ORDER BY '{first_column}'
+                ORDER BY {first_column}
                 LIMIT {ROWS_PER_PAGE}
                 OFFSET {offset}
                 "#
