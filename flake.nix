@@ -73,6 +73,7 @@
 
         devShells.default = pkgs.mkShell {
           buildInputs = [
+            pkgs.bacon
             pkgs.emmet-ls
             pkgs.cargo-watch
             pkgs.rust-analyzer
