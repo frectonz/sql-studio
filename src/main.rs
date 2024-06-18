@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use warp::Filter;
 
 const ROWS_PER_PAGE: i32 = 50;
@@ -8,13 +8,22 @@ const SAMPLE_DB: &[u8] = include_bytes!("../sample.sqlite3");
 /// Web based SQLite database browser.
 #[derive(Parser, Debug)]
 struct Args {
-    /// Path to the sqlite database file. [use the path "preview" if you don't have an sqlite db at
-    /// hand, a sample db will be created for you]
-    database: String,
+    #[clap(subcommand)]
+    db: Command,
 
     /// The address to bind to.
     #[arg(short, long, default_value = "127.0.0.1:3030")]
     address: String,
+}
+
+#[derive(Debug, Subcommand)]
+enum Command {
+    /// SQLite local database.
+    Sqlite {
+        /// Path to the sqlite database file. [use the path "preview" if you don't have an sqlite db at
+        /// hand, a sample db will be created for you]
+        database: String,
+    },
 }
 
 #[tokio::main]
@@ -29,11 +38,16 @@ async fn main() -> color_eyre::Result<()> {
         .init();
 
     let args = Args::parse();
-    let db = if args.database == "preview" {
-        tokio::fs::write("sample.db", SAMPLE_DB).await?;
-        sqlite::Db::open("sample.db".to_string()).await?
-    } else {
-        sqlite::Db::open(args.database).await?
+
+    let db = match args.db {
+        Command::Sqlite { database } => {
+            if database == "preview" {
+                tokio::fs::write("sample.db", SAMPLE_DB).await?;
+                sqlite::Db::open("sample.db".to_string()).await?
+            } else {
+                sqlite::Db::open(database).await?
+            }
+        }
     };
 
     let cors = warp::cors()
