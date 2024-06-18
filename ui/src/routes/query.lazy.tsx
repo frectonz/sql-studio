@@ -32,7 +32,7 @@ function Query() {
         row.reduce((acc, curr, i) => {
           acc[data.columns[i]] = curr;
           return acc;
-        }, {})
+        }, {}),
       )}
       className={cn(currentTheme === "light" ? "rdg-light" : "rdg-dark")}
     />
