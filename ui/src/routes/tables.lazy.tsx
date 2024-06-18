@@ -191,7 +191,7 @@ function TableData({ name }: TableDataProps) {
     },
   });
 
-  if (!data) return <p>Loading...</p>;
+  if (!data) return <Skeleton className="h-[400px]" />;
 
   function handleScroll(event: React.UIEvent<HTMLDivElement>) {
     if (isLoading || !isAtBottom(event) || !hasNextPage) return;
