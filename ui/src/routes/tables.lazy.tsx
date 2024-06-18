@@ -1,8 +1,13 @@
 import "react-data-grid/lib/styles.css";
 
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { Link, createLazyFileRoute } from "@tanstack/react-router";
-import { DatabaseZap, HardDrive, Table as TableIcon, TableProperties } from "lucide-react";
+import { Link, createFileRoute } from "@tanstack/react-router";
+import {
+  DatabaseZap,
+  HardDrive,
+  Table as TableIcon,
+  TableProperties,
+} from "lucide-react";
 import { CodeBlock, irBlack as CodeDarkTheme } from "react-code-blocks";
 import DataGrid from "react-data-grid";
 import { z } from "zod";
@@ -15,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/provider/theme.provider";
 
-export const Route = createLazyFileRoute("/tables")({
+export const Route = createFileRoute("/tables")({
   component: Tables,
   loader: () => fetchTables(),
   pendingComponent: TablesSkeleton,
@@ -26,7 +31,9 @@ function Tables() {
   const data = Route.useLoaderData();
   const { table } = Route.useSearch();
 
-  const tab = table ? data.tables.findIndex(({ name }) => name === table).toString() : "0";
+  const tab = table
+    ? data.tables.findIndex(({ name }) => name === table).toString()
+    : "0";
 
   return (
     <Tabs defaultValue={tab}>
@@ -77,8 +84,12 @@ function Table({ name }: Props) {
             <TableIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.row_count.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">The number of rows in the table.</p>
+            <div className="text-2xl font-bold">
+              {data.row_count.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The number of rows in the table.
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -87,8 +98,12 @@ function Table({ name }: Props) {
             <DatabaseZap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.index_count.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">The number of indexes in the table.</p>
+            <div className="text-2xl font-bold">
+              {data.index_count.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The number of indexes in the table.
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -97,8 +112,12 @@ function Table({ name }: Props) {
             <TableProperties className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.column_count.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">The number of columns in the table.</p>
+            <div className="text-2xl font-bold">
+              {data.column_count.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The number of columns in the table.
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -108,7 +127,9 @@ function Table({ name }: Props) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.table_size}</div>
-            <p className="text-xs text-muted-foreground">The size of the table on disk.</p>
+            <p className="text-xs text-muted-foreground">
+              The size of the table on disk.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -149,7 +170,10 @@ function TableSkeleton() {
 }
 
 function isAtBottom({ currentTarget }: React.UIEvent<HTMLDivElement>): boolean {
-  return currentTarget.scrollTop + 10 >= currentTarget.scrollHeight - currentTarget.clientHeight;
+  return (
+    currentTarget.scrollTop + 10 >=
+    currentTarget.scrollHeight - currentTarget.clientHeight
+  );
 }
 
 type TableDataProps = {
@@ -181,8 +205,8 @@ function TableData({ name }: TableDataProps) {
       row.reduce((acc, curr, i) => {
         acc[page.columns[i]] = curr;
         return acc;
-      }, {})
-    )
+      }, {}),
+    ),
   ) as never[][];
   const rows = [].concat(...grouped);
 

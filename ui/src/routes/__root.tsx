@@ -12,7 +12,7 @@ const TanStackRouterDevtools = import.meta.env.PROD
   : React.lazy(() =>
       import("@tanstack/router-devtools").then((res) => ({
         default: res.TanStackRouterDevtools,
-      }))
+      })),
     );
 
 export const Route = createRootRoute({
@@ -26,10 +26,18 @@ export function Root() {
   const changeTheme = setTheme();
   return (
     <>
-      <div className={cn("flex min-h-screen w-full flex-col bg-background", theme === "dark" && "dark")}>
+      <div
+        className={cn(
+          "flex min-h-screen w-full flex-col bg-background",
+          theme === "dark" && "dark",
+        )}
+      >
         <header className="sticky top-0 flex h-16 items- justify-between gap-4 border-b bg-background px-4 md:px-6 z-50">
           <nav className="hidden flex-col gap-6 text-lg font-medium sm:flex sm:flex-row sm:items-center sm:gap-5 sm:text-sm md:gap-6">
-            <Link to="/" className="flex items-center gap-2 text-lg font-semibold md:text-base">
+            <Link
+              to="/"
+              className="flex items-center gap-2 text-lg font-semibold md:text-base"
+            >
               <Database className="h-6 w-6 text-foreground" />
               <span className="text-foreground">SQLite Studio</span>
             </Link>
@@ -95,24 +103,36 @@ function MobileNav() {
         </SheetTrigger>
         <SheetContent side="left" className={theme}>
           <nav className="grid gap-6 text-lg font-medium text-foreground">
-            <Link href="#" className="flex items-center gap-2 text-lg font-semibold">
+            <Link
+              href="#"
+              className="flex items-center gap-2 text-lg font-semibold"
+            >
               <Database className="size-6 text-foreground" />
               <span className="text-foreground">SQLite Studio</span>
             </Link>
             <Link to="/" className="[&.active]:text-foreground text-foreground">
               Overview
             </Link>
-            <Link to="/tables" className="[&.active]:text-foreground text-foreground">
+            <Link
+              to="/tables"
+              className="[&.active]:text-foreground text-foreground"
+            >
               Tables
             </Link>
-            <Link to="/query" className="[&.active]:text-foreground text-foreground">
+            <Link
+              to="/query"
+              className="[&.active]:text-foreground text-foreground"
+            >
               Query
             </Link>
           </nav>
         </SheetContent>
       </Sheet>
 
-      <Link to="/" className="flex sm:hidden items-center gap-2 text-lg font-semibold md:text-base">
+      <Link
+        to="/"
+        className="flex sm:hidden items-center gap-2 text-lg font-semibold md:text-base"
+      >
         <Database className="h-6 w-6 text-foreground" />
         <span className="text-foreground">SQLite Studio</span>
       </Link>
@@ -138,7 +158,9 @@ function ErrorComponent() {
   return (
     <div className="w-screen h-screen text-red-500 flex flex-col items-center justify-center gap-6">
       <Frown className="w-12 h-12" />
-      <h1 className="scroll-m-20 text-3xl tracking-tight lg:text-4xl">Something Went Wrong</h1>
+      <h1 className="scroll-m-20 text-3xl tracking-tight lg:text-4xl">
+        Something Went Wrong
+      </h1>
     </div>
   );
 }
@@ -147,7 +169,9 @@ function NotFoundComponent() {
   return (
     <div className="py-52 w-full h-full flex flex-col items-center justify-center gap-6">
       <Cat className="w-20 h-20" />
-      <h1 className="scroll-m-20 text-3xl tracking-tight lg:text-4xl">Page Not Found</h1>
+      <h1 className="scroll-m-20 text-3xl tracking-tight lg:text-4xl">
+        Page Not Found
+      </h1>
     </div>
   );
 }

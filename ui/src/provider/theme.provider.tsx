@@ -11,5 +11,5 @@ export const {
     localStorage.setItem("theme", next);
     return next;
   },
-  (localStorage.getItem("theme") === "dark" ? "dark" : "light") as Theme
+  (localStorage.getItem("theme") === "dark" ? "dark" : "light") as Theme,
 );

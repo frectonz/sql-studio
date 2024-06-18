@@ -24,7 +24,7 @@ const ReactQueryDevtools = import.meta.env.PROD
   : React.lazy(() =>
       import("@tanstack/react-query-devtools").then((res) => ({
         default: res.ReactQueryDevtools,
-      }))
+      })),
     );
 
 const queryClient = new QueryClient();
@@ -41,6 +41,6 @@ if (!rootElement.innerHTML) {
         </ThemeProvider>
         <ReactQueryDevtools />
       </QueryClientProvider>
-    </StrictMode>
+    </StrictMode>,
   );
 }

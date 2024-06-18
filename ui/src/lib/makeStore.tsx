@@ -1,4 +1,10 @@
-import { Dispatch, PropsWithChildren, createContext, useContext, useReducer } from "react";
+import {
+  Dispatch,
+  PropsWithChildren,
+  createContext,
+  useContext,
+  useReducer,
+} from "react";
 
 /**
  * Creates a store with the specified reducer and initial state.
@@ -11,7 +17,7 @@ import { Dispatch, PropsWithChildren, createContext, useContext, useReducer } fr
  */
 export default function createStore<State, Action>(
   reducer: (state: State, action: Action) => State,
-  initialState: State
+  initialState: State,
 ) {
   const StoreContext = createContext(initialState);
   const DispatchContext = createContext<Dispatch<Action>>(() => {});
@@ -21,7 +27,9 @@ export default function createStore<State, Action>(
 
     return (
       <StoreContext.Provider value={store}>
-        <DispatchContext.Provider value={dispatch}>{children}</DispatchContext.Provider>
+        <DispatchContext.Provider value={dispatch}>
+          {children}
+        </DispatchContext.Provider>
       </StoreContext.Provider>
     );
   }
