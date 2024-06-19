@@ -1,9 +1,17 @@
 # SQLite Studio
 
-Single binary, single command SQLite database explorer.
+Single binary, single command SQLite database explorer. SQLite studio supports opening both *local SQLite DB files* and *libSQL servers*.
+
+### Local SQLite DB File
 
 ```bash
-sqlite-studio <sqlite_db>
+sqlite-studio sqlite [sqlite_db]
+```
+
+### Remote libSQL Server
+
+```bash
+sqlite-studio libsql [url] [auth_token]
 ```
 
 ## Features
@@ -48,7 +56,7 @@ After downloading the ZIP archive, you can extract it and get the binary.
 If you are using [Nix](https://nixos.org/), to build it from source.
 
 ```bash
-nix shell github:frectonz/sqlite-studio
+nix shell github:frectonz/sqlite-studio # currently broken, download the pre built binary instead
 sqlite-studio <sqlite_db>
 ```
 
