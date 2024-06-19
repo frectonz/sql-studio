@@ -35,6 +35,11 @@ jobs:
           cd ui
           npm run build
 
+      - name: Install CC Dependencies
+        run: |
+          apt update
+          apt install build-essential gcc make pkg-config
+
       - name: Compile and release
         uses: rust-build/rust-build.action@v1.4.5
         env:
