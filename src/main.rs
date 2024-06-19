@@ -519,19 +519,19 @@ mod sqlite {
 }
 
 mod libsql {
-    use std::collections::HashMap;
+    use std::{collections::HashMap, sync::Arc};
 
     use async_trait::async_trait;
     use color_eyre::eyre::OptionExt;
     use futures::{StreamExt, TryStreamExt};
-    use libsql::{params, Builder, Connection};
+    use libsql::Builder;
 
     use crate::{helpers, responses, Database, ROWS_PER_PAGE};
 
     #[derive(Clone)]
     pub struct Db {
         url: String,
-        conn: Connection,
+        db: Arc<libsql::Database>,
     }
 
     impl Db {
@@ -560,7 +560,10 @@ mod libsql {
                 if tables == 1 { "" } else { "s" }
             );
 
-            Ok(Self { url, conn })
+            Ok(Self {
+                url,
+                db: Arc::new(db),
+            })
         }
     }
 
@@ -569,8 +572,9 @@ mod libsql {
         async fn overview(&self) -> color_eyre::Result<responses::Overview> {
             let file_name = self.url.to_owned();
 
-            let sqlite_version = self
-                .conn
+            let conn = self.db.connect()?;
+
+            let sqlite_version = conn
                 .query("SELECT sqlite_version();", ())
                 .await?
                 .next()
@@ -582,8 +586,7 @@ mod libsql {
             let modified = None;
             let created = None;
 
-            let tables = self
-                .conn
+            let tables = conn
                 .query(
                     r#"
             SELECT count(*) FROM sqlite_master
@@ -597,8 +600,7 @@ mod libsql {
                 .ok_or_eyre("no row returned from db")?
                 .get::<i32>(0)?;
 
-            let indexes = self
-                .conn
+            let indexes = conn
                 .query(
                     r#"
             SELECT count(*) FROM sqlite_master
@@ -612,8 +614,7 @@ mod libsql {
                 .ok_or_eyre("no row returned from db")?
                 .get::<i32>(0)?;
 
-            let triggers = self
-                .conn
+            let triggers = conn
                 .query(
                     r#"
             SELECT count(*) FROM sqlite_master
@@ -627,8 +628,7 @@ mod libsql {
                 .ok_or_eyre("no row returned from db")?
                 .get::<i32>(0)?;
 
-            let views = self
-                .conn
+            let views = conn
                 .query(
                     r#"
             SELECT count(*) FROM sqlite_master
@@ -642,8 +642,7 @@ mod libsql {
                 .ok_or_eyre("no row returned from db")?
                 .get::<i32>(0)?;
 
-            let table_names = self
-                .conn
+            let table_names = conn
                 .query(r#"SELECT name FROM sqlite_master WHERE type="table""#, ())
                 .await?
                 .into_stream()
@@ -657,8 +656,7 @@ mod libsql {
 
             let mut table_counts = HashMap::with_capacity(table_names.len());
             for name in table_names {
-                let count = self
-                    .conn
+                let count = conn
                     .query(&format!("SELECT count(*) FROM '{name}'"), ())
                     .await?
                     .next()
@@ -691,8 +689,9 @@ mod libsql {
         }
 
         async fn tables(&self) -> color_eyre::Result<responses::Tables> {
-            let table_names = self
-                .conn
+            let conn = self.db.connect()?;
+
+            let table_names = conn
                 .query(r#"SELECT name FROM sqlite_master WHERE type="table""#, ())
                 .await?
                 .into_stream()
@@ -706,8 +705,7 @@ mod libsql {
 
             let mut table_counts = HashMap::with_capacity(table_names.len());
             for name in table_names {
-                let count = self
-                    .conn
+                let count = conn
                     .query(&format!("SELECT count(*) FROM '{name}'"), ())
                     .await?
                     .next()
@@ -723,20 +721,21 @@ mod libsql {
                 .map(|(name, count)| responses::RowCount { name, count })
                 .collect::<Vec<_>>();
 
-            tables.sort_by(|a, b| b.count.cmp(&a.count));
+            tables.sort_by_key(|r| r.count);
 
             Ok(responses::Tables { tables })
         }
 
         async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
-            let sql = self
-                .conn
+            let conn = self.db.connect()?;
+
+            let sql = conn
                 .query(
                     r#"
                 SELECT sql FROM sqlite_master
                 WHERE type="table" AND name = ?1
                 "#,
-                    (),
+                    [name.to_owned()],
                 )
                 .await?
                 .next()
@@ -744,8 +743,7 @@ mod libsql {
                 .ok_or_eyre("no row returned from db")?
                 .get::<String>(0)?;
 
-            let row_count = self
-                .conn
+            let row_count = conn
                 .query(&format!("SELECT count(*) FROM '{name}'"), ())
                 .await?
                 .next()
@@ -753,11 +751,10 @@ mod libsql {
                 .ok_or_eyre("no row returned from db")?
                 .get::<i32>(0)?;
 
-            let table_size = self
-                .conn
+            let table_size = conn
                 .query(
                     "SELECT SUM(pgsize) FROM dbstat WHERE name = ?1",
-                    params![name.to_owned()],
+                    [name.to_owned()],
                 )
                 .await?
                 .next()
@@ -766,11 +763,10 @@ mod libsql {
                 .get::<i64>(0)?;
             let table_size = helpers::format_size(table_size as f64);
 
-            let index_count = self
-                .conn
+            let index_count = conn
                 .query(
                     "SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=?1",
-                    (),
+                    [name.to_owned()],
                 )
                 .await?
                 .next()
@@ -778,8 +774,7 @@ mod libsql {
                 .ok_or_eyre("no row returned from db")?
                 .get::<i32>(0)?;
 
-            let has_primary_key = self
-                .conn
+            let has_primary_key = conn
                 .query(&format!("PRAGMA table_info('{name}')"), ())
                 .await?
                 .next()
@@ -794,8 +789,7 @@ mod libsql {
                 index_count
             };
 
-            let column_count = self
-                .conn
+            let column_count = conn
                 .query(&format!("PRAGMA table_info('{name}')"), ())
                 .await?
                 .into_stream()
@@ -822,8 +816,9 @@ mod libsql {
             name: String,
             page: i32,
         ) -> color_eyre::Result<responses::TableData> {
-            let first_column = self
-                .conn
+            let conn = self.db.connect()?;
+
+            let first_column = conn
                 .query(&format!("PRAGMA table_info('{name}')"), ())
                 .await?
                 .next()
@@ -831,29 +826,33 @@ mod libsql {
                 .ok_or_eyre("no row returned from db")?
                 .get::<String>(1)?;
 
+            let columns = conn
+                .query(&format!("PRAGMA table_info('{name}')"), ())
+                .await?
+                .into_stream()
+                .map_ok(|r| r.get::<String>(1))
+                .collect::<Vec<_>>()
+                .await
+                .into_iter()
+                .filter_map(|r| r.ok())
+                .filter_map(|r| r.ok())
+                .collect::<Vec<_>>();
+
+            let columns_len = columns.len();
             let offset = (page - 1) * ROWS_PER_PAGE;
-            let mut stmt = self
-                .conn
-                .prepare(&format!(
-                    r#"
+            let rows = conn
+                .query(
+                    &format!(
+                        r#"
                 SELECT *
                 FROM '{name}'
                 ORDER BY {first_column}
                 LIMIT {ROWS_PER_PAGE}
                 OFFSET {offset}
-                "#
-                ))
-                .await?;
-
-            let columns = stmt
-                .columns()
-                .into_iter()
-                .map(|c| c.name().to_owned())
-                .collect::<Vec<_>>();
-
-            let columns_len = columns.len();
-            let rows = stmt
-                .query(())
+                        "#,
+                    ),
+                    (),
+                )
                 .await?
                 .into_stream()
                 .map_ok(|r| {
@@ -875,25 +874,23 @@ mod libsql {
         }
 
         async fn query(&self, query: String) -> color_eyre::Result<responses::Query> {
-            let mut stmt = self.conn.prepare(&query).await?;
+            let conn = self.db.connect()?;
+            let mut stmt = conn.prepare(&query).await?;
 
-            let columns = stmt
-                .columns()
-                .into_iter()
-                .map(|c| c.name().to_owned())
-                .collect::<Vec<_>>();
-
-            let columns_len = columns.len();
             let rows = stmt
                 .query(())
                 .await?
                 .into_stream()
                 .map_ok(|r| {
-                    let mut rows = Vec::with_capacity(columns_len);
-                    for i in 0..columns_len {
-                        let val = helpers::libsql_value_to_json(r.get_value(i as i32)?);
-                        rows.push(val);
+                    let mut rows = HashMap::new();
+                    let mut index = 0;
+
+                    while let Some(name) = r.column_name(index) {
+                        let val = helpers::libsql_value_to_json(r.get_value(index)?);
+                        rows.insert(name.to_owned(), val);
+                        index += 1;
                     }
+
                     color_eyre::eyre::Ok(rows)
                 })
                 .collect::<Vec<_>>()
@@ -901,6 +898,22 @@ mod libsql {
                 .into_iter()
                 .filter_map(|r| r.ok())
                 .filter_map(|r| r.ok())
+                .collect::<Vec<_>>();
+
+            let columns = rows
+                .get(0)
+                .map(|r| r.keys().map(ToOwned::to_owned).collect::<Vec<_>>())
+                .unwrap_or_default();
+
+            let rows = rows
+                .into_iter()
+                .map(|mut r| {
+                    let mut rows = Vec::with_capacity(columns.len());
+                    for col in columns.iter() {
+                        rows.push(r.remove(col).unwrap());
+                    }
+                    rows
+                })
                 .collect::<Vec<_>>();
 
             Ok(responses::Query { columns, rows })
