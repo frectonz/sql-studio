@@ -38,7 +38,7 @@ jobs:
       - name: Install CC Dependencies
         run: |
           sudo apt update
-          sudo apt install build-essential gcc make pkg-config
+          sudo apt install build-essential gcc make pkg-config gcc-multilib g++-multilib musl-dev musl-tools cmake
 
       - name: Compile and release
         uses: rust-build/rust-build.action@v1.4.5
