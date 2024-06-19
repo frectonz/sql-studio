@@ -1,0 +1,25 @@
+name: Build UI
+on:
+  # Defining workflow_call means that this workflow can be called from
+  # your main workflow job
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install npm dependencies
+        run: |
+          cd ui
+          npm install
+
+      - name: Build npm project
+        run: |
+          cd ui
+          npm run build

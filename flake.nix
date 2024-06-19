@@ -78,6 +78,7 @@
           buildInputs = [
             pkgs.bacon
             pkgs.emmet-ls
+            pkgs.cargo-dist
             pkgs.cargo-watch
             pkgs.rust-analyzer
             rustToolchain

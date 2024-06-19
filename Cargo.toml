@@ -2,6 +2,10 @@
 name = "sqlite-studio"
 version = "0.1.6"
 edition = "2021"
+repository = "https://github.com/frectonz/sqlite-studio"
+description = "Single binary, single command SQLite database explorer."
+homepage = "https://sqlite-studio.frectonz.io/"
+authors = ["frectonz"]
 
 [dependencies]
 chrono = { version = "0.4.38", features = ["serde"] }
@@ -26,3 +30,25 @@ strip = true
 opt-level = "z"
 lto = true
 codegen-units = 1
+
+# The profile that 'cargo dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+# Config for 'cargo dist'
+[workspace.metadata.dist]
+# The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
+cargo-dist-version = "0.15.0"
+# CI backends to support
+ci = "github"
+# The installers to generate for each app
+installers = ["shell", "powershell"]
+# Target platforms to build apps for (Rust target-triple syntax)
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+# Publish jobs to run in CI
+pr-run-mode = "plan"
+# Whether to install an updater program
+install-updater = true
+# Local artifacts jobs to run in CI
+local-artifacts-jobs = ["./build-ui"]
