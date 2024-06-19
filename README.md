@@ -56,8 +56,8 @@ After downloading the ZIP archive, you can extract it and get the binary.
 If you are using [Nix](https://nixos.org/), to build it from source.
 
 ```bash
-nix shell github:frectonz/sqlite-studio # currently broken, download the pre built binary instead
-sqlite-studio <sqlite_db>
+nix shell github:frectonz/sqlite-studio
+sqlite-studio [sqlite_db]
 ```
 
 ## Contributing

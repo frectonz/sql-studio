@@ -37,7 +37,10 @@
             (craneLib.filterCargoSources path type)
           ;
         };
-        commonArgs = { inherit src; };
+        commonArgs = {
+          inherit src;
+          buildInputs = [ pkgs.git ];
+        };
 
         ui = pkgs.buildNpmPackage {
           pname = "ui";
@@ -61,7 +64,7 @@
           name = "sqlite-studio";
           tag = "latest";
           created = "now";
-          config.Cmd = [ "${bin}/bin/sqlite-studio" "preview" "--address=0.0.0.0:3030" ];
+          config.Cmd = [ "${bin}/bin/sqlite-studio" "--address=0.0.0.0:3030" "sqlite" "preview" ];
           config.Expose = "3030";
         };
       in
