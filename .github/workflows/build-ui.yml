@@ -3,10 +3,6 @@ on:
   # Defining workflow_call means that this workflow can be called from
   # your main workflow job
   workflow_call:
-    inputs:
-      plan:
-        required: true
-        type: string
 
 jobs:
   build:
