@@ -24,6 +24,15 @@ enum Command {
         /// hand, a sample db will be created for you]
         database: String,
     },
+
+    /// A remote SQLite database via libSQL.
+    Libsql {
+        /// libSQL server address
+        url: String,
+
+        /// libSQL authentication token.
+        auth_token: String,
+    },
 }
 
 #[tokio::main]
@@ -40,13 +49,14 @@ async fn main() -> color_eyre::Result<()> {
     let args = Args::parse();
 
     let db = match args.db {
-        Command::Sqlite { database } => {
-            if database == "preview" {
-                tokio::fs::write("sample.db", SAMPLE_DB).await?;
-                sqlite::Db::open("sample.db".to_string()).await?
-            } else {
-                sqlite::Db::open(database).await?
-            }
+        Command::Sqlite { database } => AllDbs::Sqlite(if database == "preview" {
+            tokio::fs::write("sample.db", SAMPLE_DB).await?;
+            sqlite::Db::open("sample.db".to_string()).await?
+        } else {
+            sqlite::Db::open(database).await?
+        }),
+        Command::Libsql { url, auth_token } => {
+            AllDbs::Libsql(libsql::Db::open(url, auth_token).await?)
         }
     };
 
@@ -135,8 +145,6 @@ mod statics {
 
 #[async_trait]
 trait Database: Sized + Clone + Send {
-    async fn open(path: String) -> color_eyre::Result<Self>;
-
     async fn overview(&self) -> color_eyre::Result<responses::Overview>;
 
     async fn tables(&self) -> color_eyre::Result<responses::Tables>;
@@ -147,6 +155,54 @@ trait Database: Sized + Clone + Send {
         -> color_eyre::Result<responses::TableData>;
 
     async fn query(&self, query: String) -> color_eyre::Result<responses::Query>;
+}
+
+#[derive(Clone)]
+enum AllDbs {
+    Sqlite(sqlite::Db),
+    Libsql(libsql::Db),
+}
+
+#[async_trait]
+impl Database for AllDbs {
+    async fn overview(&self) -> color_eyre::Result<responses::Overview> {
+        match self {
+            AllDbs::Sqlite(x) => x.overview().await,
+            AllDbs::Libsql(x) => x.overview().await,
+        }
+    }
+
+    async fn tables(&self) -> color_eyre::Result<responses::Tables> {
+        match self {
+            AllDbs::Sqlite(x) => x.tables().await,
+            AllDbs::Libsql(x) => x.tables().await,
+        }
+    }
+
+    async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
+        match self {
+            AllDbs::Sqlite(x) => x.table(name).await,
+            AllDbs::Libsql(x) => x.table(name).await,
+        }
+    }
+
+    async fn table_data(
+        &self,
+        name: String,
+        page: i32,
+    ) -> color_eyre::Result<responses::TableData> {
+        match self {
+            AllDbs::Sqlite(x) => x.table_data(name, page).await,
+            AllDbs::Libsql(x) => x.table_data(name, page).await,
+        }
+    }
+
+    async fn query(&self, query: String) -> color_eyre::Result<responses::Query> {
+        match self {
+            AllDbs::Sqlite(x) => x.query(query).await,
+            AllDbs::Libsql(x) => x.query(query).await,
+        }
+    }
 }
 
 mod sqlite {
@@ -163,9 +219,8 @@ mod sqlite {
         conn: Arc<Connection>,
     }
 
-    #[async_trait]
-    impl Database for Db {
-        async fn open(path: String) -> color_eyre::Result<Self> {
+    impl Db {
+        pub async fn open(path: String) -> color_eyre::Result<Self> {
             let conn = Connection::open_with_flags(&path, OpenFlags::SQLITE_OPEN_READ_ONLY).await?;
 
             // This is meant to test if the file at path is actually a DB.
@@ -188,7 +243,10 @@ mod sqlite {
                 conn: Arc::new(conn),
             })
         }
+    }
 
+    #[async_trait]
+    impl Database for Db {
         async fn overview(&self) -> color_eyre::Result<responses::Overview> {
             let file_name = Path::new(&self.path)
                 .file_name()
@@ -201,7 +259,7 @@ mod sqlite {
 
             let sqlite_version = tokio_rusqlite::version().to_owned();
             let file_size = helpers::format_size(metadata.len() as f64);
-            let modified = metadata.modified()?.into();
+            let modified = Some(metadata.modified()?.into());
             let created = metadata.created().ok().map(Into::into);
 
             let (tables, indexes, triggers, views, counts) = self
@@ -416,7 +474,7 @@ mod sqlite {
                         .query_map((), |r| {
                             let mut rows = Vec::with_capacity(columns_len);
                             for i in 0..columns_len {
-                                let val = helpers::value_to_json(r.get_ref(i)?);
+                                let val = helpers::rusqlite_value_to_json(r.get_ref(i)?);
                                 rows.push(val);
                             }
                             Ok(rows)
@@ -445,7 +503,7 @@ mod sqlite {
                         .query_map((), |r| {
                             let mut rows = Vec::with_capacity(columns_len);
                             for i in 0..columns_len {
-                                let val = helpers::value_to_json(r.get_ref(i)?);
+                                let val = helpers::rusqlite_value_to_json(r.get_ref(i)?);
                                 rows.push(val);
                             }
                             Ok(rows)
@@ -460,7 +518,398 @@ mod sqlite {
     }
 }
 
+mod libsql {
+    use std::collections::HashMap;
+
+    use async_trait::async_trait;
+    use color_eyre::eyre::OptionExt;
+    use futures::{StreamExt, TryStreamExt};
+    use libsql::{params, Builder, Connection};
+
+    use crate::{helpers, responses, Database, ROWS_PER_PAGE};
+
+    #[derive(Clone)]
+    pub struct Db {
+        url: String,
+        conn: Connection,
+    }
+
+    impl Db {
+        pub async fn open(url: String, auth_token: String) -> color_eyre::Result<Self> {
+            let db = Builder::new_remote(url.to_owned(), auth_token)
+                .build()
+                .await?;
+            let conn = db.connect()?;
+
+            let tables = conn
+                .query(
+                    r#"
+            SELECT count(*) FROM sqlite_master
+            WHERE type="table"
+                "#,
+                    (),
+                )
+                .await?
+                .next()
+                .await?
+                .ok_or_eyre("no row returned from db")?
+                .get::<i32>(0)?;
+
+            tracing::info!(
+                "found {tables} table{} in {url}",
+                if tables == 1 { "" } else { "s" }
+            );
+
+            Ok(Self { url, conn })
+        }
+    }
+
+    #[async_trait]
+    impl Database for Db {
+        async fn overview(&self) -> color_eyre::Result<responses::Overview> {
+            let file_name = self.url.to_owned();
+
+            let sqlite_version = self
+                .conn
+                .query("SELECT sqlite_version();", ())
+                .await?
+                .next()
+                .await?
+                .ok_or_eyre("no row returned from db")?
+                .get::<String>(0)?;
+
+            let file_size = "---".to_owned();
+            let modified = None;
+            let created = None;
+
+            let tables = self
+                .conn
+                .query(
+                    r#"
+            SELECT count(*) FROM sqlite_master
+            WHERE type="table"
+                    "#,
+                    (),
+                )
+                .await?
+                .next()
+                .await?
+                .ok_or_eyre("no row returned from db")?
+                .get::<i32>(0)?;
+
+            let indexes = self
+                .conn
+                .query(
+                    r#"
+            SELECT count(*) FROM sqlite_master
+            WHERE type="index"
+                    "#,
+                    (),
+                )
+                .await?
+                .next()
+                .await?
+                .ok_or_eyre("no row returned from db")?
+                .get::<i32>(0)?;
+
+            let triggers = self
+                .conn
+                .query(
+                    r#"
+            SELECT count(*) FROM sqlite_master
+            WHERE type="trigger"
+                    "#,
+                    (),
+                )
+                .await?
+                .next()
+                .await?
+                .ok_or_eyre("no row returned from db")?
+                .get::<i32>(0)?;
+
+            let views = self
+                .conn
+                .query(
+                    r#"
+            SELECT count(*) FROM sqlite_master
+            WHERE type="view"
+                    "#,
+                    (),
+                )
+                .await?
+                .next()
+                .await?
+                .ok_or_eyre("no row returned from db")?
+                .get::<i32>(0)?;
+
+            let table_names = self
+                .conn
+                .query(r#"SELECT name FROM sqlite_master WHERE type="table""#, ())
+                .await?
+                .into_stream()
+                .map_ok(|r| r.get::<String>(0))
+                .collect::<Vec<_>>()
+                .await
+                .into_iter()
+                .filter_map(|r| r.ok())
+                .filter_map(|r| r.ok())
+                .collect::<Vec<_>>();
+
+            let mut table_counts = HashMap::with_capacity(table_names.len());
+            for name in table_names {
+                let count = self
+                    .conn
+                    .query(&format!("SELECT count(*) FROM '{name}'"), ())
+                    .await?
+                    .next()
+                    .await?
+                    .ok_or_eyre("no row returned from db")?
+                    .get::<i32>(0)?;
+
+                table_counts.insert(name, count);
+            }
+
+            let mut counts = table_counts
+                .into_iter()
+                .map(|(name, count)| responses::RowCount { name, count })
+                .collect::<Vec<_>>();
+
+            counts.sort_by(|a, b| b.count.cmp(&a.count));
+
+            Ok(responses::Overview {
+                file_name,
+                sqlite_version,
+                file_size,
+                created,
+                modified,
+                tables,
+                indexes,
+                triggers,
+                views,
+                counts,
+            })
+        }
+
+        async fn tables(&self) -> color_eyre::Result<responses::Tables> {
+            let table_names = self
+                .conn
+                .query(r#"SELECT name FROM sqlite_master WHERE type="table""#, ())
+                .await?
+                .into_stream()
+                .map_ok(|r| r.get::<String>(0))
+                .collect::<Vec<_>>()
+                .await
+                .into_iter()
+                .filter_map(|r| r.ok())
+                .filter_map(|r| r.ok())
+                .collect::<Vec<_>>();
+
+            let mut table_counts = HashMap::with_capacity(table_names.len());
+            for name in table_names {
+                let count = self
+                    .conn
+                    .query(&format!("SELECT count(*) FROM '{name}'"), ())
+                    .await?
+                    .next()
+                    .await?
+                    .ok_or_eyre("no row returned from db")?
+                    .get::<i32>(0)?;
+
+                table_counts.insert(name, count);
+            }
+
+            let mut tables = table_counts
+                .into_iter()
+                .map(|(name, count)| responses::RowCount { name, count })
+                .collect::<Vec<_>>();
+
+            tables.sort_by(|a, b| b.count.cmp(&a.count));
+
+            Ok(responses::Tables { tables })
+        }
+
+        async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
+            let sql = self
+                .conn
+                .query(
+                    r#"
+                SELECT sql FROM sqlite_master
+                WHERE type="table" AND name = ?1
+                "#,
+                    (),
+                )
+                .await?
+                .next()
+                .await?
+                .ok_or_eyre("no row returned from db")?
+                .get::<String>(0)?;
+
+            let row_count = self
+                .conn
+                .query(&format!("SELECT count(*) FROM '{name}'"), ())
+                .await?
+                .next()
+                .await?
+                .ok_or_eyre("no row returned from db")?
+                .get::<i32>(0)?;
+
+            let table_size = self
+                .conn
+                .query(
+                    "SELECT SUM(pgsize) FROM dbstat WHERE name = ?1",
+                    params![name.to_owned()],
+                )
+                .await?
+                .next()
+                .await?
+                .ok_or_eyre("no row returned from db")?
+                .get::<i64>(0)?;
+            let table_size = helpers::format_size(table_size as f64);
+
+            let index_count = self
+                .conn
+                .query(
+                    "SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=?1",
+                    (),
+                )
+                .await?
+                .next()
+                .await?
+                .ok_or_eyre("no row returned from db")?
+                .get::<i32>(0)?;
+
+            let has_primary_key = self
+                .conn
+                .query(&format!("PRAGMA table_info('{name}')"), ())
+                .await?
+                .next()
+                .await?
+                .ok_or_eyre("no row returned from db")?
+                .get::<i32>(5)?
+                == 1;
+
+            let index_count = if has_primary_key {
+                index_count + 1
+            } else {
+                index_count
+            };
+
+            let column_count = self
+                .conn
+                .query(&format!("PRAGMA table_info('{name}')"), ())
+                .await?
+                .into_stream()
+                .map_ok(|r| r.get::<String>(1))
+                .collect::<Vec<_>>()
+                .await
+                .into_iter()
+                .filter_map(|r| r.ok())
+                .filter_map(|r| r.ok())
+                .count() as i32;
+
+            Ok(responses::Table {
+                name,
+                sql,
+                row_count,
+                table_size,
+                index_count,
+                column_count,
+            })
+        }
+
+        async fn table_data(
+            &self,
+            name: String,
+            page: i32,
+        ) -> color_eyre::Result<responses::TableData> {
+            let first_column = self
+                .conn
+                .query(&format!("PRAGMA table_info('{name}')"), ())
+                .await?
+                .next()
+                .await?
+                .ok_or_eyre("no row returned from db")?
+                .get::<String>(1)?;
+
+            let offset = (page - 1) * ROWS_PER_PAGE;
+            let mut stmt = self
+                .conn
+                .prepare(&format!(
+                    r#"
+                SELECT *
+                FROM '{name}'
+                ORDER BY {first_column}
+                LIMIT {ROWS_PER_PAGE}
+                OFFSET {offset}
+                "#
+                ))
+                .await?;
+
+            let columns = stmt
+                .columns()
+                .into_iter()
+                .map(|c| c.name().to_owned())
+                .collect::<Vec<_>>();
+
+            let columns_len = columns.len();
+            let rows = stmt
+                .query(())
+                .await?
+                .into_stream()
+                .map_ok(|r| {
+                    let mut rows = Vec::with_capacity(columns_len);
+                    for i in 0..columns_len {
+                        let val = helpers::libsql_value_to_json(r.get_value(i as i32)?);
+                        rows.push(val);
+                    }
+                    color_eyre::eyre::Ok(rows)
+                })
+                .collect::<Vec<_>>()
+                .await
+                .into_iter()
+                .filter_map(|r| r.ok())
+                .filter_map(|r| r.ok())
+                .collect::<Vec<_>>();
+
+            Ok(responses::TableData { columns, rows })
+        }
+
+        async fn query(&self, query: String) -> color_eyre::Result<responses::Query> {
+            let mut stmt = self.conn.prepare(&query).await?;
+
+            let columns = stmt
+                .columns()
+                .into_iter()
+                .map(|c| c.name().to_owned())
+                .collect::<Vec<_>>();
+
+            let columns_len = columns.len();
+            let rows = stmt
+                .query(())
+                .await?
+                .into_stream()
+                .map_ok(|r| {
+                    let mut rows = Vec::with_capacity(columns_len);
+                    for i in 0..columns_len {
+                        let val = helpers::libsql_value_to_json(r.get_value(i as i32)?);
+                        rows.push(val);
+                    }
+                    color_eyre::eyre::Ok(rows)
+                })
+                .collect::<Vec<_>>()
+                .await
+                .into_iter()
+                .filter_map(|r| r.ok())
+                .filter_map(|r| r.ok())
+                .collect::<Vec<_>>();
+
+            Ok(responses::Query { columns, rows })
+        }
+    }
+}
+
 mod helpers {
+    use libsql::Value;
     use tokio_rusqlite::types::ValueRef;
 
     pub fn format_size(mut size: f64) -> String {
@@ -475,13 +924,23 @@ mod helpers {
         format!("{:.2} {}", size, UNITS[unit])
     }
 
-    pub fn value_to_json(v: ValueRef) -> serde_json::Value {
+    pub fn rusqlite_value_to_json(v: ValueRef) -> serde_json::Value {
         match v {
             ValueRef::Null => serde_json::Value::Null,
             ValueRef::Integer(x) => serde_json::json!(x),
             ValueRef::Real(x) => serde_json::json!(x),
             ValueRef::Text(s) => serde_json::Value::String(String::from_utf8_lossy(s).into_owned()),
             ValueRef::Blob(s) => serde_json::json!(s),
+        }
+    }
+
+    pub fn libsql_value_to_json(v: Value) -> serde_json::Value {
+        match v {
+            Value::Null => serde_json::Value::Null,
+            Value::Integer(x) => serde_json::json!(x),
+            Value::Real(x) => serde_json::json!(x),
+            Value::Text(s) => serde_json::Value::String(s),
+            Value::Blob(s) => serde_json::json!(s),
         }
     }
 }
@@ -496,7 +955,7 @@ mod responses {
         pub sqlite_version: String,
         pub file_size: String,
         pub created: Option<DateTime<Utc>>,
-        pub modified: DateTime<Utc>,
+        pub modified: Option<DateTime<Utc>>,
         pub tables: i32,
         pub indexes: i32,
         pub triggers: i32,

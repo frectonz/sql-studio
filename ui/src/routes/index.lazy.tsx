@@ -148,17 +148,19 @@ function Index() {
                   </TableRow>
                 )}
 
-                <TableRow>
-                  <TableCell>
-                    <div className="font-medium">Modified on</div>
-                    <div className="text-sm text-muted-foreground md:inline">
-                      The date and time when the DB was last modified.
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {data.modified.toUTCString()}
-                  </TableCell>
-                </TableRow>
+                {data.modified && (
+                  <TableRow>
+                    <TableCell>
+                      <div className="font-medium">Modified on</div>
+                      <div className="text-sm text-muted-foreground md:inline">
+                        The date and time when the DB was last modified.
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {data.modified.toUTCString()}
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>

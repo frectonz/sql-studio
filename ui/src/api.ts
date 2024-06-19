@@ -15,7 +15,8 @@ const overview = z.object({
   modified: z
     .string()
     .datetime()
-    .transform((x) => new Date(x)),
+    .transform((x) => new Date(x))
+    .nullable(),
   tables: z.number(),
   indexes: z.number(),
   triggers: z.number(),
