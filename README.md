@@ -59,7 +59,7 @@ If you are using [Nix](https://nixos.org/), to build it from source.
 
 ```bash
 nix shell github:frectonz/sqlite-studio
-sqlite-studio [sqlite_db]
+sqlite-studio
 ```
 
 ## Updating
