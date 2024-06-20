@@ -206,6 +206,7 @@ export function TheBarChart({ counts }: TheBarChartProps) {
           fontSize={12}
           tickLine={false}
           axisLine={false}
+          className="hidden"
         />
         <YAxis
           stroke="#888888"
@@ -261,7 +262,7 @@ function CustomTooltip({
       <CardContent className="p-0">
         <div className="font-bold"># {payload[0]?.value?.toLocaleString()}</div>
         <p className="text-xs text-muted-foreground">
-          Table <span className="text-primary font-semibold">{label}</span> have{" "}
+          Table <span className="text-primary font-semibold">{label}</span> has{" "}
           <span className="text-primary font-semibold">
             {compactNumberFormatter.format(payload[0]?.value as number)}
           </span>{" "}
