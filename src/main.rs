@@ -33,6 +33,12 @@ enum Command {
         /// libSQL authentication token.
         auth_token: String,
     },
+
+    /// A postgresql database.
+    Postgres {
+        /// postgresql connection url [postgresql://postgres:postgres@127.0.0.1/sample]
+        url: String,
+    },
 }
 
 #[tokio::main]
@@ -58,6 +64,7 @@ async fn main() -> color_eyre::Result<()> {
         Command::Libsql { url, auth_token } => {
             AllDbs::Libsql(libsql::Db::open(url, auth_token).await?)
         }
+        Command::Postgres { url } => AllDbs::Postgres(postgres::Db::open(url).await?),
     };
 
     let cors = warp::cors()
@@ -161,6 +168,7 @@ trait Database: Sized + Clone + Send {
 enum AllDbs {
     Sqlite(sqlite::Db),
     Libsql(libsql::Db),
+    Postgres(postgres::Db),
 }
 
 #[async_trait]
@@ -169,6 +177,7 @@ impl Database for AllDbs {
         match self {
             AllDbs::Sqlite(x) => x.overview().await,
             AllDbs::Libsql(x) => x.overview().await,
+            AllDbs::Postgres(x) => x.overview().await,
         }
     }
 
@@ -176,6 +185,7 @@ impl Database for AllDbs {
         match self {
             AllDbs::Sqlite(x) => x.tables().await,
             AllDbs::Libsql(x) => x.tables().await,
+            AllDbs::Postgres(x) => x.tables().await,
         }
     }
 
@@ -183,6 +193,7 @@ impl Database for AllDbs {
         match self {
             AllDbs::Sqlite(x) => x.table(name).await,
             AllDbs::Libsql(x) => x.table(name).await,
+            AllDbs::Postgres(x) => x.table(name).await,
         }
     }
 
@@ -194,6 +205,7 @@ impl Database for AllDbs {
         match self {
             AllDbs::Sqlite(x) => x.table_data(name, page).await,
             AllDbs::Libsql(x) => x.table_data(name, page).await,
+            AllDbs::Postgres(x) => x.table_data(name, page).await,
         }
     }
 
@@ -201,6 +213,7 @@ impl Database for AllDbs {
         match self {
             AllDbs::Sqlite(x) => x.query(query).await,
             AllDbs::Libsql(x) => x.query(query).await,
+            AllDbs::Postgres(x) => x.query(query).await,
         }
     }
 }
@@ -901,7 +914,7 @@ mod libsql {
                 .collect::<Vec<_>>();
 
             let columns = rows
-                .get(0)
+                .first()
                 .map(|r| r.keys().map(ToOwned::to_owned).collect::<Vec<_>>())
                 .unwrap_or_default();
 
@@ -911,6 +924,344 @@ mod libsql {
                     let mut rows = Vec::with_capacity(columns.len());
                     for col in columns.iter() {
                         rows.push(r.remove(col).unwrap());
+                    }
+                    rows
+                })
+                .collect::<Vec<_>>();
+
+            Ok(responses::Query { columns, rows })
+        }
+    }
+}
+
+mod postgres {
+    use std::sync::Arc;
+
+    use async_trait::async_trait;
+    use tokio_postgres::{Client, NoTls};
+
+    use crate::{
+        helpers,
+        responses::{self, RowCount},
+        Database, ROWS_PER_PAGE,
+    };
+
+    #[derive(Clone)]
+    pub struct Db {
+        client: Arc<Client>,
+    }
+
+    impl Db {
+        pub async fn open(url: String) -> color_eyre::Result<Self> {
+            let (client, connection) = tokio_postgres::connect(&url, NoTls).await?;
+
+            // The connection object performs the actual communication with the database,
+            // so spawn it off to run on its own.
+            tokio::spawn(async move {
+                if let Err(e) = connection.await {
+                    eprintln!("postgres connection error: {}", e);
+                }
+            });
+
+            let tables: i64 = client
+                .query_one(
+                    r#"
+            SELECT count(*)
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+            AND table_type = 'BASE TABLE'
+                "#,
+                    &[],
+                )
+                .await?
+                .get(0);
+
+            tracing::info!(
+                "found {tables} table{} in {url}",
+                if tables == 1 { "" } else { "s" }
+            );
+
+            Ok(Self {
+                client: Arc::new(client),
+            })
+        }
+    }
+
+    #[async_trait]
+    impl Database for Db {
+        async fn overview(&self) -> color_eyre::Result<responses::Overview> {
+            let file_name: String = self
+                .client
+                .query_one("SELECT current_database()", &[])
+                .await?
+                .get(0);
+
+            let sqlite_version = "---".to_owned();
+            let file_size: i64 = self
+                .client
+                .query_one("SELECT pg_database_size($1)", &[&file_name])
+                .await?
+                .get(0);
+            let file_size = helpers::format_size(file_size as f64);
+
+            let modified = None;
+            let created = None;
+
+            let tables: i64 = self
+                .client
+                .query_one(
+                    r#"
+            SELECT count(*)
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+            AND table_type = 'BASE TABLE'
+                "#,
+                    &[],
+                )
+                .await?
+                .get(0);
+
+            let indexes: i64 = self
+                .client
+                .query_one(
+                    r#"
+            SELECT count(*) 
+            FROM pg_indexes 
+            WHERE schemaname = 'public'
+                "#,
+                    &[],
+                )
+                .await?
+                .get(0);
+
+            let triggers: i64 = self
+                .client
+                .query_one(
+                    r#"
+            SELECT count(*)
+            FROM information_schema.triggers
+            WHERE trigger_schema = 'public'
+                "#,
+                    &[],
+                )
+                .await?
+                .get(0);
+
+            let views: i64 = self
+                .client
+                .query_one(
+                    r#"
+            SELECT count(*)
+            FROM information_schema.views
+            WHERE table_schema = 'public';
+                "#,
+                    &[],
+                )
+                .await?
+                .get(0);
+
+            let mut counts = self
+                .client
+                .query(
+                    r#"
+            SELECT relname, n_live_tup
+            FROM pg_stat_user_tables
+            WHERE schemaname = 'public';
+                "#,
+                    &[],
+                )
+                .await?
+                .into_iter()
+                .map(|r| RowCount {
+                    name: r.get(0),
+                    count: r.get::<usize, i64>(1) as i32,
+                })
+                .collect::<Vec<_>>();
+
+            counts.sort_by(|a, b| b.count.cmp(&a.count));
+
+            Ok(responses::Overview {
+                file_name,
+                sqlite_version,
+                file_size,
+                created,
+                modified,
+                tables: tables as i32,
+                indexes: indexes as i32,
+                triggers: triggers as i32,
+                views: views as i32,
+                counts,
+            })
+        }
+
+        async fn tables(&self) -> color_eyre::Result<responses::Tables> {
+            let mut tables = self
+                .client
+                .query(
+                    r#"
+            SELECT relname, n_live_tup
+            FROM pg_stat_user_tables
+            WHERE schemaname = 'public'
+                "#,
+                    &[],
+                )
+                .await?
+                .into_iter()
+                .map(|r| RowCount {
+                    name: r.get(0),
+                    count: r.get::<usize, i64>(1) as i32,
+                })
+                .collect::<Vec<_>>();
+
+            tables.sort_by_key(|r| r.count);
+
+            Ok(responses::Tables { tables })
+        }
+
+        async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
+            let sql = "".to_owned();
+
+            let row_count: i64 = self
+                .client
+                .query_one(&format!(r#"SELECT count(*) FROM "{name}""#), &[])
+                .await?
+                .get(0);
+
+            let table_size: i64 = self
+                .client
+                .query_one(&format!("SELECT pg_total_relation_size('{name}')"), &[])
+                .await?
+                .get(0);
+            let table_size = helpers::format_size(table_size as f64);
+
+            let index_count: i64 = self
+                .client
+                .query_one(
+                    r#"
+            SELECT count(*)
+            FROM pg_indexes
+            WHERE tablename = '{name}'
+                "#,
+                    &[],
+                )
+                .await?
+                .get(0);
+
+            let column_count: i64 = self
+                .client
+                .query_one(
+                    r#"
+            SELECT count(*)
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+            AND table_name = '{name}'
+                "#,
+                    &[],
+                )
+                .await?
+                .get(0);
+
+            Ok(responses::Table {
+                name,
+                sql,
+                row_count: row_count as i32,
+                table_size,
+                index_count: index_count as i32,
+                column_count: column_count as i32,
+            })
+        }
+
+        async fn table_data(
+            &self,
+            name: String,
+            page: i32,
+        ) -> color_eyre::Result<responses::TableData> {
+            let first_column: String = self
+                .client
+                .query_one(
+                    &format!(
+                        r#"
+            SELECT column_name FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = '{name}'
+            LIMIT 1
+                "#
+                    ),
+                    &[],
+                )
+                .await?
+                .get(0);
+
+            let offset = (page - 1) * ROWS_PER_PAGE;
+            let sql = format!(
+                r#"
+            SELECT * FROM "{name}"
+            ORDER BY {first_column}
+            LIMIT {ROWS_PER_PAGE}
+            OFFSET {offset}
+                "#
+            );
+
+            let stmt = self.client.prepare(&sql).await?;
+            let columns = stmt
+                .columns()
+                .iter()
+                .map(|c| c.name().to_owned())
+                .collect::<Vec<_>>();
+
+            let columns_len = columns.len();
+            let rows = self
+                .client
+                .simple_query(&sql)
+                .await?
+                .into_iter()
+                .filter_map(|r| {
+                    if let tokio_postgres::SimpleQueryMessage::Row(row) = r {
+                        Some(row)
+                    } else {
+                        None
+                    }
+                })
+                .map(|r| {
+                    let mut rows = Vec::with_capacity(columns_len);
+                    for i in 0..columns_len {
+                        let val = r.get(i).unwrap_or_default();
+                        let val = serde_json::Value::String(val.to_owned());
+                        rows.push(val);
+                    }
+                    rows
+                })
+                .collect::<Vec<_>>();
+
+            Ok(responses::TableData { columns, rows })
+        }
+
+        async fn query(&self, query: String) -> color_eyre::Result<responses::Query> {
+            let stmt = self.client.prepare(&query).await?;
+            let columns = stmt
+                .columns()
+                .iter()
+                .map(|c| c.name().to_owned())
+                .collect::<Vec<_>>();
+
+            let columns_len = columns.len();
+            let rows = self
+                .client
+                .simple_query(&query)
+                .await?
+                .into_iter()
+                .filter_map(|r| {
+                    if let tokio_postgres::SimpleQueryMessage::Row(row) = r {
+                        Some(row)
+                    } else {
+                        None
+                    }
+                })
+                .map(|r| {
+                    let mut rows = Vec::with_capacity(columns_len);
+                    for i in 0..columns_len {
+                        let val = r.get(i).unwrap_or_default();
+                        let val = serde_json::Value::String(val.to_owned());
+                        rows.push(val);
                     }
                     rows
                 })
