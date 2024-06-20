@@ -1,11 +1,19 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute } from "@tanstack/react-router";
 import {
   DatabaseZap,
   Table as TableIcon,
   TextSearch,
   Workflow,
 } from "lucide-react";
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import {
+  Bar,
+  BarChart,
+  ResponsiveContainer,
+  Tooltip,
+  TooltipProps,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import { fetchOverview } from "@/api";
 import {
@@ -17,8 +25,12 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import {
+  NameType,
+  ValueType,
+} from "recharts/types/component/DefaultTooltipContent";
 
-export const Route = createFileRoute("/")({
+export const Route = createLazyFileRoute("/")({
   component: Index,
   loader: () => fetchOverview(),
   pendingComponent: IndexSkeleton,
@@ -93,7 +105,7 @@ function Index() {
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-7">
+      <div className="grid gap-8 lg:grid-cols-2 xl:grid-cols-7">
         <Card className="xl:col-span-4">
           <CardHeader>
             <CardTitle>Rows Per Table</CardTitle>
@@ -177,7 +189,7 @@ type TheBarChartProps = {
   }[];
 };
 
-const compactrer = Intl.NumberFormat("en-US", {
+const compactNumberFormatter = Intl.NumberFormat("en-US", {
   notation: "compact",
   maximumFractionDigits: 1,
 });
@@ -198,7 +210,7 @@ export function TheBarChart({ counts }: TheBarChartProps) {
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(number) => compactrer.format(number)}
+          tickFormatter={(number) => compactNumberFormatter.format(number)}
         />
         <Bar
           dataKey="count"
@@ -206,6 +218,7 @@ export function TheBarChart({ counts }: TheBarChartProps) {
           radius={[4, 4, 0, 0]}
           className="fill-primary"
         />
+        <Tooltip content={<CustomTooltip />} cursor={{ fill: "#00ffa61e" }} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -231,5 +244,28 @@ function IndexSkeleton() {
         <Skeleton className="xl:col-span-3 h-[400px]" />
       </div>
     </>
+  );
+}
+
+function CustomTooltip({
+  active,
+  payload,
+  label,
+}: TooltipProps<ValueType, NameType>) {
+  if (!active || !payload || !payload.length) return null;
+
+  return (
+    <Card className="p-3">
+      <CardContent className="p-0">
+        <div className="font-bold"># {payload[0]?.value?.toLocaleString()}</div>
+        <p className="text-xs text-muted-foreground">
+          Table <span className="text-primary font-semibold">{label}</span> have{" "}
+          <span className="text-primary font-semibold">
+            {compactNumberFormatter.format(payload[0]?.value as number)}
+          </span>{" "}
+          rows.
+        </p>
+      </CardContent>
+    </Card>
   );
 }

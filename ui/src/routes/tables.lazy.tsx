@@ -41,7 +41,7 @@ function Tables() {
         {data.tables.map((n, i) => (
           <TabsTrigger key={i} value={i.toString()}>
             <Link search={{ table: n.name }}>
-              {n.name} ({n.count.toLocaleString()})
+              {n.name} [{n.count.toLocaleString()}]
             </Link>
           </TabsTrigger>
         ))}
@@ -140,6 +140,12 @@ function Table({ name }: Props) {
           language="sql"
           theme={currentTheme === "dark" ? CodeDarkTheme : undefined}
           showLineNumbers={false}
+          customStyle={{
+            FontFace: "JetBrains Mono",
+            padding: "10px",
+            backgroundColor: currentTheme === "dark" ? "#091813" : "#f5faf9",
+            borderRadius: "10px",
+          }}
         />
       </Card>
 
