@@ -5,7 +5,7 @@ const BASE_URL = import.meta.env.PROD ? "/api" : "http://localhost:3030/api";
 
 const overview = z.object({
   file_name: z.string(),
-  sqlite_version: z.string(),
+  sqlite_version: z.string().nullable(),
   file_size: z.string(),
   created: z
     .string()
@@ -40,7 +40,7 @@ const tables = z.object({
 
 const table = z.object({
   name: z.string(),
-  sql: z.string(),
+  sql: z.string().nullable(),
   row_count: z.number(),
   index_count: z.number(),
   column_count: z.number(),

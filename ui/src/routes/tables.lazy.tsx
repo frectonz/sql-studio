@@ -134,20 +134,22 @@ function Table({ name }: Props) {
         </Card>
       </div>
 
-      <Card className="font-mono text-sm">
-        <CodeBlock
-          text={data.sql}
-          language="sql"
-          theme={currentTheme === "dark" ? CodeDarkTheme : undefined}
-          showLineNumbers={false}
-          customStyle={{
-            FontFace: "JetBrains Mono",
-            padding: "10px",
-            backgroundColor: currentTheme === "dark" ? "#091813" : "#f5faf9",
-            borderRadius: "10px",
-          }}
-        />
-      </Card>
+      {data.sql && (
+        <Card className="font-mono text-sm">
+          <CodeBlock
+            text={data.sql}
+            language="sql"
+            theme={currentTheme === "dark" ? CodeDarkTheme : undefined}
+            showLineNumbers={false}
+            customStyle={{
+              FontFace: "JetBrains Mono",
+              padding: "10px",
+              backgroundColor: currentTheme === "dark" ? "#091813" : "#f5faf9",
+              borderRadius: "10px",
+            }}
+          />
+        </Card>
+      )}
 
       <TableData name={data.name} />
     </div>

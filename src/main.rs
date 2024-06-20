@@ -342,7 +342,7 @@ mod sqlite {
 
             Ok(responses::Overview {
                 file_name,
-                sqlite_version,
+                sqlite_version: Some(sqlite_version),
                 file_size,
                 created,
                 modified,
@@ -443,7 +443,7 @@ mod sqlite {
 
                     Ok(responses::Table {
                         name,
-                        sql,
+                        sql: Some(sql),
                         row_count,
                         table_size,
                         index_count,
@@ -689,7 +689,7 @@ mod libsql {
 
             Ok(responses::Overview {
                 file_name,
-                sqlite_version,
+                sqlite_version: Some(sqlite_version),
                 file_size,
                 created,
                 modified,
@@ -816,7 +816,7 @@ mod libsql {
 
             Ok(responses::Table {
                 name,
-                sql,
+                sql: Some(sql),
                 row_count,
                 table_size,
                 index_count,
@@ -996,7 +996,6 @@ mod postgres {
                 .await?
                 .get(0);
 
-            let sqlite_version = "---".to_owned();
             let file_size: i64 = self
                 .client
                 .query_one("SELECT pg_database_size($1)", &[&file_name])
@@ -1082,7 +1081,7 @@ mod postgres {
 
             Ok(responses::Overview {
                 file_name,
-                sqlite_version,
+                sqlite_version: None,
                 file_size,
                 created,
                 modified,
@@ -1119,8 +1118,6 @@ mod postgres {
         }
 
         async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
-            let sql = "".to_owned();
-
             let row_count: i64 = self
                 .client
                 .query_one(&format!(r#"SELECT count(*) FROM "{name}""#), &[])
@@ -1163,7 +1160,7 @@ mod postgres {
 
             Ok(responses::Table {
                 name,
-                sql,
+                sql: None,
                 row_count: row_count as i32,
                 table_size,
                 index_count: index_count as i32,
@@ -1316,8 +1313,8 @@ mod responses {
     #[derive(Serialize)]
     pub struct Overview {
         pub file_name: String,
-        pub sqlite_version: String,
         pub file_size: String,
+        pub sqlite_version: Option<String>,
         pub created: Option<DateTime<Utc>>,
         pub modified: Option<DateTime<Utc>>,
         pub tables: i32,
@@ -1341,7 +1338,7 @@ mod responses {
     #[derive(Serialize)]
     pub struct Table {
         pub name: String,
-        pub sql: String,
+        pub sql: Option<String>,
         pub row_count: i32,
         pub index_count: i32,
         pub column_count: i32,

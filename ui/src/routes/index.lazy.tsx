@@ -134,17 +134,19 @@ function Index() {
                   <TableCell className="text-right">{data.file_size}</TableCell>
                 </TableRow>
 
-                <TableRow>
-                  <TableCell>
-                    <div className="font-medium">SQLite version</div>
-                    <div className="text-sm text-muted-foreground md:inline">
-                      The SQLite version the DB was created with.
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {data.sqlite_version}
-                  </TableCell>
-                </TableRow>
+                {data.sqlite_version && (
+                  <TableRow>
+                    <TableCell>
+                      <div className="font-medium">SQLite version</div>
+                      <div className="text-sm text-muted-foreground md:inline">
+                        The SQLite version the DB was created with.
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {data.sqlite_version}
+                    </TableCell>
+                  </TableRow>
+                )}
 
                 {data.created && (
                   <TableRow>
