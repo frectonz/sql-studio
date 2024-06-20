@@ -12,7 +12,8 @@ type Props = {
 
 export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
   const currentTheme = useTheme();
-  const [editor, setEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const [editor, setEditor] =
+    useState<monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoEl = useRef(null);
 
   useEffect(() => {
