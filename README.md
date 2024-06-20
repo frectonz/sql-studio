@@ -50,13 +50,13 @@ More features available on the [releases page](https://github.com/frectonz/sqlit
 ### Install prebuilt binaries via shell script (MacOS and Linux)
 
 ```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sqlite-studio/releases/download/0.1.7/sqlite-studio-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sqlite-studio/releases/download/0.1.8/sqlite-studio-installer.sh | sh
 ```
 
 ### Install prebuilt binaries via powershell script
 
 ```sh
-powershell -c "irm https://github.com/frectonz/sqlite-studio/releases/download/0.1.7/sqlite-studio-installer.ps1 | iex"
+powershell -c "irm https://github.com/frectonz/sqlite-studio/releases/download/0.1.8/sqlite-studio-installer.ps1 | iex"
 ```
 
 ### Updating
