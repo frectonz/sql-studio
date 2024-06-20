@@ -1,4 +1,4 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import {
   DatabaseZap,
   Table as TableIcon,
@@ -30,7 +30,7 @@ import {
   ValueType,
 } from "recharts/types/component/DefaultTooltipContent";
 
-export const Route = createLazyFileRoute("/")({
+export const Route = createFileRoute("/")({
   component: Index,
   loader: () => fetchOverview(),
   pendingComponent: IndexSkeleton,
