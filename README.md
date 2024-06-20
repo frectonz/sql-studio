@@ -39,17 +39,19 @@ More features available on the [releases page](https://github.com/frectonz/sqlit
 ![query](./screenshots/query.png)
 ![query gif](https://github.com/frectonz/sqlite-studio/assets/53809656/3e47a890-ddd9-4c7f-be88-53e30cc23b15)
 
-## How To Run It
+## Installation
 
-### Pre-Built Binaries
+### Install prebuilt binaries via shell script (MacOS and Linux)
 
-You can find pre-built binaries for the following targets on the [releases](https://github.com/frectonz/sqlite-studio/releases) page.
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sqlite-studio/releases/download/0.1.7/sqlite-studio-installer.sh | sh
+```
 
-- Linux `sqlite-studio_<release>_x86_64-unknown-linux-musl.zip`
-- Windows `sqlite-studio_<release>_x86_64-pc-windows-gnu.zip`
-- MacOS x86 `sqlite-studio_<release>_x86_64-apple-darwin.zip`
+### Install prebuilt binaries via powershell script
 
-After downloading the ZIP archive, you can extract it and get the binary.
+```sh
+powershell -c "irm https://github.com/frectonz/sqlite-studio/releases/download/0.1.7/sqlite-studio-installer.ps1 | iex"
+```
 
 ### Nix
 
@@ -58,6 +60,12 @@ If you are using [Nix](https://nixos.org/), to build it from source.
 ```bash
 nix shell github:frectonz/sqlite-studio
 sqlite-studio [sqlite_db]
+```
+
+## Updating
+
+```bash
+sqlite-studio-update
 ```
 
 ## Contributing
