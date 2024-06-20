@@ -53,19 +53,16 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sqlite-studio/
 powershell -c "irm https://github.com/frectonz/sqlite-studio/releases/download/0.1.7/sqlite-studio-installer.ps1 | iex"
 ```
 
-### Nix
-
-If you are using [Nix](https://nixos.org/), to build it from source.
-
-```bash
-nix shell github:frectonz/sqlite-studio
-sqlite-studio
-```
-
-## Updating
+### Updating
 
 ```bash
 sqlite-studio-update
+```
+
+## Nix
+
+```bash
+nix shell github:frectonz/sqlite-studio
 ```
 
 ## Contributing
