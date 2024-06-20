@@ -1,6 +1,6 @@
 # SQLite Studio
 
-Single binary, single command SQLite database explorer. SQLite studio supports opening both *local SQLite DB files* and *libSQL servers*.
+Single binary, single command SQLite database explorer. SQLite studio supports opening both *local SQLite DB files*, *libSQL servers* and *PostgreSQL*.
 
 ### Local SQLite DB File
 
@@ -12,6 +12,12 @@ sqlite-studio sqlite [sqlite_db]
 
 ```bash
 sqlite-studio libsql [url] [auth_token]
+```
+
+### PostgreSQL Server
+
+```bash
+sqlite-studio postgres [url]
 ```
 
 ## Features

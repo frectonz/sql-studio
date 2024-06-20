@@ -34,7 +34,7 @@ enum Command {
         auth_token: String,
     },
 
-    /// A postgresql database.
+    /// A PostgreSQL database.
     Postgres {
         /// postgresql connection url [postgresql://postgres:postgres@127.0.0.1/sample]
         url: String,
