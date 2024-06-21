@@ -31,19 +31,20 @@ More features available on the [releases page](https://github.com/frectonz/sql-s
 
 ## Screenshots
 
-### Home Page
+### Overview Page
 
-![homepage](./screenshots/homepage.png)
+![overview](./screenshots/overview.png)
+![overview dark](./screenshots/overview-dark.png)
 
 ### Tables Page
 
 ![tables](./screenshots/tables.png)
-![infinite scroll](https://github.com/frectonz/sql-studio/assets/53809656/b6d8f627-4a21-46c2-bef7-8dea206b3689)
+![tables dark](./screenshots/tables-dark.png)
 
 ### Query Page
 
 ![query](./screenshots/query.png)
-![query gif](https://github.com/frectonz/sql-studio/assets/53809656/3e47a890-ddd9-4c7f-be88-53e30cc23b15)
+![query dark](./screenshots/query-dark.png)
 
 ## Installation
 
