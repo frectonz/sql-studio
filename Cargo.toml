@@ -1,6 +1,6 @@
 [package]
 name = "sql-studio"
-version = "0.1.8"
+version = "0.1.9"
 edition = "2021"
 repository = "https://github.com/frectonz/sql-studio"
 description = "Single binary, single command SQL Database Explorer."
