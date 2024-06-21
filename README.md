@@ -26,6 +26,12 @@ sql-studio postgres [url]
 sql-studio mysql [url]
 ```
 
+### Local DuckDB File
+
+```bash
+sql-studio duckdb [duckdb_file]
+```
+
 ## Features
 
 - Overview page with common metadata.
