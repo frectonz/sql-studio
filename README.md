@@ -1,6 +1,6 @@
 # SQL Studio
 
-Single binary, single command SQL database explorer. SQL studio supports *local SQLite DB files*, *libSQL servers*, *PostgreSQL* and *MySQL*.
+Single binary, single command SQL database explorer. SQL studio supports *SQLite*, *libSQL*, *PostgreSQL*, *MySQL* and *DuckDB*.
 
 ### Local SQLite DB File
 
@@ -81,7 +81,7 @@ sql-studio-update
 ## Nix
 
 ```bash
-nix shell github:frectonz/sql-studio
+nix shell github:frectonz/sql-studio # currently broken
 ```
 
 ## Contributing
