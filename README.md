@@ -1,6 +1,6 @@
 # SQL Studio
 
-Single binary, single command SQL database explorer. SQL studio supports opening *local SQLite DB files*, *libSQL servers* and *PostgreSQL*.
+Single binary, single command SQL database explorer. SQL studio supports *local SQLite DB files*, *libSQL servers*, *PostgreSQL* and *MySQL*.
 
 ### Local SQLite DB File
 
@@ -18,6 +18,12 @@ sql-studio libsql [url] [auth_token]
 
 ```bash
 sql-studio postgres [url]
+```
+
+### MySQL/MariaDB Server
+
+```bash
+sql-studio mysql [url]
 ```
 
 ## Features
