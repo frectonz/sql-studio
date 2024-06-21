@@ -39,7 +39,7 @@ export function Root() {
               className="flex items-center gap-2 text-lg font-semibold md:text-base"
             >
               <Database className="h-6 w-6 text-foreground" />
-              <span className="text-foreground">SQLite Studio</span>
+              <span className="text-foreground">SQL Studio</span>
             </Link>
             <Link
               to="/"
@@ -74,7 +74,7 @@ export function Root() {
             </button>
             <a
               target="_blank"
-              href="https://github.com/frectonz/sqlite-studio"
+              href="https://github.com/frectonz/sql-studio"
               className="flex  items-center justify-end gap-2 text-lg font-semibold md:text-base"
             >
               <Github className="h-6 w-6 " />
@@ -108,7 +108,7 @@ function MobileNav() {
               className="flex items-center gap-2 text-lg font-semibold"
             >
               <Database className="size-6 text-foreground" />
-              <span className="text-foreground">SQLite Studio</span>
+              <span className="text-foreground">SQL Studio</span>
             </Link>
             <Link to="/" className="[&.active]:text-foreground text-foreground">
               Overview
@@ -134,7 +134,7 @@ function MobileNav() {
         className="flex sm:hidden items-center gap-2 text-lg font-semibold md:text-base"
       >
         <Database className="h-6 w-6 text-foreground" />
-        <span className="text-foreground">SQLite Studio</span>
+        <span className="text-foreground">SQL Studio</span>
       </Link>
     </div>
   );

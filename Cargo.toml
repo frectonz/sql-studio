@@ -1,10 +1,10 @@
 [package]
-name = "sqlite-studio"
+name = "sql-studio"
 version = "0.1.8"
 edition = "2021"
-repository = "https://github.com/frectonz/sqlite-studio"
-description = "Single binary, single command SQLite database explorer."
-homepage = "https://sqlite-studio.frectonz.io/"
+repository = "https://github.com/frectonz/sql-studio"
+description = "Single binary, single command SQL Database Explorer."
+homepage = "https://sql-studio.frectonz.io/"
 authors = ["frectonz"]
 
 [dependencies]

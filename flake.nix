@@ -61,10 +61,10 @@
         });
 
         docker = pkgs.dockerTools.buildLayeredImage {
-          name = "sqlite-studio";
+          name = "sql-studio";
           tag = "latest";
           created = "now";
-          config.Cmd = [ "${bin}/bin/sqlite-studio" "--address=0.0.0.0:3030" "sqlite" "preview" ];
+          config.Cmd = [ "${bin}/bin/sql-studio" "--address=0.0.0.0:3030" "sqlite" "preview" ];
           config.Expose = "3030";
         };
       in
