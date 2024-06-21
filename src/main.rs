@@ -5,7 +5,7 @@ use warp::Filter;
 const ROWS_PER_PAGE: i32 = 50;
 const SAMPLE_DB: &[u8] = include_bytes!("../sample.sqlite3");
 
-/// Web based SQLite database browser.
+/// Web based SQL database browser.
 #[derive(Parser, Debug)]
 struct Args {
     #[clap(subcommand)]
