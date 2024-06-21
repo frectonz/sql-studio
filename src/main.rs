@@ -45,6 +45,12 @@ enum Command {
         /// mysql connection url [mysql://user:password@localhost/sample]
         url: String,
     },
+
+    /// A local DuckDB database.
+    Duckdb {
+        /// Path to the the duckdb file.
+        database: String,
+    },
 }
 
 #[tokio::main]
@@ -72,6 +78,7 @@ async fn main() -> color_eyre::Result<()> {
         }
         Command::Postgres { url } => AllDbs::Postgres(postgres::Db::open(url).await?),
         Command::Mysql { url } => AllDbs::Mysql(mysql::Db::open(url).await?),
+        Command::Duckdb { database } => AllDbs::Duckdb(duckdb::Db::open(database).await?),
     };
 
     let cors = warp::cors()
@@ -177,6 +184,7 @@ enum AllDbs {
     Libsql(libsql::Db),
     Postgres(postgres::Db),
     Mysql(mysql::Db),
+    Duckdb(duckdb::Db),
 }
 
 #[async_trait]
@@ -187,6 +195,7 @@ impl Database for AllDbs {
             AllDbs::Libsql(x) => x.overview().await,
             AllDbs::Postgres(x) => x.overview().await,
             AllDbs::Mysql(x) => x.overview().await,
+            AllDbs::Duckdb(x) => x.overview().await,
         }
     }
 
@@ -196,6 +205,7 @@ impl Database for AllDbs {
             AllDbs::Libsql(x) => x.tables().await,
             AllDbs::Postgres(x) => x.tables().await,
             AllDbs::Mysql(x) => x.tables().await,
+            AllDbs::Duckdb(x) => x.tables().await,
         }
     }
 
@@ -205,6 +215,7 @@ impl Database for AllDbs {
             AllDbs::Libsql(x) => x.table(name).await,
             AllDbs::Postgres(x) => x.table(name).await,
             AllDbs::Mysql(x) => x.table(name).await,
+            AllDbs::Duckdb(x) => x.table(name).await,
         }
     }
 
@@ -218,6 +229,7 @@ impl Database for AllDbs {
             AllDbs::Libsql(x) => x.table_data(name, page).await,
             AllDbs::Postgres(x) => x.table_data(name, page).await,
             AllDbs::Mysql(x) => x.table_data(name, page).await,
+            AllDbs::Duckdb(x) => x.table_data(name, page).await,
         }
     }
 
@@ -227,6 +239,7 @@ impl Database for AllDbs {
             AllDbs::Libsql(x) => x.query(query).await,
             AllDbs::Postgres(x) => x.query(query).await,
             AllDbs::Mysql(x) => x.query(query).await,
+            AllDbs::Duckdb(x) => x.query(query).await,
         }
     }
 }
@@ -1607,9 +1620,328 @@ mod mysql {
     }
 }
 
+mod duckdb {
+    use async_trait::async_trait;
+    use color_eyre::eyre;
+    use color_eyre::eyre::OptionExt;
+    use duckdb::{Config, Connection};
+    use std::{
+        path::Path,
+        sync::{Arc, Mutex},
+    };
+
+    use crate::{
+        helpers,
+        responses::{self, RowCount},
+        Database, ROWS_PER_PAGE,
+    };
+
+    #[derive(Clone)]
+    pub struct Db {
+        path: String,
+        conn: Arc<Mutex<Connection>>,
+    }
+
+    impl Db {
+        pub async fn open(path: String) -> color_eyre::Result<Self> {
+            let p = path.to_owned();
+            let conn = tokio::task::spawn_blocking(move || {
+                let config = Config::default().access_mode(duckdb::AccessMode::ReadOnly)?;
+                let conn = Connection::open_with_flags(p, config)?;
+
+                eyre::Ok(conn)
+            })
+            .await??;
+
+            let c = conn.try_clone()?;
+            let tables = tokio::task::spawn_blocking(move || {
+                let tables: i32 = c.query_row(
+                    r#"
+                SELECT count(*) 
+                FROM information_schema.tables 
+                WHERE table_schema = 'main' AND table_type = 'BASE TABLE'
+                    "#,
+                    [],
+                    |row| row.get(0),
+                )?;
+
+                eyre::Ok(tables)
+            })
+            .await??;
+
+            tracing::info!(
+                "found {tables} table{} in {path}",
+                if tables == 1 { "" } else { "s" }
+            );
+            Ok(Self {
+                path,
+                conn: Arc::new(Mutex::new(conn)),
+            })
+        }
+    }
+
+    #[async_trait]
+    impl Database for Db {
+        async fn overview(&self) -> color_eyre::Result<responses::Overview> {
+            let file_name = Path::new(&self.path)
+                .file_name()
+                .ok_or_eyre("failed to get file name overview")?
+                .to_str()
+                .ok_or_eyre("file name is not utf-8")?
+                .to_owned();
+
+            let metadata = tokio::fs::metadata(&self.path).await?;
+
+            let file_size = helpers::format_size(metadata.len() as f64);
+            let modified = Some(metadata.modified()?.into());
+            let created = metadata.created().ok().map(Into::into);
+
+            let c = self.conn.clone();
+            let (tables, indexes, triggers, views, counts) =
+                tokio::task::spawn_blocking(move || {
+                    let c = c.lock().expect("could not get lock on connection");
+
+                    let tables: i32 = c.query_row(
+                        r#"
+                    SELECT count(*) 
+                    FROM information_schema.tables 
+                    WHERE table_schema = 'main' AND table_type = 'BASE TABLE'
+                    "#,
+                        [],
+                        |row| row.get(0),
+                    )?;
+
+                    let indexes: i32 =
+                        c.query_row("SELECT count(*) FROM duckdb_indexes;", [], |row| row.get(0))?;
+
+                    let triggers: i32 = c.query_row(
+                        r#"
+                    SELECT count(*)
+                    FROM duckdb_constraints
+                    WHERE constraint_type = 'TRIGGER'
+                    "#,
+                        [],
+                        |row| row.get(0),
+                    )?;
+
+                    let views: i32 = c.query_row(
+                        r#"
+                    SELECT count(*)
+                    FROM information_schema.tables
+                    WHERE table_type = 'VIEW'
+                    "#,
+                        [],
+                        |row| row.get(0),
+                    )?;
+
+                    let mut table_names_stmt = c.prepare(
+                        r#"
+                    SELECT table_name
+                    FROM information_schema.tables
+                    WHERE table_type = 'BASE TABLE'
+                        "#,
+                    )?;
+                    let table_names = table_names_stmt
+                        .query_map([], |row| row.get(0))?
+                        .filter_map(|n| n.ok())
+                        .collect::<Vec<String>>();
+
+                    let mut counts = Vec::with_capacity(table_names.len());
+                    for name in table_names {
+                        let count: i32 =
+                            c.query_row(&format!(r#"SELECT count(*) FROM "{name}""#), [], |row| {
+                                row.get(0)
+                            })?;
+
+                        counts.push(RowCount { name, count });
+                    }
+
+                    eyre::Ok((tables, indexes, triggers, views, counts))
+                })
+                .await??;
+
+            Ok(responses::Overview {
+                file_name,
+                sqlite_version: None,
+                file_size,
+                created,
+                modified,
+                tables,
+                indexes,
+                triggers,
+                views,
+                counts,
+            })
+        }
+
+        async fn tables(&self) -> color_eyre::Result<responses::Tables> {
+            let c = self.conn.clone();
+            let tables = tokio::task::spawn_blocking(move || {
+                let c = c.lock().expect("could not get lock on connection");
+
+                let mut table_names_stmt = c.prepare(
+                    r#"
+                    SELECT table_name
+                    FROM information_schema.tables
+                    WHERE table_type = 'BASE TABLE'
+                        "#,
+                )?;
+                let table_names = table_names_stmt
+                    .query_map([], |row| row.get(0))?
+                    .filter_map(|n| n.ok())
+                    .collect::<Vec<String>>();
+
+                let mut counts = Vec::with_capacity(table_names.len());
+                for name in table_names {
+                    let count: i32 =
+                        c.query_row(&format!(r#"SELECT count(*) FROM "{name}""#), [], |row| {
+                            row.get(0)
+                        })?;
+
+                    counts.push(RowCount { name, count });
+                }
+
+                eyre::Ok(counts)
+            })
+            .await??;
+
+            Ok(responses::Tables { tables })
+        }
+
+        async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
+            let c = self.conn.clone();
+
+            let (name, sql, row_count, table_size, index_count, column_count) =
+                tokio::task::spawn_blocking(move || {
+                    let c = c.lock().expect("could not get lock on connection");
+
+                    let sql = None;
+
+                    let row_count: i32 =
+                        c.query_row(&format!(r#"SELECT count(*) FROM "{name}""#), [], |row| {
+                            row.get(0)
+                        })?;
+
+                    let table_size: i64 = c.query_row(
+                        "SELECT estimated_size FROM duckdb_tables WHERE table_name = ?",
+                        [&name],
+                        |row| row.get(0),
+                    )?;
+                    let table_size = helpers::format_size(table_size as f64);
+
+                    let index_count: i32 = c.query_row(
+                        "SELECT index_count FROM duckdb_tables WHERE table_name = ?",
+                        [&name],
+                        |row| row.get(0),
+                    )?;
+
+                    let column_count: i32 = c.query_row(
+                        "SELECT column_count FROM duckdb_tables WHERE table_name = ?",
+                        [&name],
+                        |row| row.get(0),
+                    )?;
+
+                    eyre::Ok((name, sql, row_count, table_size, index_count, column_count))
+                })
+                .await??;
+
+            Ok(responses::Table {
+                name,
+                sql,
+                row_count,
+                table_size,
+                index_count,
+                column_count,
+            })
+        }
+
+        async fn table_data(
+            &self,
+            name: String,
+            page: i32,
+        ) -> color_eyre::Result<responses::TableData> {
+            let c = self.conn.clone();
+
+            let (columns, rows) = tokio::task::spawn_blocking(move || {
+                let c = c.lock().expect("could not get lock on connection");
+
+                let first_column: String =
+                    c.query_row(&format!("PRAGMA table_info('{name}')"), [], |row| {
+                        row.get(1)
+                    })?;
+
+                let offset = (page - 1) * ROWS_PER_PAGE;
+                let sql = format!(
+                    r#"
+                SELECT * FROM "{name}"
+                ORDER BY "{first_column}"
+                LIMIT {ROWS_PER_PAGE}
+                OFFSET {offset};
+                    "#
+                );
+                let mut stmt = c.prepare(&sql)?;
+
+                let rows = stmt
+                    .query_map([], |r| {
+                        let mut rows = Vec::new();
+                        let mut index = 0;
+
+                        while let Ok(val) = r.get_ref(index) {
+                            let val = helpers::duckdb_value_to_json(val);
+                            rows.push(val);
+                            index += 1;
+                        }
+
+                        Ok(rows)
+                    })?
+                    .filter_map(|r| r.ok())
+                    .collect::<Vec<_>>();
+
+                let columns = stmt.column_names();
+
+                eyre::Ok((columns, rows))
+            })
+            .await??;
+
+            Ok(responses::TableData { columns, rows })
+        }
+
+        async fn query(&self, query: String) -> color_eyre::Result<responses::Query> {
+            let c = self.conn.clone();
+
+            let (columns, rows) = tokio::task::spawn_blocking(move || {
+                let c = c.lock().expect("could not get lock on connection");
+
+                let mut stmt = c.prepare(&query)?;
+                let columns = stmt.column_names();
+
+                let columns_len = columns.len();
+                let rows = stmt
+                    .query_map([], |r| {
+                        let mut rows = Vec::with_capacity(columns_len);
+                        for i in 0..columns_len {
+                            let val = serde_json::Value::String(r.get_ref(i)?.as_str()?.to_owned());
+                            rows.push(val);
+                        }
+
+                        Ok(rows)
+                    })?
+                    .filter_map(|r| r.ok())
+                    .collect::<Vec<_>>();
+
+                eyre::Ok((columns, rows))
+            })
+            .await??;
+
+            Ok(responses::Query { columns, rows })
+        }
+    }
+}
+
 mod helpers {
-    use libsql::Value;
-    use tokio_rusqlite::types::ValueRef;
+    use duckdb::types::ValueRef as DuckdbValue;
+    use libsql::Value as LibsqlValue;
+    use tokio_rusqlite::types::ValueRef as SqliteValue;
 
     pub fn format_size(mut size: f64) -> String {
         const UNITS: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
@@ -1623,23 +1955,47 @@ mod helpers {
         format!("{:.2} {}", size, UNITS[unit])
     }
 
-    pub fn rusqlite_value_to_json(v: ValueRef) -> serde_json::Value {
+    pub fn rusqlite_value_to_json(v: SqliteValue) -> serde_json::Value {
+        use SqliteValue::*;
         match v {
-            ValueRef::Null => serde_json::Value::Null,
-            ValueRef::Integer(x) => serde_json::json!(x),
-            ValueRef::Real(x) => serde_json::json!(x),
-            ValueRef::Text(s) => serde_json::Value::String(String::from_utf8_lossy(s).into_owned()),
-            ValueRef::Blob(s) => serde_json::json!(s),
+            Null => serde_json::Value::Null,
+            Integer(x) => serde_json::json!(x),
+            Real(x) => serde_json::json!(x),
+            Text(s) => serde_json::Value::String(String::from_utf8_lossy(s).into_owned()),
+            Blob(s) => serde_json::json!(s),
         }
     }
 
-    pub fn libsql_value_to_json(v: Value) -> serde_json::Value {
+    pub fn libsql_value_to_json(v: LibsqlValue) -> serde_json::Value {
+        use LibsqlValue::*;
         match v {
-            Value::Null => serde_json::Value::Null,
-            Value::Integer(x) => serde_json::json!(x),
-            Value::Real(x) => serde_json::json!(x),
-            Value::Text(s) => serde_json::Value::String(s),
-            Value::Blob(s) => serde_json::json!(s),
+            Null => serde_json::Value::Null,
+            Integer(x) => serde_json::json!(x),
+            Real(x) => serde_json::json!(x),
+            Text(s) => serde_json::Value::String(s),
+            Blob(s) => serde_json::json!(s),
+        }
+    }
+
+    pub fn duckdb_value_to_json(v: DuckdbValue) -> serde_json::Value {
+        use DuckdbValue::*;
+        match v {
+            Null => serde_json::Value::Null,
+            Boolean(b) => serde_json::Value::Bool(b),
+            TinyInt(x) => serde_json::json!(x),
+            SmallInt(x) => serde_json::json!(x),
+            Int(x) => serde_json::json!(x),
+            BigInt(x) => serde_json::json!(x),
+            HugeInt(x) => serde_json::json!(x),
+            UTinyInt(x) => serde_json::json!(x),
+            USmallInt(x) => serde_json::json!(x),
+            UInt(x) => serde_json::json!(x),
+            UBigInt(x) => serde_json::json!(x),
+            Float(x) => serde_json::json!(x),
+            Double(x) => serde_json::json!(x),
+            Decimal(x) => serde_json::json!(x),
+            Text(_) => serde_json::Value::String(v.as_str().unwrap().to_owned()),
+            v => serde_json::Value::String(format!("{v:?}")),
         }
     }
 }
