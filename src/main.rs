@@ -1913,21 +1913,24 @@ mod duckdb {
                 let c = c.lock().expect("could not get lock on connection");
 
                 let mut stmt = c.prepare(&query)?;
-                let columns = stmt.column_names();
 
-                let columns_len = columns.len();
                 let rows = stmt
                     .query_map([], |r| {
-                        let mut rows = Vec::with_capacity(columns_len);
-                        for i in 0..columns_len {
-                            let val = serde_json::Value::String(r.get_ref(i)?.as_str()?.to_owned());
+                        let mut rows = Vec::new();
+                        let mut index = 0;
+
+                        while let Ok(val) = r.get_ref(index) {
+                            let val = helpers::duckdb_value_to_json(val);
                             rows.push(val);
+                            index += 1;
                         }
 
                         Ok(rows)
                     })?
                     .filter_map(|r| r.ok())
                     .collect::<Vec<_>>();
+
+                let columns = stmt.column_names();
 
                 eyre::Ok((columns, rows))
             })
