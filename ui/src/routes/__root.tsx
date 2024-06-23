@@ -45,19 +45,19 @@ export function Root() {
             </Link>
             <Link
               to="/"
-              className="[&.active]:text-foreground uppercase text-[14px]  text-muted-foreground transition-colors hover:text-foreground"
+              className="[&.active]:text-primary uppercase text-[14px]  text-muted-foreground transition-colors hover:text-foreground"
             >
               Overview
             </Link>
             <Link
               to="/tables"
-              className="[&.active]:text-foreground uppercase  text-[14px] text-muted-foreground transition-colors hover:text-foreground"
+              className="[&.active]:text-primary uppercase  text-[14px] text-muted-foreground transition-colors hover:text-foreground"
             >
               Tables
             </Link>
             <Link
               to="/query"
-              className="[&.active]:text-foreground text-[14px] uppercase text-muted-foreground transition-colors hover:text-foreground"
+              className="[&.active]:text-primary text-[14px] uppercase text-muted-foreground transition-colors hover:text-foreground"
             >
               Query
             </Link>
@@ -92,7 +92,7 @@ export function Root() {
             <a
               target="_blank"
               href="https://github.com/frectonz/sql-studio"
-              className="flex  items-center justify-end gap-2 text-lg font-semibold md:text-base"
+              className="flex items-center justify-end gap-2 text-lg font-semibold md:text-base"
             >
               <Github className="h-6 w-6  rounded-full " />
             </a>
@@ -126,7 +126,7 @@ function MobileNav() {
                 className="fill-primary"
               />
             </svg>
-            <span className="sr-only">menu</span>
+            <span className="sr-only">Menu</span>
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -139,13 +139,28 @@ function MobileNav() {
           <DropdownMenuLabel>Menu</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <Link to="/">Overview</Link>
+            <Link
+              to="/"
+              className="[&.active]:text-primary text-[14px] uppercase text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Overview
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link to="/tables">Tables</Link>
+            <Link
+              to="/tables"
+              className="[&.active]:text-primary text-[14px] uppercase text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Tables
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link to="/query">Query</Link>
+            <Link
+              to="/query"
+              className="[&.active]:text-primary text-[14px] uppercase text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Query
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
