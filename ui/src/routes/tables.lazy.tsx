@@ -1,24 +1,24 @@
 import "react-data-grid/lib/styles.css";
 
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { Link, createFileRoute } from "@tanstack/react-router";
 import {
-  DatabaseZap,
   HardDrive,
-  Table as TableIcon,
+  DatabaseZap,
   TableProperties,
+  Table as TableIcon,
 } from "lucide-react";
-import { CodeBlock, irBlack as CodeDarkTheme } from "react-code-blocks";
-import DataGrid from "react-data-grid";
 import { z } from "zod";
+import DataGrid from "react-data-grid";
+import { Link, createFileRoute } from "@tanstack/react-router";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { CodeBlock, irBlack as CodeDarkTheme } from "react-code-blocks";
 
-import { fetchTable, fetchTableData, fetchTables } from "@/api";
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useTheme } from "@/provider/theme.provider";
+import { fetchTable, fetchTableData, fetchTables } from "@/api";
+import { InfoCard, InfoCardProps } from "@/components/info-card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/tables")({
   component: Tables,
@@ -71,6 +71,33 @@ function Table({ name }: Props) {
 
   if (!data) return <TableSkeleton />;
 
+  const cards: InfoCardProps[] = [
+    {
+      title: "ROW COUNT",
+      value: data.row_count.toLocaleString(),
+      description: "The number of rows in the table.",
+      icon: TableIcon,
+    },
+    {
+      title: "INDEXES",
+      value: data.index_count.toLocaleString(),
+      description: "The number of indexes in the table.",
+      icon: DatabaseZap,
+    },
+    {
+      title: "COLUMNS",
+      value: data.column_count.toLocaleString(),
+      description: "The number of columns in the table.",
+      icon: TableProperties,
+    },
+    {
+      title: "TABLE SIZE",
+      value: data.table_size,
+      description: "The size of the table on disk.",
+      icon: HardDrive,
+    },
+  ];
+
   return (
     <div className="flex flex-1 flex-col gap-4 md:gap-8">
       <h2 className="px-2 text-foreground scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0">
@@ -78,60 +105,15 @@ function Table({ name }: Props) {
       </h2>
 
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Row Count</CardTitle>
-            <TableIcon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {data.row_count.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              The number of rows in the table.
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Indexes</CardTitle>
-            <DatabaseZap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {data.index_count.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              The number of indexes in the table.
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Columns</CardTitle>
-            <TableProperties className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {data.column_count.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              The number of columns in the table.
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Table Size</CardTitle>
-            <HardDrive className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.table_size}</div>
-            <p className="text-xs text-muted-foreground">
-              The size of the table on disk.
-            </p>
-          </CardContent>
-        </Card>
+        {cards.map((card, i) => (
+          <InfoCard
+            key={i}
+            title={card.title}
+            value={card.value}
+            description={card.description}
+            icon={card.icon}
+          />
+        ))}
       </div>
 
       {data.sql && (

@@ -4,7 +4,6 @@ import {
   TextSearch,
   DatabaseZap,
   Table as TableIcon,
-  LucideIcon,
 } from "lucide-react";
 import {
   Bar,
@@ -29,6 +28,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { InfoCard, InfoCardProps } from "@/components/info-card";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 
 export const Route = createFileRoute("/")({
@@ -140,28 +140,6 @@ function Index() {
         </Card>
       </div>
     </>
-  );
-}
-
-type InfoCardProps = {
-  title: string;
-  value: string;
-  description: string;
-  icon: LucideIcon;
-};
-
-function InfoCard({ title, value, description, icon: Icon }: InfoCardProps) {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </CardContent>
-    </Card>
   );
 }
 
