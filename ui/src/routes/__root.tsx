@@ -194,8 +194,9 @@ function Github({ className }: { className: string }) {
 
 function ErrorComponent() {
   return (
-    <div className="min-h-[calc(100vh-250px)] grid place-content-center">
-      <pre className="text-destructive">
+    <div className="min-h-[calc(100vh-250px)] flex gap-4 justify-center items-center flex-col">
+      <Logo />
+      <pre className="text-destructive font-[monospace]">
         {`
 ███████╗    ██████╗     ██████╗      ██████╗     ██████╗ 
 ██╔════╝    ██╔══██╗    ██╔══██╗    ██╔═══██╗    ██╔══██╗
@@ -212,14 +213,15 @@ function ErrorComponent() {
 function NotFoundComponent() {
   return (
     <div className="min-h-[calc(100vh-250px)] grid place-content-center">
-      <pre className="text-primary">
+      <pre className="text-primary font-[monospace]">
         {`
 ██╗  ██╗     ██████╗     ██╗  ██╗
 ██║  ██║    ██╔═████╗    ██║  ██║
 ███████║    ██║██╔██║    ███████║
 ╚════██║    ████╔╝██║    ╚════██║
      ██║    ╚██████╔╝         ██║
-     ╚═╝     ╚═════╝          ╚═╝`}
+     ╚═╝     ╚═════╝          ╚═╝
+`}
       </pre>
     </div>
   );
