@@ -45,19 +45,19 @@ export function Root() {
             </Link>
             <Link
               to="/"
-              className="[&.active]:text-primary uppercase text-[14px]  text-muted-foreground transition-colors hover:text-foreground"
+              className="[&.active]:text-primary [&.active]:font-extrabold uppercase text-[14px]  text-muted-foreground transition-colors hover:text-foreground"
             >
               Overview
             </Link>
             <Link
               to="/tables"
-              className="[&.active]:text-primary uppercase  text-[14px] text-muted-foreground transition-colors hover:text-foreground"
+              className="[&.active]:text-primary [&.active]:font-extrabold uppercase  text-[14px] text-muted-foreground transition-colors hover:text-foreground"
             >
               Tables
             </Link>
             <Link
               to="/query"
-              className="[&.active]:text-primary text-[14px] uppercase text-muted-foreground transition-colors hover:text-foreground"
+              className="[&.active]:text-primary [&.active]:font-extrabold text-[14px] uppercase text-muted-foreground transition-colors hover:text-foreground"
             >
               Query
             </Link>
@@ -141,7 +141,7 @@ function MobileNav() {
           <DropdownMenuItem asChild>
             <Link
               to="/"
-              className="[&.active]:text-primary text-[14px] uppercase text-muted-foreground transition-colors hover:text-foreground"
+              className="[&.active]:text-primary [&.active]:font-extrabold text-[14px] uppercase text-muted-foreground transition-colors [&.active]:hover:text-accent-foreground"
             >
               Overview
             </Link>
@@ -149,7 +149,7 @@ function MobileNav() {
           <DropdownMenuItem asChild>
             <Link
               to="/tables"
-              className="[&.active]:text-primary text-[14px] uppercase text-muted-foreground transition-colors hover:text-foreground"
+              className="[&.active]:text-primary [&.active]:font-extrabold text-[14px] uppercase text-muted-foreground transition-colors [&.active]:hover:text-accent-foreground"
             >
               Tables
             </Link>
@@ -157,7 +157,7 @@ function MobileNav() {
           <DropdownMenuItem asChild>
             <Link
               to="/query"
-              className="[&.active]:text-primary text-[14px] uppercase text-muted-foreground transition-colors hover:text-foreground"
+              className="[&.active]:text-primary [&.active]:font-extrabold text-[14px] uppercase text-muted-foreground transition-colors [&.active]:hover:text-accent-foreground"
             >
               Query
             </Link>
