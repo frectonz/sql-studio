@@ -1,5 +1,5 @@
 import { Link, Outlet, createRootRoute } from "@tanstack/react-router";
-import { Frown, Moon, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import React from "react";
 
 import {
@@ -171,9 +171,17 @@ function Github({ className }: { className: string }) {
 
 function ErrorComponent() {
   return (
-    <div className="w-screen h-screen text-red-500 flex flex-col items-center justify-center gap-6">
-      <Frown className="w-12 h-12" />
-      <h1 className="scroll-m-20 text-3xl tracking-tight lg:text-4xl">Something Went Wrong</h1>
+    <div className="min-h-[calc(100vh-250px)] grid place-content-center">
+      <pre className="text-destructive">
+        {`
+███████╗    ██████╗     ██████╗      ██████╗     ██████╗ 
+██╔════╝    ██╔══██╗    ██╔══██╗    ██╔═══██╗    ██╔══██╗
+█████╗      ██████╔╝    ██████╔╝    ██║   ██║    ██████╔╝
+██╔══╝      ██╔══██╗    ██╔══██╗    ██║   ██║    ██╔══██╗
+███████╗    ██║  ██║    ██║  ██║    ╚██████╔╝    ██║  ██║
+╚══════╝    ╚═╝  ╚═╝    ╚═╝  ╚═╝     ╚═════╝     ╚═╝  ╚═╝
+`}
+      </pre>
     </div>
   );
 }
