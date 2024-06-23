@@ -1,6 +1,6 @@
 # SQL Studio
 
-Single binary, single command SQL database explorer. SQL studio supports opening *local SQLite DB files*, *libSQL servers* and *PostgreSQL*.
+Single binary, single command SQL database explorer. SQL studio supports *SQLite*, *libSQL*, *PostgreSQL*, *MySQL* and *DuckDB*.
 
 ### Local SQLite DB File
 
@@ -18,6 +18,18 @@ sql-studio libsql [url] [auth_token]
 
 ```bash
 sql-studio postgres [url]
+```
+
+### MySQL/MariaDB Server
+
+```bash
+sql-studio mysql [url]
+```
+
+### Local DuckDB File
+
+```bash
+sql-studio duckdb [duckdb_file]
 ```
 
 ## Features
@@ -51,13 +63,13 @@ More features available on the [releases page](https://github.com/frectonz/sql-s
 ### Install prebuilt binaries via shell script (MacOS and Linux)
 
 ```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sql-studio/releases/download/0.1.9/sql-studio-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sql-studio/releases/download/0.1.12/sql-studio-installer.sh | sh
 ```
 
 ### Install prebuilt binaries via powershell script
 
 ```sh
-powershell -c "irm https://github.com/frectonz/sql-studio/releases/download/0.1.9/sql-studio-installer.ps1 | iex"
+powershell -c "irm https://github.com/frectonz/sql-studio/releases/download/0.1.12/sql-studio-installer.ps1 | iex"
 ```
 
 ### Updating
@@ -69,7 +81,7 @@ sql-studio-update
 ## Nix
 
 ```bash
-nix shell github:frectonz/sql-studio
+nix shell github:frectonz/sql-studio # currently broken
 ```
 
 ## Contributing
