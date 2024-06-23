@@ -1,3 +1,5 @@
+![banner](./logo_banner.jpg)
+
 # SQL Studio
 
 Single binary, single command SQL database explorer. SQL studio supports *SQLite*, *libSQL*, *PostgreSQL*, *MySQL* and *DuckDB*.
