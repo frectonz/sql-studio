@@ -16,11 +16,11 @@
     --border: 175 4% 90%;
     --input: 175 4% 90%;
     --primary: 175 91% 12%;
-    --primary-foreground: 175 91% 52%;
+    --primary-foreground: 159 100% 50%;
     --secondary: 145 91% 12%;
     --secondary-foreground: 145 91% 52%;
-    --accent: 205 91% 12%;
-    --accent-foreground: 205 91% 72%;
+    --accent: 175 91% 12%;
+    --accent-foreground: 159 100% 50%;
     --destructive: 19 92% 33%;
     --destructive-foreground: 0 0% 100%;
     --ring: 175 91% 12%;
