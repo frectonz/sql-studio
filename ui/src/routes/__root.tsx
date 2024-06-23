@@ -18,7 +18,7 @@ const TanStackRouterDevtools = import.meta.env.PROD
   : React.lazy(() =>
       import("@tanstack/router-devtools").then((res) => ({
         default: res.TanStackRouterDevtools,
-      }))
+      })),
     );
 
 export const Route = createRootRoute({
@@ -32,7 +32,12 @@ export function Root() {
   const changeTheme = setTheme();
   return (
     <>
-      <div className={cn("flex min-h-screen w-full flex-col bg-background", theme === "dark" && "dark")}>
+      <div
+        className={cn(
+          "flex min-h-screen w-full flex-col bg-background",
+          theme === "dark" && "dark",
+        )}
+      >
         <header className="sticky top-0 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 md:px-6 z-50">
           <nav className="hidden flex-col gap-6 text-lg font-medium sm:flex sm:flex-row sm:items-center sm:gap-5 sm:text-sm md:gap-6">
             <Link to="/">
@@ -73,9 +78,15 @@ export function Root() {
               }}
             >
               {theme === "dark" ? (
-                <Sun size={28} className="bg-primary/20 text-primary rounded-full p-1" />
+                <Sun
+                  size={28}
+                  className="bg-primary/20 text-primary rounded-full p-1"
+                />
               ) : (
-                <Moon size={28} className="bg-primary/10 text-primary rounded-full p-1" />
+                <Moon
+                  size={28}
+                  className="bg-primary/10 text-primary rounded-full p-1"
+                />
               )}
             </button>
             <a
@@ -103,7 +114,11 @@ function MobileNav() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="p-1  size-8">
-            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg
+              viewBox="0 0 48 48"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
               <path
                 fill-rule="evenodd"
                 clip-rule="evenodd"
@@ -116,7 +131,10 @@ function MobileNav() {
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="start"
-          className={cn("uppercase font-medium rounded-none bg-background text-primary border-2", currentTheme)}
+          className={cn(
+            "uppercase font-medium rounded-none bg-background text-primary border-2",
+            currentTheme,
+          )}
         >
           <DropdownMenuLabel>Menu</DropdownMenuLabel>
           <DropdownMenuSeparator />
@@ -137,7 +155,12 @@ function MobileNav() {
 
 function Logo({ className }: { className?: string }) {
   return (
-    <svg className={cn("w-32", className)} viewBox="0 0 346 81" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg
+      className={cn("w-32", className)}
+      viewBox="0 0 346 81"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
       <rect width="173" height="81" rx="5" className="fill-primary" />
       <path
         d="M91.986 56.43C89.836 56.43 87.9727 56.0717 86.396 55.355C84.8193 54.6383 83.601 53.6207 82.741 52.302C81.9097 50.9547 81.4797 49.378 81.451 47.572H86.826C86.826 48.862 87.2847 49.8797 88.202 50.625C89.148 51.3417 90.4237 51.7 92.029 51.7C93.577 51.7 94.781 51.3417 95.641 50.625C96.5297 49.9083 96.974 48.9193 96.974 47.658C96.974 46.5973 96.6587 45.68 96.028 44.906C95.426 44.1033 94.5517 43.5587 93.405 43.272L89.793 42.283C87.3277 41.6523 85.4213 40.52 84.074 38.886C82.7553 37.252 82.096 35.274 82.096 32.952C82.096 31.1747 82.4973 29.6267 83.3 28.308C84.1027 26.9893 85.235 25.9717 86.697 25.255C88.1877 24.5383 89.9363 24.18 91.943 24.18C94.9817 24.18 97.3897 24.9683 99.167 26.545C100.944 28.093 101.847 30.1857 101.876 32.823H96.501C96.501 31.5903 96.0997 30.63 95.297 29.942C94.4943 29.2253 93.362 28.867 91.9 28.867C90.4953 28.867 89.406 29.1967 88.632 29.856C87.858 30.5153 87.471 31.447 87.471 32.651C87.471 33.7403 87.7577 34.672 88.331 35.446C88.933 36.1913 89.793 36.7217 90.911 37.037L94.652 38.069C97.146 38.6997 99.0523 39.832 100.371 41.466C101.69 43.0713 102.349 45.0637 102.349 47.443C102.349 49.2203 101.919 50.797 101.059 52.173C100.199 53.5203 98.995 54.5667 97.447 55.312C95.899 56.0573 94.0787 56.43 91.986 56.43ZM123.37 63.74L118.64 55.957L119.586 56.387C119.472 56.387 119.328 56.387 119.156 56.387C119.013 56.4157 118.855 56.43 118.683 56.43C116.677 56.43 114.928 56.043 113.437 55.269C111.947 54.495 110.786 53.4057 109.954 52.001C109.123 50.5677 108.707 48.9193 108.707 47.056V33.554C108.707 31.6333 109.123 29.985 109.954 28.609C110.786 27.2043 111.947 26.115 113.437 25.341C114.928 24.567 116.677 24.18 118.683 24.18C120.69 24.18 122.439 24.567 123.929 25.341C125.42 26.115 126.581 27.2043 127.412 28.609C128.244 30.0137 128.659 31.662 128.659 33.554V47.056C128.659 48.948 128.244 50.6107 127.412 52.044C126.61 53.4487 125.463 54.5237 123.972 55.269L129.175 63.74H123.37ZM118.683 51.7C120.174 51.7 121.306 51.2987 122.08 50.496C122.883 49.6647 123.284 48.518 123.284 47.056V33.554C123.284 32.0633 122.869 30.9167 122.037 30.114C121.235 29.2827 120.117 28.867 118.683 28.867C117.25 28.867 116.118 29.2827 115.286 30.114C114.484 30.9167 114.082 32.0633 114.082 33.554V47.056C114.082 48.518 114.484 49.6647 115.286 50.496C116.089 51.2987 117.221 51.7 118.683 51.7ZM136.995 56V24.61H142.37V51.012H155.7V56H136.995Z"
