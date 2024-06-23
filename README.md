@@ -83,7 +83,7 @@ sql-studio-update
 ## Nix
 
 ```bash
-nix shell github:frectonz/sql-studio # currently broken
+nix shell github:frectonz/sql-studio
 ```
 
 ## Contributing
