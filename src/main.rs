@@ -1852,6 +1852,8 @@ mod duckdb {
                         counts.push(RowCount { name, count });
                     }
 
+                    counts.sort_by(|a, b| b.count.cmp(&a.count));
+
                     eyre::Ok((tables, indexes, triggers, views, counts))
                 })
                 .await??;
@@ -1896,6 +1898,8 @@ mod duckdb {
 
                     counts.push(RowCount { name, count });
                 }
+
+                counts.sort_by_key(|r| r.count);
 
                 eyre::Ok(counts)
             })
