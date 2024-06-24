@@ -1,23 +1,28 @@
 import "react-data-grid/lib/styles.css";
 
-import { useQuery } from "@tanstack/react-query";
-import { createLazyRoute } from "@tanstack/react-router";
+import { z } from "zod";
 import { useState } from "react";
 import DataGrid from "react-data-grid";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
 
+import { cn } from "@/lib/utils";
 import { fetchQuery } from "@/api";
 import { Editor } from "@/components/editor";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
 import { useTheme } from "@/provider/theme.provider";
 
-export const Route = createLazyRoute("/query")({
+export const Route = createFileRoute("/query")({
   component: Query,
+  validateSearch: z.object({ sql: z.string().optional() }),
 });
 
 function Query() {
+  const { sql } = Route.useSearch();
+  const navigate = Route.useNavigate();
+
   const currentTheme = useTheme();
-  const [code, setCode] = useState("select 1 + 1");
+  const [code, setCode] = useState(sql ?? "select 1 + 1");
 
   const { data, error } = useQuery({
     queryKey: ["query", code],
@@ -38,10 +43,15 @@ function Query() {
     />
   );
 
+  const handleChange = (sql: string) => {
+    setCode(sql);
+    navigate({ search: { sql } });
+  };
+
   return (
     <>
       <div className="grid gap-2 grid-cols-1">
-        <Editor value={code} onChange={(v) => setCode(v)} />
+        <Editor value={code} onChange={handleChange} />
       </div>
 
       {grid}
