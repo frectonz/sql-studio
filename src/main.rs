@@ -452,7 +452,7 @@ mod sqlite {
                         })?;
 
                     let table_size = if more_than_five {
-                        "---".to_owned()
+                        "> 5GB".to_owned()
                     } else {
                         let table_size = conn.query_row(
                             "SELECT SUM(pgsize) FROM dbstat WHERE name = ?1",
@@ -653,7 +653,22 @@ mod libsql {
                 .ok_or_eyre("no row returned from db")?
                 .get::<String>(0)?;
 
-            let file_size = "---".to_owned();
+            let page_count = conn
+                .query("PRAGMA page_count;", ())
+                .await?
+                .next()
+                .await?
+                .ok_or_eyre("could not get page count")?
+                .get::<u64>(0)?;
+            let page_size = conn
+                .query("PRAGMA page_size;", ())
+                .await?
+                .next()
+                .await?
+                .ok_or_eyre("could not get page size")?
+                .get::<u64>(0)?;
+
+            let file_size = helpers::format_size((page_count * page_size) as f64);
             let modified = None;
             let created = None;
 
