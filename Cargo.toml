@@ -27,6 +27,7 @@ libsql = { git = "https://github.com/tursodatabase/libsql.git", features = ["rem
 tokio-postgres = "0.7.10"
 mysql_async = { version = "0.34.1", default-features = false, features = ["rustls-tls", "default-rustls"] }
 duckdb = { git = "https://github.com/frectonz/duckdb-rs.git", features = ["bundled"] }
+humantime = "2.1.0"
 
 [profile.release]
 strip = true
