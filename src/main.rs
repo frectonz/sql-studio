@@ -5,8 +5,8 @@ use warp::Filter;
 const ROWS_PER_PAGE: i32 = 50;
 const SAMPLE_DB: &[u8] = include_bytes!("../sample.sqlite3");
 
-/// Web based SQL database browser.
 #[derive(Parser, Debug)]
+#[command(version, about)]
 struct Args {
     #[clap(subcommand)]
     db: Command,
@@ -18,7 +18,7 @@ struct Args {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    /// SQLite local database.
+    /// A local SQLite database.
     Sqlite {
         /// Path to the sqlite database file. [use the path "preview" if you don't have an sqlite db at
         /// hand, a sample db will be created for you]
