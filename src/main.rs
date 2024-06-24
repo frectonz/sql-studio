@@ -1470,13 +1470,22 @@ mod mysql {
             .ok_or_eyre("couldn't count views")?;
 
             let mut counts = r#"
-            SELECT TABLE_NAME AS name, TABLE_ROWS AS count
+            SELECT TABLE_NAME AS name
             FROM information_schema.tables
             WHERE table_schema = database()
                 "#
             .with(())
-            .map(&mut conn, |(name, count)| RowCount { name, count })
+            .map(&mut conn, |name| RowCount { name, count: 0 })
             .await?;
+
+            for count in counts.iter_mut() {
+                count.count = format!("SELECT count(*) AS count FROM {}", count.name)
+                    .with(())
+                    .first(&mut conn)
+                    .await?
+                    .map(|count: i32| count)
+                    .ok_or_eyre("couldn't count rows")?;
+            }
 
             counts.sort_by(|a, b| b.count.cmp(&a.count));
 
@@ -1498,13 +1507,22 @@ mod mysql {
             let mut conn = self.pool.get_conn().await?;
 
             let mut tables = r#"
-            SELECT TABLE_NAME AS name, TABLE_ROWS AS count
+            SELECT TABLE_NAME AS name
             FROM information_schema.tables
             WHERE table_schema = database()
                 "#
             .with(())
-            .map(&mut conn, |(name, count)| RowCount { name, count })
+            .map(&mut conn, |name| RowCount { name, count: 0 })
             .await?;
+
+            for table in tables.iter_mut() {
+                table.count = format!("SELECT count(*) AS count FROM {}", table.name)
+                    .with(())
+                    .first(&mut conn)
+                    .await?
+                    .map(|count: i32| count)
+                    .ok_or_eyre("couldn't count rows")?;
+            }
 
             tables.sort_by_key(|r| r.count);
 
@@ -1521,7 +1539,7 @@ mod mysql {
                 .map(|(_, sql): (String, String)| sql)
                 .ok_or_eyre("couldn't get table sql")?;
 
-            let row_count = "SELECT count(*) AS count FROM payments"
+            let row_count = format!("SELECT count(*) AS count FROM {name}")
                 .with(())
                 .first(&mut conn)
                 .await?
