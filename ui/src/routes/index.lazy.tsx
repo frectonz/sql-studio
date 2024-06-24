@@ -106,9 +106,9 @@ function Index() {
             <Table>
               <TableBody>
                 <MetadataRow
-                  name="FILE SIZE"
+                  name="DATABASE SIZE"
                   description="The size of the DB on disk."
-                  value={data.file_size}
+                  value={data.db_size}
                 />
 
                 {data.sqlite_version && (

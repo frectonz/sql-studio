@@ -312,7 +312,7 @@ mod sqlite {
             let metadata = tokio::fs::metadata(&self.path).await?;
 
             let sqlite_version = tokio_rusqlite::version().to_owned();
-            let file_size = helpers::format_size(metadata.len() as f64);
+            let db_size = helpers::format_size(metadata.len() as f64);
             let modified = Some(metadata.modified()?.into());
             let created = metadata.created().ok().map(Into::into);
 
@@ -384,7 +384,7 @@ mod sqlite {
             Ok(responses::Overview {
                 file_name,
                 sqlite_version: Some(sqlite_version),
-                file_size,
+                db_size,
                 created,
                 modified,
                 tables,
@@ -668,7 +668,7 @@ mod libsql {
                 .ok_or_eyre("could not get page size")?
                 .get::<u64>(0)?;
 
-            let file_size = helpers::format_size((page_count * page_size) as f64);
+            let db_size = helpers::format_size((page_count * page_size) as f64);
             let modified = None;
             let created = None;
 
@@ -763,7 +763,7 @@ mod libsql {
             Ok(responses::Overview {
                 file_name,
                 sqlite_version: Some(sqlite_version),
-                file_size,
+                db_size,
                 created,
                 modified,
                 tables,
@@ -1074,12 +1074,12 @@ mod postgres {
                 .await?
                 .get(0);
 
-            let file_size: i64 = self
+            let db_size: i64 = self
                 .client
                 .query_one("SELECT pg_database_size($1)", &[&file_name])
                 .await?
                 .get(0);
-            let file_size = helpers::format_size(file_size as f64);
+            let db_size = helpers::format_size(db_size as f64);
 
             let modified = None;
             let created = None;
@@ -1169,7 +1169,7 @@ mod postgres {
             Ok(responses::Overview {
                 file_name,
                 sqlite_version: None,
-                file_size,
+                db_size,
                 created,
                 modified,
                 tables: tables as i32,
@@ -1424,7 +1424,7 @@ mod mysql {
                 .map(|name: String| name)
                 .ok_or_eyre("couldn't get database name")?;
 
-            let file_size = r#"
+            let db_size = r#"
             SELECT sum(data_length + index_length) AS size
             FROM information_schema.tables
             WHERE table_schema = database()
@@ -1434,7 +1434,7 @@ mod mysql {
             .await?
             .map(|size: i64| size)
             .ok_or_eyre("couldn't get database size")?;
-            let file_size = helpers::format_size(file_size as f64);
+            let db_size = helpers::format_size(db_size as f64);
 
             let modified = None;
             let created = None;
@@ -1507,7 +1507,7 @@ mod mysql {
             Ok(responses::Overview {
                 file_name,
                 sqlite_version: None,
-                file_size,
+                db_size,
                 created,
                 modified,
                 tables,
@@ -1788,7 +1788,7 @@ mod duckdb {
 
             let metadata = tokio::fs::metadata(&self.path).await?;
 
-            let file_size = helpers::format_size(metadata.len() as f64);
+            let db_size = helpers::format_size(metadata.len() as f64);
             let modified = Some(metadata.modified()?.into());
             let created = metadata.created().ok().map(Into::into);
 
@@ -1859,7 +1859,7 @@ mod duckdb {
             Ok(responses::Overview {
                 file_name,
                 sqlite_version: None,
-                file_size,
+                db_size,
                 created,
                 modified,
                 tables,
@@ -2107,7 +2107,7 @@ mod responses {
     #[derive(Serialize)]
     pub struct Overview {
         pub file_name: String,
-        pub file_size: String,
+        pub db_size: String,
         pub sqlite_version: Option<String>,
         pub created: Option<DateTime<Utc>>,
         pub modified: Option<DateTime<Utc>>,
