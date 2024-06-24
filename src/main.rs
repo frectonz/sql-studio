@@ -1122,13 +1122,13 @@ mod postgres {
                 .await?
                 .get(0);
 
-            let mut counts = self
+            let mut table_counts = self
                 .client
                 .query(
                     r#"
-            SELECT relname, n_live_tup
+            SELECT relname
             FROM pg_stat_user_tables
-            WHERE schemaname = 'public';
+            WHERE schemaname = 'public'
                 "#,
                     &[],
                 )
@@ -1136,11 +1136,20 @@ mod postgres {
                 .into_iter()
                 .map(|r| RowCount {
                     name: r.get(0),
-                    count: r.get::<usize, i64>(1) as i32,
+                    count: 0,
                 })
                 .collect::<Vec<_>>();
 
-            counts.sort_by(|a, b| b.count.cmp(&a.count));
+            for table in table_counts.iter_mut() {
+                let count: i64 = self
+                    .client
+                    .query_one(&format!(r#"SELECT count(*) FROM "{}""#, table.name), &[])
+                    .await?
+                    .get(0);
+                table.count = count as i32;
+            }
+
+            table_counts.sort_by(|a, b| b.count.cmp(&a.count));
 
             Ok(responses::Overview {
                 file_name,
@@ -1152,7 +1161,7 @@ mod postgres {
                 indexes: indexes as i32,
                 triggers: triggers as i32,
                 views: views as i32,
-                counts,
+                counts: table_counts,
             })
         }
 
@@ -1161,7 +1170,7 @@ mod postgres {
                 .client
                 .query(
                     r#"
-            SELECT relname, n_live_tup
+            SELECT relname
             FROM pg_stat_user_tables
             WHERE schemaname = 'public'
                 "#,
@@ -1171,9 +1180,18 @@ mod postgres {
                 .into_iter()
                 .map(|r| RowCount {
                     name: r.get(0),
-                    count: r.get::<usize, i64>(1) as i32,
+                    count: 0,
                 })
                 .collect::<Vec<_>>();
+
+            for table in tables.iter_mut() {
+                let count: i64 = self
+                    .client
+                    .query_one(&format!(r#"SELECT count(*) FROM "{}""#, table.name), &[])
+                    .await?
+                    .get(0);
+                table.count = count as i32;
+            }
 
             tables.sort_by_key(|r| r.count);
 
