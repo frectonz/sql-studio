@@ -64,14 +64,14 @@ More features available on the [releases page](https://github.com/frectonz/sql-s
 
 ### Install prebuilt binaries via shell script (MacOS and Linux)
 
-```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sql-studio/releases/download/0.1.12/sql-studio-installer.sh | sh
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sql-studio/releases/download/0.1.14/sql-studio-installer.sh | sh
 ```
 
 ### Install prebuilt binaries via powershell script
 
-```sh
-powershell -c "irm https://github.com/frectonz/sql-studio/releases/download/0.1.12/sql-studio-installer.ps1 | iex"
+```powershell
+powershell -c "irm https://github.com/frectonz/sql-studio/releases/download/0.1.14/sql-studio-installer.ps1 | iex"
 ```
 
 ### Updating
