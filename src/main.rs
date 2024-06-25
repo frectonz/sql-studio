@@ -316,7 +316,7 @@ mod sqlite {
             let modified = Some(metadata.modified()?.into());
             let created = metadata.created().ok().map(Into::into);
 
-            let (tables, indexes, triggers, views, row_counts, column_counts) = self
+            let (tables, indexes, triggers, views, row_counts, column_counts, index_counts) = self
                 .conn
                 .call(move |conn| {
                     let tables = conn.query_row(
@@ -393,7 +393,33 @@ mod sqlite {
 
                     column_counts.sort_by(|a, b| b.count.cmp(&a.count));
 
-                    Ok((tables, indexes, triggers, views, row_counts, column_counts))
+                    let mut index_counts = HashMap::with_capacity(tables as usize);
+                    for name in table_names.iter() {
+                        let count = conn.query_row(
+                            "SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=?1",
+                            [name],
+                            |r| r.get::<_, i32>(0),
+                        )?;
+
+                        index_counts.insert(name.to_owned(), count);
+                    }
+
+                    let mut index_counts = index_counts
+                        .into_iter()
+                        .map(|(name, count)| responses::Count { name, count })
+                        .collect::<Vec<_>>();
+
+                    index_counts.sort_by(|a, b| b.count.cmp(&a.count));
+
+                    Ok((
+                        tables,
+                        indexes,
+                        triggers,
+                        views,
+                        row_counts,
+                        column_counts,
+                        index_counts,
+                    ))
                 })
                 .await?;
 
@@ -409,6 +435,7 @@ mod sqlite {
                 views,
                 row_counts,
                 column_counts,
+                index_counts,
             })
         }
 
@@ -801,6 +828,44 @@ mod libsql {
 
             column_counts.sort_by(|a, b| b.count.cmp(&a.count));
 
+            let mut index_counts = HashMap::with_capacity(table_names.len());
+            for name in table_names.iter() {
+                let index_count = conn
+                    .query(
+                        "SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=?1",
+                        [name.to_owned()],
+                    )
+                    .await?
+                    .next()
+                    .await?
+                    .ok_or_eyre("no row returned from db")?
+                    .get::<i32>(0)?;
+
+                let has_primary_key = conn
+                    .query(&format!("PRAGMA table_info('{name}')"), ())
+                    .await?
+                    .next()
+                    .await?
+                    .ok_or_eyre("no row returned from db")?
+                    .get::<i32>(5)?
+                    == 1;
+
+                let index_count = if has_primary_key {
+                    index_count + 1
+                } else {
+                    index_count
+                };
+
+                index_counts.insert(name.to_owned(), index_count);
+            }
+
+            let mut index_counts = index_counts
+                .into_iter()
+                .map(|(name, count)| responses::Count { name, count })
+                .collect::<Vec<_>>();
+
+            index_counts.sort_by(|a, b| b.count.cmp(&a.count));
+
             Ok(responses::Overview {
                 file_name,
                 sqlite_version: Some(sqlite_version),
@@ -813,6 +878,7 @@ mod libsql {
                 views,
                 row_counts,
                 column_counts,
+                index_counts,
             })
         }
 
@@ -1249,6 +1315,43 @@ mod postgres {
 
             column_counts.sort_by(|a, b| b.count.cmp(&a.count));
 
+            let mut index_counts = self
+                .client
+                .query(
+                    r#"
+            SELECT relname
+            FROM pg_stat_user_tables
+            WHERE schemaname = 'public'
+                "#,
+                    &[],
+                )
+                .await?
+                .into_iter()
+                .map(|r| Count {
+                    name: r.get(0),
+                    count: 0,
+                })
+                .collect::<Vec<_>>();
+
+            for table in index_counts.iter_mut() {
+                let count: i64 = self
+                    .client
+                    .query_one(
+                        r#"
+                SELECT count(*)
+                FROM pg_indexes
+                WHERE tablename = '{name}'
+                    "#,
+                        &[],
+                    )
+                    .await?
+                    .get(0);
+
+                table.count = count as i32;
+            }
+
+            index_counts.sort_by(|a, b| b.count.cmp(&a.count));
+
             Ok(responses::Overview {
                 file_name,
                 sqlite_version: None,
@@ -1261,6 +1364,7 @@ mod postgres {
                 views: views as i32,
                 row_counts,
                 column_counts,
+                index_counts,
             })
         }
 
@@ -1614,6 +1718,32 @@ mod mysql {
 
             column_counts.sort_by(|a, b| b.count.cmp(&a.count));
 
+            let mut index_counts = r#"
+            SELECT TABLE_NAME AS name
+            FROM information_schema.tables
+            WHERE table_schema = database()
+                "#
+            .with(())
+            .map(&mut conn, |name| Count { name, count: 0 })
+            .await?;
+
+            for count in index_counts.iter_mut() {
+                count.count = r#"
+                SELECT COUNT(*) AS count
+                FROM information_schema.statistics
+                WHERE table_schema = database() AND table_name = :table_name
+                "#
+                .with(params! {
+                    "table_name" => &count.name
+                })
+                .first(&mut conn)
+                .await?
+                .map(|count: i32| count)
+                .ok_or_eyre("couldn't count indexes")?;
+            }
+
+            index_counts.sort_by(|a, b| b.count.cmp(&a.count));
+
             Ok(responses::Overview {
                 file_name,
                 sqlite_version: None,
@@ -1626,6 +1756,7 @@ mod mysql {
                 views,
                 row_counts,
                 column_counts,
+                index_counts,
             })
         }
 
@@ -1904,7 +2035,7 @@ mod duckdb {
             let created = metadata.created().ok().map(Into::into);
 
             let c = self.conn.clone();
-            let (tables, indexes, triggers, views, row_counts, column_counts) =
+            let (tables, indexes, triggers, views, row_counts, column_counts, index_counts) =
                 tokio::task::spawn_blocking(move || {
                     let c = c.lock().expect("could not get lock on connection");
 
@@ -1984,7 +2115,31 @@ mod duckdb {
 
                     column_counts.sort_by(|a, b| b.count.cmp(&a.count));
 
-                    eyre::Ok((tables, indexes, triggers, views, row_counts, column_counts))
+                    let mut index_counts = Vec::with_capacity(table_names.len());
+                    for name in table_names.iter() {
+                        let count: i32 = c.query_row(
+                            "SELECT index_count FROM duckdb_tables WHERE table_name = ?",
+                            [&name],
+                            |row| row.get(0),
+                        )?;
+
+                        index_counts.push(Count {
+                            name: name.to_owned(),
+                            count,
+                        });
+                    }
+
+                    index_counts.sort_by(|a, b| b.count.cmp(&a.count));
+
+                    eyre::Ok((
+                        tables,
+                        indexes,
+                        triggers,
+                        views,
+                        row_counts,
+                        column_counts,
+                        index_counts,
+                    ))
                 })
                 .await??;
 
@@ -2000,6 +2155,7 @@ mod duckdb {
                 views,
                 row_counts,
                 column_counts,
+                index_counts,
             })
         }
 
@@ -2252,6 +2408,7 @@ mod responses {
         pub views: i32,
         pub row_counts: Vec<Count>,
         pub column_counts: Vec<Count>,
+        pub index_counts: Vec<Count>,
     }
 
     #[derive(Serialize)]
