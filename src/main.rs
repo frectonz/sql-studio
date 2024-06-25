@@ -372,7 +372,7 @@ mod sqlite {
 
                     let mut row_counts = row_counts
                         .into_iter()
-                        .map(|(name, count)| responses::RowCount { name, count })
+                        .map(|(name, count)| responses::Count { name, count })
                         .collect::<Vec<_>>();
 
                     row_counts.sort_by(|a, b| b.count.cmp(&a.count));
@@ -418,7 +418,7 @@ mod sqlite {
 
                     let mut counts = table_counts
                         .into_iter()
-                        .map(|(name, count)| responses::RowCount { name, count })
+                        .map(|(name, count)| responses::Count { name, count })
                         .collect::<Vec<_>>();
 
                     counts.sort_by_key(|r| r.count);
@@ -755,7 +755,7 @@ mod libsql {
 
             let mut row_counts = row_counts
                 .into_iter()
-                .map(|(name, count)| responses::RowCount { name, count })
+                .map(|(name, count)| responses::Count { name, count })
                 .collect::<Vec<_>>();
 
             row_counts.sort_by(|a, b| b.count.cmp(&a.count));
@@ -804,7 +804,7 @@ mod libsql {
 
             let mut tables = table_counts
                 .into_iter()
-                .map(|(name, count)| responses::RowCount { name, count })
+                .map(|(name, count)| responses::Count { name, count })
                 .collect::<Vec<_>>();
 
             tables.sort_by_key(|r| r.count);
@@ -1018,7 +1018,7 @@ mod postgres {
 
     use crate::{
         helpers,
-        responses::{self, RowCount},
+        responses::{self, Count},
         Database, ROWS_PER_PAGE,
     };
 
@@ -1149,7 +1149,7 @@ mod postgres {
                 )
                 .await?
                 .into_iter()
-                .map(|r| RowCount {
+                .map(|r| Count {
                     name: r.get(0),
                     count: 0,
                 })
@@ -1193,7 +1193,7 @@ mod postgres {
                 )
                 .await?
                 .into_iter()
-                .map(|r| RowCount {
+                .map(|r| Count {
                     name: r.get(0),
                     count: 0,
                 })
@@ -1373,7 +1373,7 @@ mod mysql {
 
     use crate::{
         helpers,
-        responses::{self, RowCount},
+        responses::{self, Count},
         Database, ROWS_PER_PAGE,
     };
 
@@ -1490,7 +1490,7 @@ mod mysql {
             WHERE table_schema = database()
                 "#
             .with(())
-            .map(&mut conn, |name| RowCount { name, count: 0 })
+            .map(&mut conn, |name| Count { name, count: 0 })
             .await?;
 
             for count in row_counts.iter_mut() {
@@ -1527,7 +1527,7 @@ mod mysql {
             WHERE table_schema = database()
                 "#
             .with(())
-            .map(&mut conn, |name| RowCount { name, count: 0 })
+            .map(&mut conn, |name| Count { name, count: 0 })
             .await?;
 
             for table in tables.iter_mut() {
@@ -1726,7 +1726,7 @@ mod duckdb {
 
     use crate::{
         helpers,
-        responses::{self, RowCount},
+        responses::{self, Count},
         Database, ROWS_PER_PAGE,
     };
 
@@ -1849,7 +1849,7 @@ mod duckdb {
                                 row.get(0)
                             })?;
 
-                        row_counts.push(RowCount { name, count });
+                        row_counts.push(Count { name, count });
                     }
 
                     row_counts.sort_by(|a, b| b.count.cmp(&a.count));
@@ -1896,7 +1896,7 @@ mod duckdb {
                             row.get(0)
                         })?;
 
-                    counts.push(RowCount { name, count });
+                    counts.push(Count { name, count });
                 }
 
                 counts.sort_by_key(|r| r.count);
@@ -2119,18 +2119,18 @@ mod responses {
         pub indexes: i32,
         pub triggers: i32,
         pub views: i32,
-        pub row_counts: Vec<RowCount>,
+        pub row_counts: Vec<Count>,
     }
 
     #[derive(Serialize)]
-    pub struct RowCount {
+    pub struct Count {
         pub name: String,
         pub count: i32,
     }
 
     #[derive(Serialize)]
     pub struct Tables {
-        pub tables: Vec<RowCount>,
+        pub tables: Vec<Count>,
     }
 
     #[derive(Serialize)]
