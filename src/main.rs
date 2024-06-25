@@ -1428,11 +1428,13 @@ mod postgres {
             let index_count: i64 = self
                 .client
                 .query_one(
-                    r#"
+                    &format!(
+                        r#"
             SELECT count(*)
             FROM pg_indexes
             WHERE tablename = '{name}'
-                "#,
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -1441,12 +1443,14 @@ mod postgres {
             let column_count: i64 = self
                 .client
                 .query_one(
-                    r#"
+                    &format!(
+                        r#"
             SELECT count(*)
             FROM information_schema.columns
             WHERE table_schema = 'public'
             AND table_name = '{name}'
-                "#,
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -1475,7 +1479,7 @@ mod postgres {
             SELECT column_name FROM information_schema.columns
             WHERE table_schema = 'public' AND table_name = '{name}'
             LIMIT 1
-                "#
+                        "#
                     ),
                     &[],
                 )
