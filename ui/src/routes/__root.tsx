@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { setTheme, useTheme } from "@/provider/theme.provider";
+import { useQuery } from "@tanstack/react-query";
+import { fetchVersion } from "@/api";
 
 const TanStackRouterDevtools = import.meta.env.PROD
   ? () => null // Render nothing in production
@@ -30,6 +32,12 @@ export const Route = createRootRoute({
 export function Root() {
   const theme = useTheme();
   const changeTheme = setTheme();
+
+  const { data } = useQuery({
+    queryKey: ["version"],
+    queryFn: () => fetchVersion(),
+  });
+
   return (
     <>
       <div
@@ -71,6 +79,9 @@ export function Root() {
           </Link>
 
           <div className="flex gap-4 items-center">
+            <p className="text-primary hidden sm:block text-xs text-right">
+              [{data?.version ?? ""}]
+            </p>
             <button
               className="text-foreground "
               onClick={() => {

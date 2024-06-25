@@ -2154,13 +2154,18 @@ mod responses {
         pub columns: Vec<String>,
         pub rows: Vec<Vec<serde_json::Value>>,
     }
+
+    #[derive(Serialize)]
+    pub struct Version {
+        pub version: String,
+    }
 }
 
 mod handlers {
     use serde::Deserialize;
     use warp::Filter;
 
-    use crate::{rejections, Database};
+    use crate::{rejections, responses::Version, Database};
 
     fn with_state<T: Clone + Send>(
         state: &T,
@@ -2194,8 +2199,9 @@ mod handlers {
             .and(warp::path!("query"))
             .and(warp::body::json::<QueryBody>())
             .and_then(query);
+        let version = warp::get().and(warp::path!("version")).and_then(version);
 
-        overview.or(tables).or(table).or(query).or(data)
+        overview.or(tables).or(table).or(query).or(data).or(version)
     }
 
     #[derive(Deserialize)]
@@ -2256,6 +2262,14 @@ mod handlers {
             .await
             .map_err(|_| warp::reject::custom(rejections::InternalServerError))?;
         Ok(warp::reply::json(&tables))
+    }
+
+    async fn version() -> Result<impl warp::Reply, warp::Rejection> {
+        let version = Version {
+            version: env!("CARGO_PKG_VERSION").to_owned(),
+        };
+
+        Ok(warp::reply::json(&version))
     }
 }
 

@@ -57,6 +57,10 @@ const query = z.object({
   rows: z.any().array().array(),
 });
 
+const version = z.object({
+  version: z.string(),
+});
+
 const $fetch = createZodFetcher();
 
 export const fetchOverview = () => $fetch(overview, `${BASE_URL}/`);
@@ -74,3 +78,4 @@ export const fetchQuery = (value: string) =>
     },
     body: JSON.stringify({ query: value }),
   });
+export const fetchVersion = () => $fetch(version, `${BASE_URL}/version`);
