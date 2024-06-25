@@ -1344,11 +1344,14 @@ mod postgres {
                 let count: i64 = self
                     .client
                     .query_one(
-                        r#"
+                        &format!(
+                            r#"
                 SELECT count(*)
                 FROM pg_indexes
-                WHERE tablename = '{name}'
-                    "#,
+                WHERE tablename = '{}'
+                            "#,
+                            table.name
+                        ),
                         &[],
                     )
                     .await?
