@@ -21,7 +21,7 @@ const overview = z.object({
   indexes: z.number(),
   triggers: z.number(),
   views: z.number(),
-  counts: z
+  row_counts: z
     .object({
       name: z.string(),
       count: z.number(),

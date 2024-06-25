@@ -316,7 +316,7 @@ mod sqlite {
             let modified = Some(metadata.modified()?.into());
             let created = metadata.created().ok().map(Into::into);
 
-            let (tables, indexes, triggers, views, counts) = self
+            let (tables, indexes, triggers, views, row_counts) = self
                 .conn
                 .call(move |conn| {
                     let tables = conn.query_row(
@@ -359,7 +359,7 @@ mod sqlite {
                         conn.prepare(r#"SELECT name FROM sqlite_master WHERE type="table""#)?;
                     let table_names = stmt.query_map([], |row| row.get::<_, String>(0))?;
 
-                    let mut table_counts = HashMap::with_capacity(tables as usize);
+                    let mut row_counts = HashMap::with_capacity(tables as usize);
                     for name in table_names {
                         let name = name?;
                         let count =
@@ -367,17 +367,17 @@ mod sqlite {
                                 r.get::<_, i32>(0)
                             })?;
 
-                        table_counts.insert(name, count);
+                        row_counts.insert(name, count);
                     }
 
-                    let mut counts = table_counts
+                    let mut row_counts = row_counts
                         .into_iter()
                         .map(|(name, count)| responses::RowCount { name, count })
                         .collect::<Vec<_>>();
 
-                    counts.sort_by(|a, b| b.count.cmp(&a.count));
+                    row_counts.sort_by(|a, b| b.count.cmp(&a.count));
 
-                    Ok((tables, indexes, triggers, views, counts))
+                    Ok((tables, indexes, triggers, views, row_counts))
                 })
                 .await?;
 
@@ -391,7 +391,7 @@ mod sqlite {
                 indexes,
                 triggers,
                 views,
-                counts,
+                row_counts,
             })
         }
 
@@ -740,7 +740,7 @@ mod libsql {
                 .filter_map(|r| r.ok())
                 .collect::<Vec<_>>();
 
-            let mut table_counts = HashMap::with_capacity(table_names.len());
+            let mut row_counts = HashMap::with_capacity(table_names.len());
             for name in table_names {
                 let count = conn
                     .query(&format!("SELECT count(*) FROM '{name}'"), ())
@@ -750,15 +750,15 @@ mod libsql {
                     .ok_or_eyre("no row returned from db")?
                     .get::<i32>(0)?;
 
-                table_counts.insert(name, count);
+                row_counts.insert(name, count);
             }
 
-            let mut counts = table_counts
+            let mut row_counts = row_counts
                 .into_iter()
                 .map(|(name, count)| responses::RowCount { name, count })
                 .collect::<Vec<_>>();
 
-            counts.sort_by(|a, b| b.count.cmp(&a.count));
+            row_counts.sort_by(|a, b| b.count.cmp(&a.count));
 
             Ok(responses::Overview {
                 file_name,
@@ -770,7 +770,7 @@ mod libsql {
                 indexes,
                 triggers,
                 views,
-                counts,
+                row_counts,
             })
         }
 
@@ -1176,7 +1176,7 @@ mod postgres {
                 indexes: indexes as i32,
                 triggers: triggers as i32,
                 views: views as i32,
-                counts: table_counts,
+                row_counts: table_counts,
             })
         }
 
@@ -1484,7 +1484,7 @@ mod mysql {
             .map(|count: i32| count)
             .ok_or_eyre("couldn't count views")?;
 
-            let mut counts = r#"
+            let mut row_counts = r#"
             SELECT TABLE_NAME AS name
             FROM information_schema.tables
             WHERE table_schema = database()
@@ -1493,7 +1493,7 @@ mod mysql {
             .map(&mut conn, |name| RowCount { name, count: 0 })
             .await?;
 
-            for count in counts.iter_mut() {
+            for count in row_counts.iter_mut() {
                 count.count = format!("SELECT count(*) AS count FROM {}", count.name)
                     .with(())
                     .first(&mut conn)
@@ -1502,7 +1502,7 @@ mod mysql {
                     .ok_or_eyre("couldn't count rows")?;
             }
 
-            counts.sort_by(|a, b| b.count.cmp(&a.count));
+            row_counts.sort_by(|a, b| b.count.cmp(&a.count));
 
             Ok(responses::Overview {
                 file_name,
@@ -1514,7 +1514,7 @@ mod mysql {
                 indexes,
                 triggers,
                 views,
-                counts,
+                row_counts,
             })
         }
 
@@ -1793,7 +1793,7 @@ mod duckdb {
             let created = metadata.created().ok().map(Into::into);
 
             let c = self.conn.clone();
-            let (tables, indexes, triggers, views, counts) =
+            let (tables, indexes, triggers, views, row_counts) =
                 tokio::task::spawn_blocking(move || {
                     let c = c.lock().expect("could not get lock on connection");
 
@@ -1842,19 +1842,19 @@ mod duckdb {
                         .filter_map(|n| n.ok())
                         .collect::<Vec<String>>();
 
-                    let mut counts = Vec::with_capacity(table_names.len());
+                    let mut row_counts = Vec::with_capacity(table_names.len());
                     for name in table_names {
                         let count: i32 =
                             c.query_row(&format!(r#"SELECT count(*) FROM "{name}""#), [], |row| {
                                 row.get(0)
                             })?;
 
-                        counts.push(RowCount { name, count });
+                        row_counts.push(RowCount { name, count });
                     }
 
-                    counts.sort_by(|a, b| b.count.cmp(&a.count));
+                    row_counts.sort_by(|a, b| b.count.cmp(&a.count));
 
-                    eyre::Ok((tables, indexes, triggers, views, counts))
+                    eyre::Ok((tables, indexes, triggers, views, row_counts))
                 })
                 .await??;
 
@@ -1868,7 +1868,7 @@ mod duckdb {
                 indexes,
                 triggers,
                 views,
-                counts,
+                row_counts,
             })
         }
 
@@ -2119,7 +2119,7 @@ mod responses {
         pub indexes: i32,
         pub triggers: i32,
         pub views: i32,
-        pub counts: Vec<RowCount>,
+        pub row_counts: Vec<RowCount>,
     }
 
     #[derive(Serialize)]

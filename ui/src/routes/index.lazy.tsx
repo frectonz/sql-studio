@@ -92,7 +92,7 @@ function Index() {
             <CardTitle>ROWS PER TABLE</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
-            <TheBarChart counts={data.counts} />
+            <TheBarChart counts={data.row_counts} />
           </CardContent>
         </Card>
         <Card className="xl:col-span-3">
