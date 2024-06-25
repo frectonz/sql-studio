@@ -401,6 +401,13 @@ mod sqlite {
                             |r| r.get::<_, i32>(0),
                         )?;
 
+                        let has_primary_key =
+                            conn.query_row(&format!("PRAGMA table_info('{name}')"), [], |r| {
+                                r.get::<_, i32>(5)
+                            })? == 1;
+
+                        let count = if has_primary_key { count + 1 } else { count };
+
                         index_counts.insert(name.to_owned(), count);
                     }
 
