@@ -3,6 +3,13 @@ import { createZodFetcher } from "zod-fetch";
 
 const BASE_URL = import.meta.env.PROD ? "/api" : "http://localhost:3030/api";
 
+const counts = z
+  .object({
+    name: z.string(),
+    count: z.number(),
+  })
+  .array();
+
 const overview = z.object({
   file_name: z.string(),
   sqlite_version: z.string().nullable(),
@@ -21,21 +28,13 @@ const overview = z.object({
   indexes: z.number(),
   triggers: z.number(),
   views: z.number(),
-  row_counts: z
-    .object({
-      name: z.string(),
-      count: z.number(),
-    })
-    .array(),
+  row_counts: counts,
+  column_counts: counts,
+  index_counts: counts,
 });
 
 const tables = z.object({
-  tables: z
-    .object({
-      name: z.string(),
-      count: z.number(),
-    })
-    .array(),
+  tables: counts,
 });
 
 const table = z.object({

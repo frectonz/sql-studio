@@ -139,6 +139,26 @@ function Index() {
           </CardContent>
         </Card>
       </div>
+
+      <div className="grid gap-8 lg:grid-cols-2 xl:grid-cols-7">
+        <Card className="xl:col-span-3">
+          <CardHeader>
+            <CardTitle>INDEXES PER TABLE</CardTitle>
+          </CardHeader>
+          <CardContent className="pl-2">
+            <TheBarChart counts={data.index_counts} />
+          </CardContent>
+        </Card>
+
+        <Card className="xl:col-span-4">
+          <CardHeader>
+            <CardTitle>COLUMNS PER TABLE</CardTitle>
+          </CardHeader>
+          <CardContent className="pl-2">
+            <TheBarChart counts={data.column_counts} />
+          </CardContent>
+        </Card>
+      </div>
     </>
   );
 }
@@ -225,6 +245,11 @@ function IndexSkeleton() {
         <Skeleton className="xl:col-span-4 h-[400px]" />
         <Skeleton className="xl:col-span-3 h-[400px]" />
       </div>
+
+      <div className="w-full grid gap-4 lg:grid-cols-2 xl:grid-cols-7">
+        <Skeleton className="xl:col-span-3 h-[400px]" />
+        <Skeleton className="xl:col-span-4 h-[400px]" />
+      </div>
     </>
   );
 }
@@ -244,8 +269,8 @@ function CustomTooltip({
           Table <span className="text-primary font-semibold">{label}</span> has{" "}
           <span className="text-primary font-semibold">
             {compactNumberFormatter.format(payload[0]?.value as number)}
-          </span>{" "}
-          rows.
+          </span>
+          .
         </p>
       </CardContent>
     </Card>
