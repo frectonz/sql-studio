@@ -33,7 +33,6 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
             bottom: 20,
           },
           fontFamily: "JetBrains Mono",
-          cursorStyle: "block",
           automaticLayout: true,
           readOnly: onChange === undefined,
         });
