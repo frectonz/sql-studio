@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { createZodFetcher } from "zod-fetch";
 
-let baseMeta = document.querySelector(
-  `meta[name="BASE_URL"]`,
-) as HTMLMetaElement;
+let basePath = document.querySelector<HTMLMetaElement>(
+  `meta[name="BASE_PATH"]`,
+);
 const BASE_URL = import.meta.env.PROD
-  ? baseMeta
-    ? `${baseMeta.content}/api`
+  ? basePath
+    ? `${basePath.content}/api`
     : "/api"
   : "http://localhost:3030/api";
 

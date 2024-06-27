@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use clap::{Parser, Subcommand};
-use url::Url;
 use warp::Filter;
 
 const ROWS_PER_PAGE: i32 = 50;
@@ -20,9 +19,9 @@ struct Args {
     #[clap(short, long, default_value = "5secs")]
     timeout: humantime::Duration,
 
-    /// Base URL used by a reverse proxy. [e.g http://localhost:8080/sql-studio]
+    /// Base path to be provided to the UI. [e.g /sql-studio]
     #[clap(short, long)]
-    base_url: Option<Url>,
+    base_path: Option<String>,
 }
 
 #[derive(Debug, Subcommand)]
@@ -95,8 +94,8 @@ async fn main() -> color_eyre::Result<()> {
     };
 
     let mut index_html = statics::get_index_html()?;
-    if let Some(ref base_url) = args.base_url {
-        let base = format!(r#"<meta name="BASE_URL" content="{base_url}" />"#);
+    if let Some(ref base_path) = args.base_path {
+        let base = format!(r#"<meta name="BASE_PATH" content="{base_path}" />"#);
         index_html = index_html.replace(r#"<!-- __BASE__ -->"#, &base);
     }
 

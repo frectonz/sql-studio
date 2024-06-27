@@ -9,10 +9,10 @@ import ReactDOM from "react-dom/client";
 import { ThemeProvider } from "./provider/theme.provider";
 import { routeTree } from "./routeTree.gen";
 
-let baseUrl = document.querySelector(
-  `meta[name="BASE_URL"]`,
-) as HTMLMetaElement;
-let basepath = baseUrl ? new URL(baseUrl.content).pathname : "/";
+let basePath = document.querySelector<HTMLMetaElement>(
+  `meta[name="BASE_PATH"]`,
+);
+let basepath = basePath?.content ?? "/";
 
 // Create a new router instance
 const router = createRouter({ routeTree, basepath });
