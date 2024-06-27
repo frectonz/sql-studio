@@ -1,7 +1,14 @@
 import { z } from "zod";
 import { createZodFetcher } from "zod-fetch";
 
-const BASE_URL = import.meta.env.PROD ? "/api" : "http://localhost:3030/api";
+let baseMeta = document.querySelector(
+  `meta[name="BASE_URL"]`,
+) as HTMLMetaElement;
+const BASE_URL = import.meta.env.PROD
+  ? baseMeta
+    ? `${baseMeta.content}/api`
+    : "/api"
+  : "http://localhost:3030/api";
 
 const counts = z
   .object({

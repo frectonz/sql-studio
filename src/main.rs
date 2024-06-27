@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use clap::{Parser, Subcommand};
+use url::Url;
 use warp::Filter;
 
 const ROWS_PER_PAGE: i32 = 50;
@@ -18,6 +19,10 @@ struct Args {
     /// Timeout duration for queries sent from the query page.
     #[clap(short, long, default_value = "5secs")]
     timeout: humantime::Duration,
+
+    /// Base URL used by a reverse proxy. [e.g http://localhost:8080/sql-studio]
+    #[clap(short, long)]
+    base_url: Option<Url>,
 }
 
 #[derive(Debug, Subcommand)]
@@ -89,13 +94,19 @@ async fn main() -> color_eyre::Result<()> {
         }
     };
 
+    let mut index_html = statics::get_index_html()?;
+    if let Some(ref base_url) = args.base_url {
+        let base = format!(r#"<meta name="BASE_URL" content="{base_url}" />"#);
+        index_html = index_html.replace(r#"<!-- __BASE__ -->"#, &base);
+    }
+
     let cors = warp::cors()
         .allow_any_origin()
         .allow_methods(vec!["GET", "POST", "DELETE"])
         .allow_headers(vec!["Content-Length", "Content-Type"]);
 
     let api = warp::path("api").and(handlers::routes(db));
-    let homepage = warp::get().and_then(statics::homepage);
+    let homepage = statics::homepage(index_html.clone());
     let statics = statics::routes();
 
     let routes = api
@@ -116,6 +127,7 @@ async fn main() -> color_eyre::Result<()> {
 mod statics {
     use std::path::Path;
 
+    use color_eyre::eyre::OptionExt;
     use include_dir::{include_dir, Dir};
     use warp::{
         http::{
@@ -150,25 +162,33 @@ mod statics {
         Ok(resp)
     }
 
-    pub async fn homepage() -> Result<impl warp::Reply, warp::Rejection> {
+    pub fn get_index_html() -> color_eyre::Result<String> {
         let file = STATIC_DIR
             .get_file("index.html")
-            .ok_or_else(warp::reject::not_found)?;
+            .ok_or_eyre("could not find index.html")?;
 
-        let resp = Response::builder()
-            .header(CONTENT_TYPE, "text/html")
-            .header(CACHE_CONTROL, "max-age=3600, must-revalidate")
-            .body(file.contents())
-            .unwrap();
+        Ok(file
+            .contents_utf8()
+            .ok_or_eyre("contents of index.html is not utf-8")?
+            .to_owned())
+    }
 
-        Ok(resp)
+    pub fn homepage(
+        file: String,
+    ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
+        warp::get()
+            .and(warp::any().map(move || file.clone()))
+            .map(|file| {
+                Response::builder()
+                    .header(CONTENT_TYPE, "text/html")
+                    .header(CACHE_CONTROL, "max-age=3600, must-revalidate")
+                    .body(file)
+                    .unwrap()
+            })
     }
 
     pub fn routes() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
-        let index = warp::path::end().and_then(homepage);
-        let other = warp::path::tail().and_then(send_file);
-
-        index.or(other)
+        warp::path::tail().and_then(send_file)
     }
 }
 

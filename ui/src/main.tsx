@@ -9,8 +9,13 @@ import ReactDOM from "react-dom/client";
 import { ThemeProvider } from "./provider/theme.provider";
 import { routeTree } from "./routeTree.gen";
 
+let baseUrl = document.querySelector(
+  `meta[name="BASE_URL"]`,
+) as HTMLMetaElement;
+let basepath = baseUrl ? new URL(baseUrl.content).pathname : "/";
+
 // Create a new router instance
-const router = createRouter({ routeTree });
+const router = createRouter({ routeTree, basepath });
 
 // Register the router instance for type safety
 declare module "@tanstack/react-router" {
