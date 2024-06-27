@@ -114,8 +114,10 @@ async fn main() -> color_eyre::Result<()> {
         .recover(rejections::handle_rejection)
         .with(cors);
 
-    let res = open::that(format!("http://{}", args.address));
-    tracing::info!("tried to open in browser: {res:?}");
+    if args.base_path.is_none() {
+        let res = open::that(format!("http://{}", args.address));
+        tracing::info!("tried to open in browser: {res:?}");
+    }
 
     let address = args.address.parse::<std::net::SocketAddr>()?;
     warp::serve(routes).run(address).await;
