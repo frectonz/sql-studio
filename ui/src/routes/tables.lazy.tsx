@@ -13,7 +13,12 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { CodeBlock, irBlack as CodeDarkTheme } from "react-code-blocks";
 
 import { cn } from "@/lib/utils";
-import { Card } from "@/components/ui/card";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTheme } from "@/provider/theme.provider";
 import { fetchTable, fetchTableData, fetchTables } from "@/api";
@@ -30,6 +35,17 @@ export const Route = createFileRoute("/tables")({
 function Tables() {
   const data = Route.useLoaderData();
   const { table } = Route.useSearch();
+
+  if (data.tables.length === 0)
+    return (
+      <Card>
+        <CardHeader className="flex items-center">
+          <TableIcon className="mb-4 h-12 w-12 text-muted-foreground" />
+          <CardTitle>No Tables Found</CardTitle>
+          <CardDescription>The database has no tables.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
 
   const tab = table
     ? data.tables.findIndex(({ name }) => name === table).toString()
