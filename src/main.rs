@@ -295,7 +295,8 @@ mod sqlite {
 
     impl Db {
         pub async fn open(path: String, query_timeout: Duration) -> color_eyre::Result<Self> {
-            let conn = Connection::open_with_flags(&path, OpenFlags::SQLITE_OPEN_READ_ONLY).await?;
+            let conn =
+                Connection::open_with_flags(&path, OpenFlags::SQLITE_OPEN_READ_WRITE).await?;
 
             // This is meant to test if the file at path is actually a DB.
             let tables = conn
@@ -2018,7 +2019,7 @@ mod duckdb {
         pub async fn open(path: String, query_timeout: Duration) -> color_eyre::Result<Self> {
             let p = path.to_owned();
             let conn = tokio::task::spawn_blocking(move || {
-                let config = Config::default().access_mode(duckdb::AccessMode::ReadOnly)?;
+                let config = Config::default().access_mode(duckdb::AccessMode::ReadWrite)?;
                 let conn = Connection::open_with_flags(p, config)?;
 
                 eyre::Ok(conn)
