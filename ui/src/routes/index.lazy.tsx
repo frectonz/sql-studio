@@ -29,7 +29,14 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InfoCard, InfoCardProps } from "@/components/info-card";
-import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -156,6 +163,56 @@ function Index() {
           </CardHeader>
           <CardContent className="pl-2">
             <TheBarChart counts={data.column_counts} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>INDEXES PER TABLE</CardTitle>
+          </CardHeader>
+          <CardContent className="pl-2 h-[400px] overflow-y-scroll">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Index</TableHead>
+                  <TableHead className="text-right">Count</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.index_counts.map((col) => (
+                  <TableRow key={col.name}>
+                    <TableCell>{col.name}</TableCell>
+                    <TableCell className="text-right">{col.count}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>COLUMNS PER TABLE</CardTitle>
+          </CardHeader>
+          <CardContent className="pl-2 h-[400px] overflow-y-scroll">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Column</TableHead>
+                  <TableHead className="text-right">Count</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.column_counts.map((col) => (
+                  <TableRow key={col.name}>
+                    <TableCell>{col.name}</TableCell>
+                    <TableCell className="text-right">{col.count}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </div>
