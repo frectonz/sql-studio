@@ -10,6 +10,7 @@ import {
   PencilLine,
   Play,
   Save,
+  ShieldX,
   SlidersVertical,
   Terminal,
   Trash2,
@@ -165,14 +166,27 @@ function Query({ sql, onChange, onSave, onDelete, onUpdate }: QueryProps) {
   const [autoExecute, setAutoExecute] = useState(true);
   const [name, setName] = useState("");
 
-  const { data, refetch, isLoading } = useQuery({
+  const { data, error, refetch } = useQuery({
     queryKey: ["query", code],
     queryFn: () => fetchQuery(code),
     enabled: autoExecute,
+    retry: false,
   });
 
   const grid = !data ? (
-    isLoading && <Skeleton className="w-full h-[300px]" />
+    !autoExecute && code && error ? (
+      <Card>
+        <CardHeader className="flex items-center">
+          <ShieldX className="mb-2 h-12 w-12 text-red-400" />
+          <CardTitle className="text-red-400">Error</CardTitle>
+          <CardDescription className="text-red-400">
+            Query didn't execute successfully.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    ) : (
+      <Skeleton className="w-full h-[300px]" />
+    )
   ) : data.columns.length === 0 ? (
     <Card>
       <CardHeader className="flex items-center">
