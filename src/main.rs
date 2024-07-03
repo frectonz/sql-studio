@@ -75,12 +75,9 @@ async fn main() -> color_eyre::Result<()> {
     let args = Args::parse();
 
     let db = match args.db {
-        Command::Sqlite { database } => AllDbs::Sqlite(if database == "preview" {
-            tokio::fs::write("sample.db", SAMPLE_DB).await?;
-            sqlite::Db::open("sample.db".to_string(), args.timeout.into()).await?
-        } else {
-            sqlite::Db::open(database, args.timeout.into()).await?
-        }),
+        Command::Sqlite { database } => {
+            AllDbs::Sqlite(sqlite::Db::open(database, args.timeout.into()).await?)
+        }
         Command::Libsql { url, auth_token } => {
             AllDbs::Libsql(libsql::Db::open(url, auth_token, args.timeout.into()).await?)
         }
@@ -284,7 +281,7 @@ mod sqlite {
     };
     use tokio_rusqlite::{Connection, OpenFlags};
 
-    use crate::{helpers, responses, Database, ROWS_PER_PAGE};
+    use crate::{helpers, responses, Database, ROWS_PER_PAGE, SAMPLE_DB};
 
     #[derive(Clone)]
     pub struct Db {
@@ -295,8 +292,12 @@ mod sqlite {
 
     impl Db {
         pub async fn open(path: String, query_timeout: Duration) -> color_eyre::Result<Self> {
-            let conn =
-                Connection::open_with_flags(&path, OpenFlags::SQLITE_OPEN_READ_WRITE).await?;
+            let conn = if path == "preview" {
+                tokio::fs::write("sample.db", SAMPLE_DB).await?;
+                Connection::open_with_flags("sample.db", OpenFlags::SQLITE_OPEN_READ_ONLY).await?
+            } else {
+                Connection::open_with_flags(&path, OpenFlags::SQLITE_OPEN_READ_WRITE).await?
+            };
 
             // This is meant to test if the file at path is actually a DB.
             let tables = conn
@@ -314,7 +315,11 @@ mod sqlite {
 
             tracing::info!("found {tables} tables in {path}");
             Ok(Self {
-                path,
+                path: if path == "preview" {
+                    "sample.db".to_owned()
+                } else {
+                    path
+                },
                 query_timeout,
                 conn: Arc::new(conn),
             })
