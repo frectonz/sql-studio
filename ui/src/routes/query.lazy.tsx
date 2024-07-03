@@ -6,6 +6,7 @@ import DataGrid from "react-data-grid";
 import { useQuery } from "@tanstack/react-query";
 import { useDebounce } from "@uidotdev/usehooks";
 import {
+  Database,
   PencilLine,
   Play,
   Save,
@@ -41,6 +42,12 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardTitle,
+  CardHeader,
+  CardDescription,
+} from "@/components/ui/card";
 
 export const Route = createFileRoute("/query")({
   component: () => (
@@ -166,6 +173,14 @@ function Query({ sql, onChange, onSave, onDelete, onUpdate }: QueryProps) {
 
   const grid = !data ? (
     isLoading && <Skeleton className="w-full h-[300px]" />
+  ) : data.columns.length === 0 ? (
+    <Card>
+      <CardHeader className="flex items-center">
+        <Database className="mb-4 h-12 w-12 text-muted-foreground" />
+        <CardTitle>Query Executed</CardTitle>
+        <CardDescription>Returned no data</CardDescription>
+      </CardHeader>
+    </Card>
   ) : (
     <DataGrid
       columns={data.columns.map((col) => ({ key: col, name: col }))}
