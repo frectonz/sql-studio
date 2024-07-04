@@ -59,6 +59,25 @@ enum Command {
         /// Path to the the duckdb file.
         database: String,
     },
+
+    /// A ClickHouse database.
+    Clickhouse {
+        /// Address to the clickhouse server.
+        #[arg(default_value = "http://localhost:8123")]
+        url: String,
+
+        /// User we want to authentticate as.
+        #[arg(default_value = "default")]
+        user: String,
+
+        /// Password we want to authentticate with.
+        #[arg(default_value = "")]
+        password: String,
+
+        /// Name of the database.
+        #[arg(default_value = "default")]
+        database: String,
+    },
 }
 
 #[tokio::main]
@@ -88,6 +107,14 @@ async fn main() -> color_eyre::Result<()> {
         Command::Duckdb { database } => {
             AllDbs::Duckdb(duckdb::Db::open(database, args.timeout.into()).await?)
         }
+        Command::Clickhouse {
+            url,
+            user,
+            password,
+            database,
+        } => AllDbs::Clickhouse(Box::new(
+            clickhouse::Db::open(url, user, password, database, args.timeout.into()).await?,
+        )),
     };
 
     let mut index_html = statics::get_index_html()?;
@@ -211,6 +238,7 @@ enum AllDbs {
     Postgres(postgres::Db),
     Mysql(mysql::Db),
     Duckdb(duckdb::Db),
+    Clickhouse(Box<clickhouse::Db>),
 }
 
 #[async_trait]
@@ -222,6 +250,7 @@ impl Database for AllDbs {
             AllDbs::Postgres(x) => x.overview().await,
             AllDbs::Mysql(x) => x.overview().await,
             AllDbs::Duckdb(x) => x.overview().await,
+            AllDbs::Clickhouse(x) => x.overview().await,
         }
     }
 
@@ -232,6 +261,7 @@ impl Database for AllDbs {
             AllDbs::Postgres(x) => x.tables().await,
             AllDbs::Mysql(x) => x.tables().await,
             AllDbs::Duckdb(x) => x.tables().await,
+            AllDbs::Clickhouse(x) => x.tables().await,
         }
     }
 
@@ -242,6 +272,7 @@ impl Database for AllDbs {
             AllDbs::Postgres(x) => x.table(name).await,
             AllDbs::Mysql(x) => x.table(name).await,
             AllDbs::Duckdb(x) => x.table(name).await,
+            AllDbs::Clickhouse(x) => x.table(name).await,
         }
     }
 
@@ -256,6 +287,7 @@ impl Database for AllDbs {
             AllDbs::Postgres(x) => x.table_data(name, page).await,
             AllDbs::Mysql(x) => x.table_data(name, page).await,
             AllDbs::Duckdb(x) => x.table_data(name, page).await,
+            AllDbs::Clickhouse(x) => x.table_data(name, page).await,
         }
     }
 
@@ -266,6 +298,7 @@ impl Database for AllDbs {
             AllDbs::Postgres(x) => x.query(query).await,
             AllDbs::Mysql(x) => x.query(query).await,
             AllDbs::Duckdb(x) => x.query(query).await,
+            AllDbs::Clickhouse(x) => x.query(query).await,
         }
     }
 }
@@ -2370,6 +2403,363 @@ mod duckdb {
     }
 }
 
+mod clickhouse {
+    use async_trait::async_trait;
+    use clickhouse::Client;
+    use color_eyre::eyre::OptionExt;
+    use std::time::Duration;
+
+    use crate::{
+        responses::{self, Count},
+        Database, ROWS_PER_PAGE,
+    };
+
+    #[derive(Clone)]
+    pub struct Db {
+        conn: Client,
+        database: String,
+        _query_timeout: Duration,
+    }
+
+    #[derive(serde::Deserialize, clickhouse::Row, Debug)]
+    pub struct ClickhouseCount {
+        pub name: String,
+        pub count: i64,
+    }
+
+    impl Db {
+        pub async fn open(
+            url: String,
+            user: String,
+            password: String,
+            database: String,
+            query_timeout: Duration,
+        ) -> color_eyre::Result<Self> {
+            let conn = Client::default()
+                .with_url(url)
+                .with_user(user)
+                .with_password(password)
+                .with_database(&database);
+
+            let tables: i32 = conn
+                .query(
+                    r#"
+            SELECT count(*)
+            FROM system.tables
+            WHERE database = currentDatabase()
+                    "#,
+                )
+                .fetch_one()
+                .await?;
+
+            tracing::info!(
+                "found {tables} table{} in {database}",
+                if tables == 1 { "" } else { "s" }
+            );
+
+            Ok(Self {
+                conn,
+                database,
+                _query_timeout: query_timeout,
+            })
+        }
+    }
+
+    #[async_trait]
+    impl Database for Db {
+        async fn overview(&self) -> color_eyre::Result<responses::Overview> {
+            let file_name = self.database.to_owned();
+
+            let db_size = String::new();
+            let modified = None;
+            let created = None;
+
+            let tables: i32 = self
+                .conn
+                .query(
+                    r#"
+            SELECT count(*)
+            FROM system.tables
+            WHERE database = currentDatabase()
+                    "#,
+                )
+                .fetch_one()
+                .await?;
+
+            let indexes: i32 = self
+                .conn
+                .query(
+                    r#"
+            SELECT count(*)
+            FROM system.columns
+            WHERE database = currentDatabase() 
+            AND (is_in_primary_key = true OR is_in_sorting_key = true)
+                    "#,
+                )
+                .fetch_one()
+                .await?;
+
+            let triggers: i32 = 0;
+
+            let views: i32 = self
+                .conn
+                .query(
+                    r#"
+            SELECT count(*)
+            FROM system.tables
+            WHERE database = currentDatabase() 
+            AND engine = 'View'
+                    "#,
+                )
+                .fetch_one()
+                .await?;
+
+            let mut row_counts = self
+                .conn
+                .query(
+                    r#"
+            SELECT name
+            FROM system.tables
+            WHERE database = currentDatabase()
+                    "#,
+                )
+                .fetch_all()
+                .await?
+                .into_iter()
+                .map(|name: String| Count { name, count: 0 })
+                .collect::<Vec<_>>();
+
+            for count in row_counts.iter_mut() {
+                count.count = self
+                    .conn
+                    .query(&format!("SELECT count(*) FROM {}", count.name))
+                    .fetch_one()
+                    .await?;
+            }
+
+            row_counts.sort_by(|a, b| b.count.cmp(&a.count));
+
+            let mut column_counts = self
+                .conn
+                .query(
+                    r#"
+            SELECT table AS name, count() AS count
+            FROM system.columns
+            WHERE database = currentDatabase()
+            GROUP BY table
+                    "#,
+                )
+                .fetch_all::<ClickhouseCount>()
+                .await?;
+
+            column_counts.sort_by(|a, b| b.count.cmp(&a.count));
+
+            let mut index_counts = self
+                .conn
+                .query(
+                    r#"
+            SELECT name
+            FROM system.tables
+            WHERE database = currentDatabase()
+                    "#,
+                )
+                .fetch_all()
+                .await?
+                .into_iter()
+                .map(|name: String| Count { name, count: 0 })
+                .collect::<Vec<_>>();
+
+            for count in index_counts.iter_mut() {
+                count.count = self
+                    .conn
+                    .query(
+                        r#"
+                SELECT count(*)
+                FROM system.columns
+                WHERE database = currentDatabase() 
+                AND table = ?
+                AND (is_in_primary_key = true OR is_in_sorting_key = true)
+                        "#,
+                    )
+                    .bind(&count.name)
+                    .fetch_one()
+                    .await?;
+            }
+
+            index_counts.sort_by(|a, b| b.count.cmp(&a.count));
+
+            Ok(responses::Overview {
+                file_name,
+                sqlite_version: None,
+                db_size,
+                created,
+                modified,
+                tables,
+                indexes,
+                triggers,
+                views,
+                row_counts,
+                column_counts: column_counts
+                    .into_iter()
+                    .map(|ClickhouseCount { name, count }| Count {
+                        name,
+                        count: count as i32,
+                    })
+                    .collect(),
+                index_counts,
+            })
+        }
+
+        async fn tables(&self) -> color_eyre::Result<responses::Tables> {
+            let mut tables = self
+                .conn
+                .query(
+                    r#"
+            SELECT name
+            FROM system.tables
+            WHERE database = currentDatabase()
+                    "#,
+                )
+                .fetch_all()
+                .await?
+                .into_iter()
+                .map(|name: String| Count { name, count: 0 })
+                .collect::<Vec<_>>();
+
+            for count in tables.iter_mut() {
+                count.count = self
+                    .conn
+                    .query(&format!("SELECT count(*) FROM {}", count.name))
+                    .fetch_one()
+                    .await?;
+            }
+
+            tables.sort_by_key(|r| r.count);
+
+            Ok(responses::Tables { tables })
+        }
+
+        async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
+            let sql: String = self
+                .conn
+                .query(
+                    r#"
+            SELECT create_table_query
+            FROM system.tables
+            WHERE database = currentDatabase()
+            AND table = ?
+                    "#,
+                )
+                .bind(&name)
+                .fetch_one()
+                .await?;
+
+            let row_count = self
+                .conn
+                .query(&format!("SELECT count(*) FROM {name}"))
+                .fetch_one()
+                .await?;
+
+            let table_size = self
+                .conn
+                .query(
+                    r#"
+            SELECT
+            formatReadableSize(sum(bytes)) as size
+            FROM system.parts WHERE table = ?
+                    "#,
+                )
+                .bind(&name)
+                .fetch_one::<String>()
+                .await?;
+
+            let index_count: i32 = self
+                .conn
+                .query(
+                    r#"
+            SELECT count(*)
+            FROM system.columns
+            WHERE database = currentDatabase() 
+            AND table = ?
+            AND (is_in_primary_key = true OR is_in_sorting_key = true)
+                    "#,
+                )
+                .bind(&name)
+                .fetch_one()
+                .await?;
+
+            let column_count: i32 = self
+                .conn
+                .query(
+                    r#"
+            SELECT count() AS count
+            FROM system.columns
+            WHERE database = currentDatabase()
+            AND table =  ?
+                    "#,
+                )
+                .bind(&name)
+                .fetch_one()
+                .await?;
+
+            Ok(responses::Table {
+                name,
+                sql: Some(sql),
+                row_count,
+                table_size,
+                index_count,
+                column_count,
+            })
+        }
+
+        async fn table_data(
+            &self,
+            name: String,
+            page: i32,
+        ) -> color_eyre::Result<responses::TableData> {
+            let mut columns = self
+                .conn
+                .query(
+                    r#"
+            SELECT name
+            FROM system.columns
+            WHERE database = currentDatabase()
+            AND table = ?
+                    "#,
+                )
+                .bind(&name)
+                .fetch_all::<String>()
+                .await?;
+            columns.truncate(5);
+
+            let first_column = columns.first().ok_or_eyre("no first column found")?;
+
+            let offset = (page - 1) * ROWS_PER_PAGE;
+            let _sql = format!(
+                r#"
+            SELECT {} FROM {name}
+            ORDER BY {first_column}
+            LIMIT {ROWS_PER_PAGE}
+            OFFSET {offset}
+                "#,
+                columns.join(",")
+            );
+
+            Ok(responses::TableData {
+                columns,
+                rows: Vec::new(),
+            })
+        }
+
+        async fn query(&self, _query: String) -> color_eyre::Result<responses::Query> {
+            Ok(responses::Query {
+                columns: Vec::new(),
+                rows: Vec::new(),
+            })
+        }
+    }
+}
+
 mod helpers {
     use duckdb::types::ValueRef as DuckdbValue;
     use libsql::Value as LibsqlValue;
@@ -2434,7 +2824,7 @@ mod helpers {
 
 mod responses {
     use chrono::{DateTime, Utc};
-    use serde::Serialize;
+    use serde::{Deserialize, Serialize};
 
     #[derive(Serialize)]
     pub struct Overview {
@@ -2452,7 +2842,7 @@ mod responses {
         pub index_counts: Vec<Count>,
     }
 
-    #[derive(Serialize)]
+    #[derive(Serialize, Deserialize, clickhouse::Row, Debug)]
     pub struct Count {
         pub name: String,
         pub count: i32,

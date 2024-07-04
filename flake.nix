@@ -90,6 +90,9 @@
 
             pkgs.httpie
             pkgs.sqlite
+
+            pkgs.openssl
+            pkgs.pkg-config
           ];
         };
 
