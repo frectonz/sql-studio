@@ -34,6 +34,12 @@ sql-studio mysql [url]
 sql-studio duckdb [duckdb_file]
 ```
 
+### ClickHouse Server (Partial Support)
+
+```bash
+sql-studio clickhouse [URL] [USER] [PASSWORD] [DATABASE]
+```
+
 ## Features
 
 - Overview page with common metadata.
@@ -65,13 +71,13 @@ More features available on the [releases page](https://github.com/frectonz/sql-s
 ### Install prebuilt binaries via shell script (MacOS and Linux)
 
 ```bash
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sql-studio/releases/download/0.1.19/sql-studio-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sql-studio/releases/download/0.1.20/sql-studio-installer.sh | sh
 ```
 
 ### Install prebuilt binaries via powershell script
 
 ```powershell
-powershell -c "irm https://github.com/frectonz/sql-studio/releases/download/0.1.19/sql-studio-installer.ps1 | iex"
+powershell -c "irm https://github.com/frectonz/sql-studio/releases/download/0.1.20/sql-studio-installer.ps1 | iex"
 ```
 
 ### Updating
