@@ -29,6 +29,7 @@ mysql_async = { version = "0.34.1", default-features = false, features = ["rustl
 duckdb = { git = "https://github.com/frectonz/duckdb-rs.git", features = ["bundled"] }
 humantime = "2.1.0"
 clickhouse = "0.11.6"
+hyper-tls = { version = "0.5.0", features = ["vendored"] }
 
 [profile.release]
 strip = true
