@@ -43,7 +43,7 @@ sql-studio clickhouse [URL] [USER] [PASSWORD] [DATABASE]
 ## Features
 
 - Overview page with common metadata.
-- Tables page with each table's metadata, including the disk size being used by each table.
+- Tables page with each table's metadata.
 - Infinite scroll rows view.
 - A custom query page that gives you more access to your db.
 
