@@ -19,36 +19,38 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { cn } from "@/lib/utils";
 import { fetchQuery } from "@/api";
-import { Editor } from "@/components/editor";
-import { Toggle } from "@/components/ui/toggle";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useTheme } from "@/provider/theme.provider";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   useQueries,
   QueriesProvider,
   useQueriesDispatch,
   SavedQuery as SavedQueryType,
 } from "@/provider/queries.provider";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { useSql, useSqlDispatch } from "@/provider/sql.provider";
+
 import {
   Card,
   CardTitle,
   CardHeader,
   CardDescription,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogClose,
+  DialogTitle,
+  DialogFooter,
+  DialogHeader,
+  DialogContent,
+  DialogTrigger,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Editor } from "@/components/editor";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Toggle } from "@/components/ui/toggle";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useTheme } from "@/provider/theme.provider";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/query")({
   component: () => (
@@ -160,7 +162,9 @@ type QueryProps = {
 
 function Query({ sql, onChange, onSave, onDelete, onUpdate }: QueryProps) {
   const currentTheme = useTheme();
-  const [codeState, setCode] = useState(sql);
+
+  const codeState = useSql();
+  const setCodeState = useSqlDispatch();
   const code = useDebounce(codeState, 100);
 
   const [autoExecute, setAutoExecute] = useState(true);
@@ -218,7 +222,10 @@ function Query({ sql, onChange, onSave, onDelete, onUpdate }: QueryProps) {
   return (
     <div className="grid gap-8">
       <div className="grid gap-4 grid-cols-1">
-        <Editor value={code} onChange={(val) => setCode(val)} />
+        <Editor
+          value={code}
+          onChange={(val) => setCodeState({ type: "SET_SQL", data: val })}
+        />
 
         <div className="flex gap-2 justify-between">
           <div className="flex gap-2">
