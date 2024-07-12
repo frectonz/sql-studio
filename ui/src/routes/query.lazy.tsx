@@ -196,16 +196,19 @@ function Query({ sql, onChange, onSave, onDelete, onUpdate }: QueryProps) {
       </CardHeader>
     </Card>
   ) : (
-    <DataGrid
-      columns={data.columns.map((col) => ({ key: col, name: col }))}
-      rows={data.rows.map((row) =>
-        row.reduce((acc, curr, i) => {
-          acc[data.columns[i]] = curr;
-          return acc;
-        }, {}),
-      )}
-      className={cn(currentTheme === "light" ? "rdg-light" : "rdg-dark")}
-    />
+    <Card className="p-2">
+      <DataGrid
+        defaultColumnOptions={{ resizable: true }}
+        columns={data.columns.map((col) => ({ key: col, name: col }))}
+        rows={data.rows.map((row) =>
+          row.reduce((acc, curr, i) => {
+            acc[data.columns[i]] = curr;
+            return acc;
+          }, {}),
+        )}
+        className={cn(currentTheme === "light" ? "rdg-light" : "rdg-dark")}
+      />
+    </Card>
   );
 
   useEffect(() => {

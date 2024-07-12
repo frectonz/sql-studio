@@ -149,7 +149,9 @@ function Table({ name }: Props) {
         </Card>
       )}
 
-      <TableData name={data.name} />
+      <Card className="p-2">
+        <TableData name={data.name} />
+      </Card>
     </div>
   );
 }
@@ -221,6 +223,7 @@ function TableData({ name }: TableDataProps) {
       rows={rows}
       columns={columns}
       onScroll={handleScroll}
+      defaultColumnOptions={{ resizable: true }}
       className={cn(currentTheme === "light" ? "rdg-light" : "rdg-dark")}
     />
   );

@@ -67,3 +67,32 @@
     @apply bg-background text-foreground font-mono;
   }
 }
+
+.rdg {
+  --rdg-color: hsl(var(--foreground));
+  --rdg-border-color: hsl(var(--border));
+  --rdg-summary-border-color: hsl(var(--border));
+  --rdg-background-color: hsl(var(--primary-background));
+  --rdg-header-background-color: hsl(var(--background));
+  --rdg-header-draggable-background-color: hsl(var(--background));
+  --rdg-row-hover-background-color: hsl(var(--muted));
+  --rdg-row-selected-background-color: hsl(var(--muted));
+  --rdg-row-selected-hover-background-color: hsl(var(--muted));
+  --rdg-checkbox-color: hsl(207deg 100% 29%);
+  --rdg-checkbox-focus-color: hsl(207deg 100% 69%);
+  --rdg-checkbox-disabled-border-color: #ccc;
+  --rdg-checkbox-disabled-background-color: #ddd;
+
+  --rdg-selection-color: hsl(var(--ring));
+  --rdg-font-size: 13px;
+  --rdg-cell-frozen-box-shadow: calc(2px * var(--rdg-sign)) 0 5px -2px rgba(136, 136, 136, 0.3);
+}
+
+.rdg-header-row > .rdg-cell {
+  border: 1px solid hsl(var(--border));
+}
+
+.rdg-cell[aria-selected="true"] {
+  box-shadow: inset 0 0 0 1px var(--rdg-selection-color);
+  outline: 2px solid var(--rdg-selection-color);
+}
