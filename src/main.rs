@@ -44,8 +44,12 @@ enum Command {
 
     /// A PostgreSQL database.
     Postgres {
-        /// postgresql connection url [postgresql://postgres:postgres@127.0.0.1/sample]
+        /// PostgreSQL connection url [postgresql://postgres:postgres@127.0.0.1/sample]
         url: String,
+
+        /// PostgreSQL schema
+        #[arg(short, long, default_value = "public")]
+        schema: String,
     },
 
     /// A MySQL/MariaDB database.
@@ -100,8 +104,8 @@ async fn main() -> color_eyre::Result<()> {
         Command::Libsql { url, auth_token } => {
             AllDbs::Libsql(libsql::Db::open(url, auth_token, args.timeout.into()).await?)
         }
-        Command::Postgres { url } => {
-            AllDbs::Postgres(postgres::Db::open(url, args.timeout.into()).await?)
+        Command::Postgres { url, schema } => {
+            AllDbs::Postgres(postgres::Db::open(url, schema, args.timeout.into()).await?)
         }
         Command::Mysql { url } => AllDbs::Mysql(mysql::Db::open(url, args.timeout.into()).await?),
         Command::Duckdb { database } => {
@@ -1200,11 +1204,16 @@ mod postgres {
     #[derive(Clone)]
     pub struct Db {
         client: Arc<Client>,
+        schema: String,
         query_timeout: Duration,
     }
 
     impl Db {
-        pub async fn open(url: String, query_timeout: Duration) -> color_eyre::Result<Self> {
+        pub async fn open(
+            url: String,
+            schema: String,
+            query_timeout: Duration,
+        ) -> color_eyre::Result<Self> {
             let (client, connection) = tokio_postgres::connect(&url, NoTls).await?;
 
             // The connection object performs the actual communication with the database,
@@ -1217,12 +1226,14 @@ mod postgres {
 
             let tables: i64 = client
                 .query_one(
-                    r#"
+                    &format!(
+                        r#"
             SELECT count(*)
             FROM information_schema.tables
-            WHERE table_schema = 'public'
+            WHERE table_schema = '{schema}'
             AND table_type = 'BASE TABLE'
-                "#,
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -1234,6 +1245,7 @@ mod postgres {
             );
 
             Ok(Self {
+                schema,
                 query_timeout,
                 client: Arc::new(client),
             })
@@ -1243,6 +1255,8 @@ mod postgres {
     #[async_trait]
     impl Database for Db {
         async fn overview(&self) -> color_eyre::Result<responses::Overview> {
+            let schema = &self.schema;
+
             let file_name: String = self
                 .client
                 .query_one("SELECT current_database()", &[])
@@ -1262,12 +1276,14 @@ mod postgres {
             let tables: i64 = self
                 .client
                 .query_one(
-                    r#"
+                    &format!(
+                        r#"
             SELECT count(*)
             FROM information_schema.tables
-            WHERE table_schema = 'public'
+            WHERE table_schema = '{schema}'
             AND table_type = 'BASE TABLE'
-                "#,
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -1276,11 +1292,13 @@ mod postgres {
             let indexes: i64 = self
                 .client
                 .query_one(
-                    r#"
+                    &format!(
+                        r#"
             SELECT count(*) 
             FROM pg_indexes 
-            WHERE schemaname = 'public'
-                "#,
+            WHERE schemaname = '{schema}'
+                       "#
+                    ),
                     &[],
                 )
                 .await?
@@ -1289,11 +1307,13 @@ mod postgres {
             let triggers: i64 = self
                 .client
                 .query_one(
-                    r#"
+                    &format!(
+                        r#"
             SELECT count(*)
             FROM information_schema.triggers
-            WHERE trigger_schema = 'public'
-                "#,
+            WHERE trigger_schema = '{schema}'
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -1302,11 +1322,13 @@ mod postgres {
             let views: i64 = self
                 .client
                 .query_one(
-                    r#"
+                    &format!(
+                        r#"
             SELECT count(*)
             FROM information_schema.views
-            WHERE table_schema = 'public';
-                "#,
+            WHERE table_schema = '{schema}';
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -1315,11 +1337,13 @@ mod postgres {
             let mut row_counts = self
                 .client
                 .query(
-                    r#"
-            SELECT relname
-            FROM pg_stat_user_tables
-            WHERE schemaname = 'public'
-                "#,
+                    &format!(
+                        r#"
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = '{schema}'
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -1344,11 +1368,13 @@ mod postgres {
             let mut column_counts = self
                 .client
                 .query(
-                    r#"
-            SELECT relname
-            FROM pg_stat_user_tables
-            WHERE schemaname = 'public'
-                "#,
+                    &format!(
+                        r#"
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = '{schema}'
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -1367,7 +1393,7 @@ mod postgres {
                             r#"
                 SELECT count(*)
                 FROM information_schema.columns
-                WHERE table_schema = 'public'
+                WHERE table_schema = '{schema}'
                 AND table_name = '{}'
                             "#,
                             table.name
@@ -1385,11 +1411,13 @@ mod postgres {
             let mut index_counts = self
                 .client
                 .query(
-                    r#"
-            SELECT relname
-            FROM pg_stat_user_tables
-            WHERE schemaname = 'public'
-                "#,
+                    &format!(
+                        r#"
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = '{schema}'
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -1439,14 +1467,18 @@ mod postgres {
         }
 
         async fn tables(&self) -> color_eyre::Result<responses::Tables> {
+            let schema = &self.schema;
+
             let mut tables = self
                 .client
                 .query(
-                    r#"
-            SELECT relname
-            FROM pg_stat_user_tables
-            WHERE schemaname = 'public'
-                "#,
+                    &format!(
+                        r#"
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = '{schema}'
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -1472,6 +1504,8 @@ mod postgres {
         }
 
         async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
+            let schema = &self.schema;
+
             let row_count: i64 = self
                 .client
                 .query_one(&format!(r#"SELECT count(*) FROM "{name}""#), &[])
@@ -1507,7 +1541,7 @@ mod postgres {
                         r#"
             SELECT count(*)
             FROM information_schema.columns
-            WHERE table_schema = 'public'
+            WHERE table_schema = '{schema}'
             AND table_name = '{name}'
                         "#
                     ),
@@ -1531,13 +1565,17 @@ mod postgres {
             name: String,
             page: i32,
         ) -> color_eyre::Result<responses::TableData> {
+            let schema = &self.schema;
+
             let first_column: String = self
                 .client
                 .query_one(
                     &format!(
                         r#"
-            SELECT column_name FROM information_schema.columns
-            WHERE table_schema = 'public' AND table_name = '{name}'
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = '{schema}'
+            AND table_name = '{name}'
             LIMIT 1
                         "#
                     ),
