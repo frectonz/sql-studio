@@ -22,6 +22,10 @@ struct Args {
     /// Base path to be provided to the UI. [e.g /sql-studio]
     #[clap(short, long)]
     base_path: Option<String>,
+
+    /// Don't open URL in the system browser.
+    #[clap(short, long)]
+    no_browser: bool,
 }
 
 #[derive(Debug, Subcommand)]
@@ -142,7 +146,7 @@ async fn main() -> color_eyre::Result<()> {
         .recover(rejections::handle_rejection)
         .with(cors);
 
-    if args.base_path.is_none() {
+    if args.base_path.is_none() && !args.no_browser {
         let res = open::that(format!("http://{}", args.address));
         tracing::info!("tried to open in browser: {res:?}");
     }
