@@ -85,3 +85,6 @@ export const fetchQuery = (value: string) =>
     body: JSON.stringify({ query: value }),
   });
 export const fetchVersion = () => $fetch(version, `${BASE_URL}/version`);
+
+export const sendShutdown = () =>
+  fetch(`${BASE_URL}/shutdown`, { method: "POST" });

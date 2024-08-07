@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use clap::{Parser, Subcommand};
+use tokio::sync::mpsc;
 use warp::Filter;
 
 const ROWS_PER_PAGE: i32 = 50;
@@ -136,7 +137,9 @@ async fn main() -> color_eyre::Result<()> {
         .allow_methods(vec!["GET", "POST", "DELETE"])
         .allow_headers(vec!["Content-Length", "Content-Type"]);
 
-    let api = warp::path("api").and(handlers::routes(db));
+    let (shutdown_tx, mut shutdown_rx) = mpsc::channel(1);
+
+    let api = warp::path("api").and(handlers::routes(db, shutdown_tx));
     let homepage = statics::homepage(index_html.clone());
     let statics = statics::routes();
 
@@ -153,13 +156,17 @@ async fn main() -> color_eyre::Result<()> {
 
     let address = args.address.parse::<std::net::SocketAddr>()?;
     let (_, fut) = warp::serve(routes).bind_with_graceful_shutdown(address, async move {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("failed to listen to shutdown signal");
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => {
+                    println!();
+            }
+            _ = shutdown_rx.recv() => {
+                tracing::info!("received shutdown signal")
+            }
+        }
     });
 
     fut.await;
-    println!();
     tracing::info!("shutting down...");
 
     Ok(())
@@ -2932,6 +2939,7 @@ mod responses {
 
 mod handlers {
     use serde::Deserialize;
+    use tokio::sync::mpsc;
     use warp::Filter;
 
     use crate::{rejections, responses::Version, Database};
@@ -2945,6 +2953,7 @@ mod handlers {
 
     pub fn routes(
         db: impl Database,
+        shutdown_signal: mpsc::Sender<()>,
     ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
         let overview = warp::path::end()
             .and(warp::get())
@@ -2969,8 +2978,18 @@ mod handlers {
             .and(warp::body::json::<QueryBody>())
             .and_then(query);
         let version = warp::get().and(warp::path!("version")).and_then(version);
+        let shutdown = warp::post()
+            .and(warp::path!("shutdown"))
+            .and(with_state(&shutdown_signal))
+            .and_then(shutdown);
 
-        overview.or(tables).or(table).or(query).or(data).or(version)
+        overview
+            .or(tables)
+            .or(table)
+            .or(query)
+            .or(data)
+            .or(version)
+            .or(shutdown)
     }
 
     #[derive(Deserialize)]
@@ -3039,6 +3058,14 @@ mod handlers {
         };
 
         Ok(warp::reply::json(&version))
+    }
+
+    async fn shutdown(
+        shutdown_signal: mpsc::Sender<()>,
+    ) -> Result<impl warp::Reply, warp::Rejection> {
+        let res = shutdown_signal.send(()).await;
+        tracing::info!("sent shutdown signal: {res:?}");
+        Ok("")
     }
 }
 

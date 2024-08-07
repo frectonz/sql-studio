@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, Outlet, createRootRoute } from "@tanstack/react-router";
 
 import { cn } from "@/lib/utils";
-import { fetchVersion } from "@/api";
+import { fetchVersion, sendShutdown } from "@/api";
 import { setTheme, useTheme } from "@/provider/theme.provider";
 
 import {
@@ -26,7 +26,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
 
 const TanStackRouterDevtools = import.meta.env.PROD
   ? () => null // Render nothing in production
@@ -156,7 +155,7 @@ function Shutdown() {
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={() => {
-              console.log("shutdown");
+              sendShutdown();
             }}
           >
             Shutdown
