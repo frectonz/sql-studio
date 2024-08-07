@@ -25,8 +25,12 @@ struct Args {
     base_path: Option<String>,
 
     /// Don't open URL in the system browser.
-    #[clap(short, long)]
+    #[clap(long)]
     no_browser: bool,
+
+    /// Don't show the shutdown button in the UI.
+    #[clap(long)]
+    no_shutdown: bool,
 }
 
 #[derive(Debug, Subcommand)]
@@ -139,7 +143,7 @@ async fn main() -> color_eyre::Result<()> {
 
     let (shutdown_tx, mut shutdown_rx) = mpsc::channel(1);
 
-    let api = warp::path("api").and(handlers::routes(db, shutdown_tx));
+    let api = warp::path("api").and(handlers::routes(db, args.no_shutdown, shutdown_tx));
     let homepage = statics::homepage(index_html.clone());
     let statics = statics::routes();
 
@@ -2953,6 +2957,7 @@ mod handlers {
 
     pub fn routes(
         db: impl Database,
+        no_shutdown: bool,
         shutdown_signal: mpsc::Sender<()>,
     ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
         let overview = warp::path::end()
@@ -2981,6 +2986,7 @@ mod handlers {
         let shutdown = warp::post()
             .and(warp::path!("shutdown"))
             .and(with_state(&shutdown_signal))
+            .and(warp::any().map(move || no_shutdown))
             .and_then(shutdown);
 
         overview
@@ -3062,9 +3068,12 @@ mod handlers {
 
     async fn shutdown(
         shutdown_signal: mpsc::Sender<()>,
+        no_shutdown: bool,
     ) -> Result<impl warp::Reply, warp::Rejection> {
-        let res = shutdown_signal.send(()).await;
-        tracing::info!("sent shutdown signal: {res:?}");
+        if !no_shutdown {
+            let res = shutdown_signal.send(()).await;
+            tracing::info!("sent shutdown signal: {res:?}");
+        }
         Ok("")
     }
 }
