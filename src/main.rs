@@ -214,7 +214,6 @@ mod statics {
             .map(|file| {
                 Response::builder()
                     .header(CONTENT_TYPE, "text/html")
-                    .header(CACHE_CONTROL, "max-age=3600, must-revalidate")
                     .body(file)
                     .unwrap()
             })
