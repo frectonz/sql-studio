@@ -2936,8 +2936,9 @@ mod responses {
     }
 
     #[derive(Serialize)]
-    pub struct Version {
+    pub struct Metadata {
         pub version: String,
+        pub can_shutdown: bool,
     }
 }
 
@@ -2946,7 +2947,7 @@ mod handlers {
     use tokio::sync::mpsc;
     use warp::Filter;
 
-    use crate::{rejections, responses::Version, Database};
+    use crate::{rejections, responses::Metadata, Database};
 
     fn with_state<T: Clone + Send>(
         state: &T,
@@ -2982,7 +2983,10 @@ mod handlers {
             .and(warp::path!("query"))
             .and(warp::body::json::<QueryBody>())
             .and_then(query);
-        let version = warp::get().and(warp::path!("version")).and_then(version);
+        let metadata = warp::get()
+            .and(warp::path!("metadata"))
+            .and(warp::any().map(move || no_shutdown))
+            .and_then(metadata);
         let shutdown = warp::post()
             .and(warp::path!("shutdown"))
             .and(with_state(&shutdown_signal))
@@ -2994,7 +2998,7 @@ mod handlers {
             .or(table)
             .or(query)
             .or(data)
-            .or(version)
+            .or(metadata)
             .or(shutdown)
     }
 
@@ -3058,9 +3062,10 @@ mod handlers {
         Ok(warp::reply::json(&tables))
     }
 
-    async fn version() -> Result<impl warp::Reply, warp::Rejection> {
-        let version = Version {
+    async fn metadata(no_shutdown: bool) -> Result<impl warp::Reply, warp::Rejection> {
+        let version = Metadata {
             version: env!("CARGO_PKG_VERSION").to_owned(),
+            can_shutdown: !no_shutdown,
         };
 
         Ok(warp::reply::json(&version))

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, Outlet, createRootRoute } from "@tanstack/react-router";
 
 import { cn } from "@/lib/utils";
-import { fetchVersion, sendShutdown } from "@/api";
+import { fetchMetadata, sendShutdown } from "@/api";
 import { setTheme, useTheme } from "@/provider/theme.provider";
 
 import {
@@ -46,8 +46,8 @@ export function Root() {
   const changeTheme = setTheme();
 
   const { data } = useQuery({
-    queryKey: ["version"],
-    queryFn: () => fetchVersion(),
+    queryKey: ["metadata"],
+    queryFn: () => fetchMetadata(),
   });
 
   return (
@@ -94,7 +94,7 @@ export function Root() {
             <p className="text-primary hidden sm:block text-xs text-right">
               [{data?.version ?? ""}]
             </p>
-            <Shutdown />
+            {data?.can_shutdown && <Shutdown />}
             <button
               className="text-foreground "
               onClick={() => {

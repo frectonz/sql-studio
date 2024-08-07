@@ -63,8 +63,9 @@ const query = z.object({
   rows: z.any().array().array(),
 });
 
-const version = z.object({
+const metadata = z.object({
   version: z.string(),
+  can_shutdown: z.boolean(),
 });
 
 const $fetch = createZodFetcher();
@@ -84,7 +85,7 @@ export const fetchQuery = (value: string) =>
     },
     body: JSON.stringify({ query: value }),
   });
-export const fetchVersion = () => $fetch(version, `${BASE_URL}/version`);
+export const fetchMetadata = () => $fetch(metadata, `${BASE_URL}/metadata`);
 
 export const sendShutdown = () =>
   fetch(`${BASE_URL}/shutdown`, { method: "POST" });
