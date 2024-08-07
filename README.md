@@ -44,8 +44,8 @@ sql-studio clickhouse [URL] [USER] [PASSWORD] [DATABASE]
 
 - Overview page with common metadata.
 - Tables page with each table's metadata.
+- Queries page with more access to your db.
 - Infinite scroll rows view.
-- A custom query page that gives you more access to your db.
 
 More features available on the [releases page](https://github.com/frectonz/sql-studio/releases).
 
@@ -71,13 +71,13 @@ More features available on the [releases page](https://github.com/frectonz/sql-s
 ### Install prebuilt binaries via shell script (MacOS and Linux)
 
 ```bash
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sql-studio/releases/download/0.1.25/sql-studio-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sql-studio/releases/download/0.1.26/sql-studio-installer.sh | sh
 ```
 
 ### Install prebuilt binaries via powershell script
 
 ```powershell
-powershell -c "irm https://github.com/frectonz/sql-studio/releases/download/0.1.25/sql-studio-installer.ps1 | iex"
+powershell -c "irm https://github.com/frectonz/sql-studio/releases/download/0.1.26/sql-studio-installer.ps1 | iex"
 ```
 
 ### Updating
