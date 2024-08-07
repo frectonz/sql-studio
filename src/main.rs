@@ -152,7 +152,15 @@ async fn main() -> color_eyre::Result<()> {
     }
 
     let address = args.address.parse::<std::net::SocketAddr>()?;
-    warp::serve(routes).run(address).await;
+    let (_, fut) = warp::serve(routes).bind_with_graceful_shutdown(address, async move {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to listen to shutdown signal");
+    });
+
+    fut.await;
+    println!();
+    tracing::info!("shutting down...");
 
     Ok(())
 }
