@@ -14,7 +14,7 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
   const currentTheme = useTheme();
   const [editor, setEditor] =
     useState<monaco.editor.IStandaloneCodeEditor | null>(null);
-  const monacoEl = useRef(null);
+  const monacoEl = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (monacoEl) {
@@ -41,8 +41,6 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
           onChange?.(newEditor.getValue());
         });
 
-        // set theme
-        editor;
         return newEditor;
       });
     }
@@ -57,8 +55,8 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
   }, [currentTheme]);
 
   return (
-    <Card className="p-1">
-      <div className="w-full h-[200px] bg-background" ref={monacoEl}></div>
+    <Card className="p-2">
+      <div className="w-full h-[200px]" ref={monacoEl} />
     </Card>
   );
 };
