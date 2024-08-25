@@ -200,7 +200,7 @@ function Query({ sql, onChange, onSave, onDelete, onUpdate }: QueryProps) {
       </CardHeader>
     </Card>
   ) : (
-    <Card className="p-2">
+    <Card className="p-2 overflow-auto">
       <DataGrid
         defaultColumnOptions={{ resizable: true }}
         columns={data.columns.map((col) => ({ key: col, name: col }))}
