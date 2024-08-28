@@ -57,3 +57,6 @@ pr-run-mode = "plan"
 install-updater = true
 # Skip checking whether the specified configuration files are up to date
 allow-dirty = ["ci"]
+
+[dist.dependencies.chocolatey]
+nasm = '*'
