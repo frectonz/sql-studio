@@ -30,6 +30,12 @@ clickhouse = { version = "0.12.2", features = ["rustls-tls"] }
 duckdb = { version = "1.0.0", features = ["bundled"] }
 libsql = { version = "0.5.0", features = ["remote"] }
 
+# aws-lc-rs breaks because of nasm on windows
+ring = "0.17.8"
+rustls = { version = "0.22.4", default-features = false }
+webpki = "0.22.4"
+webpki-roots = "0.26.1"
+
 [profile.release]
 strip = true
 opt-level = "z"

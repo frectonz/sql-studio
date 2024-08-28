@@ -3327,7 +3327,9 @@ dependencies = [
  "libsql",
  "mysql_async",
  "open",
+ "ring",
  "rusqlite",
+ "rustls 0.22.4",
  "serde",
  "serde_json",
  "tokio",
@@ -3336,6 +3338,8 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "warp",
+ "webpki",
+ "webpki-roots",
 ]
 
 [[package]]
