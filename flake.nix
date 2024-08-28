@@ -6,7 +6,6 @@
       url = "github:oxalica/rust-overlay";
       inputs = {
         nixpkgs.follows = "nixpkgs";
-        flake-utils.follows = "flake-utils";
       };
     };
     crane = {
@@ -88,6 +87,7 @@
           pkgs.cargo-dist
           pkgs.cargo-watch
           pkgs.rust-analyzer
+          pkgs.cargo-outdated
           rustToolchain
 
           pkgs.nodejs
