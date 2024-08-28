@@ -57,6 +57,3 @@ install-updater = true
 allow-dirty = ["ci"]
 # Path that installers should place binaries in
 install-path = "CARGO_HOME"
-
-[workspace.metadata.dist.dependencies.chocolatey]
-nasm = '*'

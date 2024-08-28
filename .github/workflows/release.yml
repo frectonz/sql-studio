@@ -126,6 +126,9 @@ jobs:
       - name: Install dependencies
         run: |
           ${{ matrix.packages_install }}
+      - name: Install NASM on Windows
+        if: runner.os == 'Windows'
+        uses: ilammy/setup-nasm@v1
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
