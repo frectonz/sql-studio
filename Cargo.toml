@@ -4,7 +4,6 @@ version = "0.1.27"
 edition = "2021"
 repository = "https://github.com/frectonz/sql-studio"
 description = "Single binary, single command SQL Database Explorer."
-homepage = "https://sql-studio.frectonz.io/"
 authors = ["frectonz"]
 
 [dependencies]
@@ -30,12 +29,6 @@ clickhouse = { version = "0.12.2", features = ["rustls-tls"] }
 duckdb = { version = "1.0.0", features = ["bundled"] }
 libsql = { version = "0.5.0", features = ["remote"] }
 
-# aws-lc-rs breaks because of nasm on windows
-ring = "0.17.8"
-rustls = { version = "0.22.4", default-features = false }
-webpki = "0.22.4"
-webpki-roots = "0.26.1"
-
 [profile.release]
 strip = true
 opt-level = "z"
@@ -56,7 +49,7 @@ ci = "github"
 # The installers to generate for each app
 installers = ["shell", "powershell"]
 # Target platforms to build apps for (Rust target-triple syntax)
-targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu"]
 # Whether to install an updater program
 install-updater = true
 # Skip checking whether the specified configuration files are up to date
