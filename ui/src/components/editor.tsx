@@ -40,6 +40,59 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
         monaco.editor.defineTheme("sql-dark", vsPlusTheme.darkThemeData);
         monaco.editor.defineTheme("sql-light", vsPlusTheme.lightThemeData);
 
+        monaco.languages.registerCompletionItemProvider(ID_LANGUAGE_SQL, {
+          provideCompletionItems: (model, position) => {
+            const word = model.getWordUntilPosition(position);
+            const range = {
+              startLineNumber: position.lineNumber,
+              endLineNumber: position.lineNumber,
+              startColumn: word.startColumn,
+              endColumn: word.endColumn,
+            };
+            const { suggestions } = autoSuggestionCompletionItems(range);
+    
+
+            // TODO: Implement tables, columns and tables with columns suggestions
+
+            // const tables = dataTable?.tables.map((table) => table.name) || [];
+            // const tableSuggestions = tables.map((table) => ({
+            //   label: table,
+            //   kind: monaco.languages.CompletionItemKind.Variable,
+            //   insertText: `"${table}"`,
+            //   range,
+            // }));
+    
+            // console.log("tableSuggestions: ", tableSuggestions);
+    
+            // const columnSuggestions = columns.map((column) => ({
+            //   label: column,
+            //   kind: monaco.languages.CompletionItemKind.Variable,
+            //   insertText: column,
+            //   range,
+            // }));
+    
+            // const tableColumnSuggestions = tables.flatMap((table) =>
+            //   columns.map((column) => ({
+            //     label: `${table}.${column}`,
+            //     kind: monaco.languages.CompletionItemKind.Variable,
+            //     insertText: `${table}.${column}`,
+            //     range,
+            //   }))
+            // );
+    
+            // const allSuggestions = [
+            //   ...suggestions,
+            //   ...tableSuggestions,
+            //   // ...columnSuggestions,
+            //   // ...tableColumnSuggestions,
+            // ];
+    
+            // console.log("allSuggestions: ", allSuggestions);
+    
+            return { suggestions };
+          },
+        });
+
         const newEditor = monaco.editor.create(monacoEl.current!, {
           value,
           language: ID_LANGUAGE_SQL,
@@ -66,62 +119,6 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
 
     return () => editor?.dispose();
   }, [monacoEl.current]);
-
-  useEffect(() => {
-    if (!monacoEl.current) return;
-
-    monaco.languages.registerCompletionItemProvider(ID_LANGUAGE_SQL, {
-      provideCompletionItems: (model, position) => {
-        const word = model.getWordUntilPosition(position);
-        const range = {
-          startLineNumber: position.lineNumber,
-          endLineNumber: position.lineNumber,
-          startColumn: word.startColumn,
-          endColumn: word.endColumn,
-        };
-        const { suggestions } = autoSuggestionCompletionItems(range);
-
-        const tables = dataTable?.tables.map((table) => table.name) || [];
-        const tableSuggestions = tables.map((table) => ({
-          label: table,
-          kind: monaco.languages.CompletionItemKind.Variable,
-          insertText: `"${table}"`,
-          range,
-        }));
-
-        console.log("tableSuggestions: ", tableSuggestions);
-
-        // TODO: Implement column suggestions
-        const columnSuggestions = columns.map((column) => ({
-          label: column,
-          kind: monaco.languages.CompletionItemKind.Variable,
-          insertText: column,
-          range,
-        }));
-
-        // TODO: Implement table column suggestions
-        const tableColumnSuggestions = tables.flatMap((table) =>
-          columns.map((column) => ({
-            label: `${table}.${column}`,
-            kind: monaco.languages.CompletionItemKind.Variable,
-            insertText: `${table}.${column}`,
-            range,
-          }))
-        );
-
-        const allSuggestions = [
-          ...suggestions,
-          ...tableSuggestions,
-          // ...columnSuggestions,
-          // ...tableColumnSuggestions,
-        ];
-
-        console.log("allSuggestions: ", allSuggestions);
-
-        return { suggestions: allSuggestions };
-      },
-    });
-  }, [monacoEl.current, dataTable, columns]);
 
   useEffect(() => {
     if (monacoEl.current) {
