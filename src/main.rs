@@ -254,6 +254,8 @@ trait Database: Sized + Clone + Send {
     async fn table_data(&self, name: String, page: i32)
         -> color_eyre::Result<responses::TableData>;
 
+    async fn tables_with_columns(&self) -> color_eyre::Result<responses::TablesWithColumns>;
+
     async fn query(&self, query: String) -> color_eyre::Result<responses::Query>;
 }
 
@@ -314,6 +316,17 @@ impl Database for AllDbs {
             AllDbs::Mysql(x) => x.table_data(name, page).await,
             AllDbs::Duckdb(x) => x.table_data(name, page).await,
             AllDbs::Clickhouse(x) => x.table_data(name, page).await,
+        }
+    }
+
+    async fn tables_with_columns(&self) -> color_eyre::Result<responses::TablesWithColumns> {
+        match self {
+            AllDbs::Sqlite(x) => x.tables_with_columns().await,
+            AllDbs::Libsql(x) => x.tables_with_columns().await,
+            AllDbs::Postgres(x) => x.tables_with_columns().await,
+            AllDbs::Mysql(x) => x.tables_with_columns().await,
+            AllDbs::Duckdb(x) => x.tables_with_columns().await,
+            AllDbs::Clickhouse(x) => x.tables_with_columns().await,
         }
     }
 
@@ -674,6 +687,40 @@ mod sqlite {
                         .collect::<Vec<_>>();
 
                     Ok(responses::TableData { columns, rows })
+                })
+                .await?)
+        }
+
+        async fn tables_with_columns(&self) -> color_eyre::Result<responses::TablesWithColumns> {
+            Ok(self
+                .conn
+                .call(move |conn| {
+                    let mut stmt =
+                        conn.prepare(r#"SELECT name FROM sqlite_master WHERE type="table""#)?;
+                    let table_names = stmt
+                        .query_map([], |row| row.get::<_, String>(0))?
+                        .collect::<Vec<_>>();
+
+                    let mut tables = Vec::with_capacity(table_names.len());
+                    for name in table_names {
+                        let table_name = name?;
+
+                        let mut columns =
+                            conn.prepare(&format!("PRAGMA table_info('{table_name}')"))?;
+                        let columns = columns
+                            .query_map((), |r| r.get::<_, String>(1))?
+                            .filter_map(|res| res.ok())
+                            .collect::<Vec<_>>();
+
+                        tables.push(responses::TableWithColumns {
+                            table_name,
+                            columns,
+                        });
+                    }
+
+                    tables.sort_by_key(|t| t.table_name.len());
+
+                    Ok(responses::TablesWithColumns { tables })
                 })
                 .await?)
         }
@@ -1158,6 +1205,46 @@ mod libsql {
                 .collect::<Vec<_>>();
 
             Ok(responses::TableData { columns, rows })
+        }
+
+        async fn tables_with_columns(&self) -> color_eyre::Result<responses::TablesWithColumns> {
+            let conn = self.db.connect()?;
+
+            let table_names = conn
+                .query(r#"SELECT name FROM sqlite_master WHERE type="table""#, ())
+                .await?
+                .into_stream()
+                .map_ok(|r| r.get::<String>(0))
+                .collect::<Vec<_>>()
+                .await
+                .into_iter()
+                .filter_map(|r| r.ok())
+                .filter_map(|r| r.ok())
+                .collect::<Vec<_>>();
+
+            let mut tables = Vec::with_capacity(table_names.len());
+            for table_name in table_names {
+                let columns = conn
+                    .query(&format!("PRAGMA table_info('{table_name}')"), ())
+                    .await?
+                    .into_stream()
+                    .map_ok(|r| r.get::<String>(1))
+                    .collect::<Vec<_>>()
+                    .await
+                    .into_iter()
+                    .filter_map(|r| r.ok())
+                    .filter_map(|r| r.ok())
+                    .collect::<Vec<_>>();
+
+                tables.push(responses::TableWithColumns {
+                    table_name,
+                    columns,
+                });
+            }
+
+            tables.sort_by_key(|t| t.table_name.len());
+
+            Ok(responses::TablesWithColumns { tables })
         }
 
         async fn query(&self, query: String) -> color_eyre::Result<responses::Query> {
@@ -1650,6 +1737,57 @@ mod postgres {
             Ok(responses::TableData { columns, rows })
         }
 
+        async fn tables_with_columns(&self) -> color_eyre::Result<responses::TablesWithColumns> {
+            let schema = &self.schema;
+
+            let table_names = self
+                .client
+                .query(
+                    &format!(
+                        r#"
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = '{schema}'
+                        "#
+                    ),
+                    &[],
+                )
+                .await?
+                .into_iter()
+                .map(|r| r.get(0))
+                .collect::<Vec<String>>();
+
+            let mut tables = Vec::with_capacity(table_names.len());
+            for table_name in table_names {
+                let columns = self
+                    .client
+                    .query(
+                        &format!(
+                            r#"
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = '{schema}'
+                AND table_name = '{table_name}'
+                            "#
+                        ),
+                        &[],
+                    )
+                    .await?
+                    .into_iter()
+                    .map(|r| r.get(0))
+                    .collect::<Vec<String>>();
+
+                tables.push(responses::TableWithColumns {
+                    table_name,
+                    columns,
+                });
+            }
+
+            tables.sort_by_key(|t| t.table_name.len());
+
+            Ok(responses::TablesWithColumns { tables })
+        }
+
         async fn query(&self, query: String) -> color_eyre::Result<responses::Query> {
             let stmt = self.client.prepare(&query).await?;
             let columns = stmt
@@ -2050,6 +2188,42 @@ mod mysql {
             Ok(responses::TableData { columns, rows })
         }
 
+        async fn tables_with_columns(&self) -> color_eyre::Result<responses::TablesWithColumns> {
+            let mut conn = self.pool.get_conn().await?;
+
+            let table_names = r#"
+            SELECT TABLE_NAME AS name
+            FROM information_schema.tables
+            WHERE table_schema = database()
+                "#
+            .with(())
+            .map(&mut conn, |name: String| name)
+            .await?;
+
+            let mut tables = Vec::with_capacity(table_names.len());
+            for table_name in table_names {
+                let columns = r#"
+                SELECT COLUMN_NAME AS name
+                FROM information_schema.columns
+                WHERE table_schema = database() AND table_name = :table_name
+                "#
+                .with(params! {
+                    "table_name" => &table_name
+                })
+                .map(&mut conn, |name: String| name)
+                .await?;
+
+                tables.push(responses::TableWithColumns {
+                    table_name,
+                    columns,
+                });
+            }
+
+            tables.sort_by_key(|t| t.table_name.len());
+
+            Ok(responses::TablesWithColumns { tables })
+        }
+
         async fn query(&self, query: String) -> color_eyre::Result<responses::Query> {
             let mut conn = self.pool.get_conn().await?;
 
@@ -2425,6 +2599,42 @@ mod duckdb {
             .await??;
 
             Ok(responses::TableData { columns, rows })
+        }
+
+        async fn tables_with_columns(&self) -> color_eyre::Result<responses::TablesWithColumns> {
+            let c = self.conn.clone();
+            Ok(tokio::task::spawn_blocking(move || {
+                let c = c.lock().expect("could not get lock on connection");
+
+                let mut table_names_stmt = c.prepare(
+                    r#"
+                    SELECT table_name
+                    FROM information_schema.tables
+                    WHERE table_type = 'BASE TABLE'
+                        "#,
+                )?;
+                let table_names = table_names_stmt
+                    .query_map([], |row| row.get(0))?
+                    .filter_map(|n| n.ok())
+                    .collect::<Vec<String>>();
+
+                let mut tables = Vec::with_capacity(table_names.len());
+                for table_name in table_names {
+                    let sql = format!(r#"SELECT * FROM "{table_name}" WHERE false"#);
+                    let stmt = c.prepare(&sql)?;
+                    let columns = stmt.column_names();
+
+                    tables.push(responses::TableWithColumns {
+                        table_name,
+                        columns,
+                    });
+                }
+
+                tables.sort_by_key(|t| t.table_name.len());
+
+                eyre::Ok(responses::TablesWithColumns { tables })
+            })
+            .await??)
         }
 
         async fn query(&self, query: String) -> color_eyre::Result<responses::Query> {
@@ -2811,6 +3021,45 @@ mod clickhouse {
             })
         }
 
+        async fn tables_with_columns(&self) -> color_eyre::Result<responses::TablesWithColumns> {
+            let table_names = self
+                .conn
+                .query(
+                    r#"
+            SELECT name
+            FROM system.tables
+            WHERE database = currentDatabase()
+                    "#,
+                )
+                .fetch_all::<String>()
+                .await?;
+
+            let mut tables = Vec::with_capacity(table_names.len());
+            for table_name in table_names {
+                let mut columns = self
+                    .conn
+                    .query(
+                        r#"
+                        SELECT name
+                        FROM system.columns
+                        WHERE database = currentDatabase()
+                        AND table = ?
+                        "#,
+                    )
+                    .bind(&table_name)
+                    .fetch_all::<String>()
+                    .await?;
+                columns.truncate(5);
+
+                tables.push(responses::TableWithColumns {
+                    table_name,
+                    columns,
+                });
+            }
+
+            Ok(responses::TablesWithColumns { tables })
+        }
+
         async fn query(&self, _query: String) -> color_eyre::Result<responses::Query> {
             Ok(responses::Query {
                 columns: Vec::new(),
@@ -2930,6 +3179,17 @@ mod responses {
     }
 
     #[derive(Serialize)]
+    pub struct TablesWithColumns {
+        pub tables: Vec<TableWithColumns>,
+    }
+
+    #[derive(Serialize)]
+    pub struct TableWithColumns {
+        pub table_name: String,
+        pub columns: Vec<String>,
+    }
+
+    #[derive(Serialize)]
     pub struct Query {
         pub columns: Vec<String>,
         pub rows: Vec<Vec<serde_json::Value>>,
@@ -2978,6 +3238,10 @@ mod handlers {
             .and(warp::path!("tables" / String / "data"))
             .and(warp::query::<PageQuery>())
             .and_then(table_data);
+        let autocomplete = warp::path!("autocomplete")
+            .and(warp::get())
+            .and(with_state(&db))
+            .and_then(autocomplete);
         let query = warp::post()
             .and(with_state(&db))
             .and(warp::path!("query"))
@@ -2996,6 +3260,7 @@ mod handlers {
         overview
             .or(tables)
             .or(table)
+            .or(autocomplete)
             .or(query)
             .or(data)
             .or(metadata)
@@ -3048,6 +3313,14 @@ mod handlers {
                 tracing::error!("error while getting table: {e}");
                 warp::reject::custom(rejections::InternalServerError)
             })?;
+        Ok(warp::reply::json(&data))
+    }
+
+    async fn autocomplete(db: impl Database) -> Result<impl warp::Reply, warp::Rejection> {
+        let data = db.tables_with_columns().await.map_err(|e| {
+            tracing::error!("error while getting autocomplete data: {e}");
+            warp::reject::custom(rejections::InternalServerError)
+        })?;
         Ok(warp::reply::json(&data))
     }
 
