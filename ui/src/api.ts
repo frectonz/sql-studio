@@ -68,6 +68,15 @@ const metadata = z.object({
   can_shutdown: z.boolean(),
 });
 
+const autocomplete = z.object({
+  tables: z
+    .object({
+      columns: z.string().array(),
+      table_name: z.string(),
+    })
+    .array(),
+});
+
 const $fetch = createZodFetcher();
 
 export const fetchOverview = () => $fetch(overview, `${BASE_URL}/`);
@@ -86,6 +95,8 @@ export const fetchQuery = (value: string) =>
     body: JSON.stringify({ query: value }),
   });
 export const fetchMetadata = () => $fetch(metadata, `${BASE_URL}/metadata`);
+export const fetchAutocomplete = () =>
+  $fetch(autocomplete, `${BASE_URL}/autocomplete`);
 
 export const sendShutdown = () =>
   fetch(`${BASE_URL}/shutdown`, { method: "POST" });

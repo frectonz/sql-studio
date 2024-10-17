@@ -18,7 +18,7 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 
 import { cn } from "@/lib/utils";
-import { fetchQuery } from "@/api";
+import { fetchAutocomplete, fetchQuery } from "@/api";
 import {
   useQueries,
   QueriesProvider,
@@ -176,6 +176,13 @@ function Query({ sql, onChange, onSave, onDelete, onUpdate }: QueryProps) {
     enabled: autoExecute,
     retry: false,
   });
+
+  const { data: autocompleteData } = useQuery({
+    queryKey: ["autocomplete"],
+    queryFn: () => fetchAutocomplete(),
+  });
+
+  console.log(autocompleteData);
 
   const grid = !data ? (
     !autoExecute && code && error ? (
