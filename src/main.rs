@@ -2621,7 +2621,8 @@ mod duckdb {
                 let mut tables = Vec::with_capacity(table_names.len());
                 for table_name in table_names {
                     let sql = format!(r#"SELECT * FROM "{table_name}" WHERE false"#);
-                    let stmt = c.prepare(&sql)?;
+                    let mut stmt = c.prepare(&sql)?;
+                    let _ = stmt.query_map([], |_| Ok(()))?;
                     let columns = stmt.column_names();
 
                     tables.push(responses::TableWithColumns {
