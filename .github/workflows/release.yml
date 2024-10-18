@@ -107,6 +107,7 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       BUILD_MANIFEST_NAME: target/distrib/${{ join(matrix.targets, '-') }}-dist-manifest.json
+      AWS_LC_SYS_PREBUILT_NASM: 1
     steps:
       - name: enable windows longpaths
         run: |
@@ -141,7 +142,7 @@ jobs:
       - name: Build artifacts
         run: |
           # Actually do builds and make zips and whatnot
-          AWS_LC_SYS_PREBUILT_NASM=1 cargo dist build ${{ needs.plan.outputs.tag-flag }} --print=linkage --output-format=json ${{ matrix.dist_args }} > dist-manifest.json
+          cargo dist build ${{ needs.plan.outputs.tag-flag }} --print=linkage --output-format=json ${{ matrix.dist_args }} > dist-manifest.json
           echo "cargo dist ran successfully"
       - id: cargo-dist
         name: Post-build
