@@ -58,4 +58,6 @@ allow-dirty = ["ci"]
 install-path = "CARGO_HOME"
 
 [workspace.metadata.dist.dependencies.apt]
+musl = { version = "*", targets = ["x86_64-unknown-linux-musl"] }
 musl-tools = { version = "*", targets = ["x86_64-unknown-linux-musl"] }
+"g++-multilib" = { version = "*", targets = ["x86_64-unknown-linux-musl"] }
