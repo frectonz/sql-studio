@@ -108,7 +108,6 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       BUILD_MANIFEST_NAME: target/distrib/${{ join(matrix.targets, '-') }}-dist-manifest.json
       AWS_LC_SYS_PREBUILT_NASM: 1
-      RUSTFLAGS: -C link-arg=-lstdc++
     steps:
       - name: enable windows longpaths
         run: |
