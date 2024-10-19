@@ -13,23 +13,23 @@ struct Args {
     db: Command,
 
     /// The address to bind to.
-    #[arg(short, long, default_value = "127.0.0.1:3030")]
+    #[arg(short, long, env, default_value = "127.0.0.1:3030")]
     address: String,
 
     /// Timeout duration for queries sent from the query page.
-    #[clap(short, long, default_value = "5secs")]
+    #[clap(short, long, env, default_value = "5secs")]
     timeout: humantime::Duration,
 
     /// Base path to be provided to the UI. [e.g /sql-studio]
-    #[clap(short, long)]
+    #[clap(short, long, env)]
     base_path: Option<String>,
 
     /// Don't open URL in the system browser.
-    #[clap(long)]
+    #[clap(long, env)]
     no_browser: bool,
 
     /// Don't show the shutdown button in the UI.
-    #[clap(long)]
+    #[clap(long, env)]
     no_shutdown: bool,
 }
 
@@ -39,56 +39,62 @@ enum Command {
     Sqlite {
         /// Path to the sqlite database file. [use the path "preview" if you don't have an sqlite db at
         /// hand, a sample db will be created for you]
+        #[arg(env)]
         database: String,
     },
 
     /// A remote SQLite database via libSQL.
     Libsql {
         /// libSQL server address
+        #[arg(env)]
         url: String,
 
         /// libSQL authentication token.
+        #[arg(env)]
         auth_token: String,
     },
 
     /// A PostgreSQL database.
     Postgres {
         /// PostgreSQL connection url [postgresql://postgres:postgres@127.0.0.1/sample]
+        #[arg(env)]
         url: String,
 
         /// PostgreSQL schema
-        #[arg(short, long, default_value = "public")]
+        #[arg(short, long, env, default_value = "public")]
         schema: String,
     },
 
     /// A MySQL/MariaDB database.
     Mysql {
         /// mysql connection url [mysql://user:password@localhost/sample]
+        #[arg(env)]
         url: String,
     },
 
     /// A local DuckDB database.
     Duckdb {
         /// Path to the the duckdb file.
+        #[arg(env)]
         database: String,
     },
 
     /// A ClickHouse database.
     Clickhouse {
         /// Address to the clickhouse server.
-        #[arg(default_value = "http://localhost:8123")]
+        #[arg(env, default_value = "http://localhost:8123")]
         url: String,
 
         /// User we want to authentticate as.
-        #[arg(default_value = "default")]
+        #[arg(env, default_value = "default")]
         user: String,
 
         /// Password we want to authentticate with.
-        #[arg(default_value = "")]
+        #[arg(env, default_value = "")]
         password: String,
 
         /// Name of the database.
-        #[arg(default_value = "default")]
+        #[arg(env, default_value = "default")]
         database: String,
     },
 }
