@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use clap::{Parser, Subcommand};
+use color_eyre::eyre::OptionExt;
 use tokio::sync::mpsc;
 use warp::Filter;
 
@@ -140,6 +141,9 @@ async fn main() -> color_eyre::Result<()> {
     if let Some(ref base_path) = args.base_path {
         let base = format!(r#"<meta name="BASE_PATH" content="{base_path}" />"#);
         index_html = index_html.replace(r#"<!-- __BASE__ -->"#, &base);
+        index_html = index_html.replace("/__ASSETS_PATH__", &base_path);
+    } else {
+        index_html = index_html.replace("/__ASSETS_PATH__", "");
     }
 
     let cors = warp::cors()
@@ -151,7 +155,10 @@ async fn main() -> color_eyre::Result<()> {
 
     let api = warp::path("api").and(handlers::routes(db, args.no_shutdown, shutdown_tx));
     let homepage = statics::homepage(index_html.clone());
-    let statics = statics::routes();
+    let statics = statics::routes(match args.base_path.as_ref() {
+        Some(base) => base,
+        None => "",
+    });
 
     let routes = api
         .or(statics)
@@ -163,6 +170,15 @@ async fn main() -> color_eyre::Result<()> {
         let res = open::that(format!("http://{}", args.address));
         tracing::info!("tried to open in browser: {res:?}");
     }
+
+    let routes = if let Some(base_path) = args.base_path {
+        let path = base_path
+            .strip_prefix("/")
+            .ok_or_eyre("base path should have a forward slash (/) prefix")?;
+        warp::path(path.to_owned()).and(routes).boxed()
+    } else {
+        routes.boxed()
+    };
 
     let address = args.address.parse::<std::net::SocketAddr>()?;
     let (_, fut) = warp::serve(routes).bind_with_graceful_shutdown(address, async move {
@@ -197,7 +213,10 @@ mod statics {
 
     static STATIC_DIR: Dir = include_dir!("ui/dist");
 
-    async fn send_file(path: warp::path::Tail) -> Result<impl warp::Reply, warp::Rejection> {
+    async fn send_file(
+        path: warp::path::Tail,
+        base_path_replacer: String,
+    ) -> Result<impl warp::Reply, warp::Rejection> {
         let path = Path::new(path.as_str());
         let file = STATIC_DIR
             .get_file(path)
@@ -214,7 +233,12 @@ mod statics {
         let resp = Response::builder()
             .header(CONTENT_TYPE, content_type)
             .header(CACHE_CONTROL, "max-age=3600, must-revalidate")
-            .body(file.contents())
+            .body(match file.contents_utf8() {
+                Some(c) => c
+                    .replace("/__ASSETS_PATH__", &base_path_replacer)
+                    .into_bytes(),
+                None => file.contents().to_vec(),
+            })
             .unwrap();
 
         Ok(resp)
@@ -244,8 +268,13 @@ mod statics {
             })
     }
 
-    pub fn routes() -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
-        warp::path::tail().and_then(send_file)
+    pub fn routes(
+        base_path_replacer: &str,
+    ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
+        let base_path_replacer = base_path_replacer.to_owned();
+        warp::path::tail()
+            .and(warp::any().map(move || base_path_replacer.to_owned()))
+            .and_then(send_file)
     }
 }
 
