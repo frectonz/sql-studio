@@ -58,25 +58,23 @@
         '';
       });
 
-      docker = pkgs.dockerTools.streamLayeredImage {
+      docker = pkgs.dockerTools.buildLayeredImage {
         name = "sql-studio";
         tag = "latest";
         created = "now";
-        config.Cmd = [
-          "${bin}/bin/sql-studio"
-          "--no-browser"
-          "--no-shutdown"
-          "--address=0.0.0.0:3030"
-          "sqlite"
-          "preview"
-        ];
-        config.Expose = "3030";
+        contents = [ bin ];
       };
+
+      version = "0.1.28";
+      deploy = pkgs.writeShellScriptBin "deploy" ''
+        ${pkgs.skopeo}/bin/skopeo --insecure-policy copy docker-archive:${docker} docker://docker.io/frectonz/sql-studio:${version} --dest-creds="frectonz:$ACCESS_TOKEN"
+        ${pkgs.skopeo}/bin/skopeo --insecure-policy copy docker://docker.io/frectonz/sql-studio:${version} docker://docker.io/frectonz/sql-studio:latest --dest-creds="frectonz:$ACCESS_TOKEN"
+      '';
     in
     {
       packages = {
+        inherit deploy docker;
         default = bin;
-        docker = docker;
         stable = pkgs.callPackage ./package.nix { };
       };
 
