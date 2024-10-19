@@ -1,6 +1,6 @@
 [package]
 name = "sql-studio"
-version = "0.1.27"
+version = "0.1.29"
 edition = "2021"
 repository = "https://github.com/frectonz/sql-studio"
 description = "Single binary, single command SQL Database Explorer."
@@ -8,14 +8,14 @@ authors = ["frectonz"]
 
 [dependencies]
 chrono = { version = "0.4.38", features = ["serde"] }
-clap = { version = "4.5.6", features = ["derive"] }
+clap = { version = "4.5.6", features = ["derive", "env"] }
 color-eyre = "0.6.3"
 include_dir = "0.7.3"
-rusqlite = { version = "0.31.0", features = ["bundled"] }
+rusqlite = { version = "0.32.1", features = ["bundled"] }
 serde = { version = "1.0.203", features = ["derive"] }
 serde_json = "1.0.117"
 tokio = { version = "1.38.0", features = ["full"] }
-tokio-rusqlite = "0.5.1"
+tokio-rusqlite = "0.6.0"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 warp = "0.3.7"
@@ -25,9 +25,9 @@ futures = "0.3.30"
 tokio-postgres = "0.7.10"
 mysql_async = { version = "0.34.1", default-features = false, features = ["rustls-tls", "default-rustls"] }
 humantime = "2.1.0"
-clickhouse = { version = "0.12.2", features = ["rustls-tls"] }
+clickhouse = { version = "0.13.0", features = ["rustls-tls"] }
 duckdb = { version = "1.0.0", features = ["bundled"] }
-libsql = { version = "0.5.0", features = ["remote"] }
+libsql = { version = "0.6.0", features = ["remote"] }
 
 [profile.release]
 strip = true
@@ -56,6 +56,3 @@ install-updater = true
 allow-dirty = ["ci"]
 # Path that installers should place binaries in
 install-path = "CARGO_HOME"
-
-[workspace.metadata.dist.dependencies.chocolatey]
-nasm = '*'
