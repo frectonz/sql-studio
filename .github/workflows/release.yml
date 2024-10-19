@@ -107,7 +107,6 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       BUILD_MANIFEST_NAME: target/distrib/${{ join(matrix.targets, '-') }}-dist-manifest.json
-      RUSTFLAGS: ${{ join(matrix.targets, '-') == 'x86_64-pc-windows-msvc' && '-Clink-arg=/WX' || '' }}
     steps:
       - name: enable windows longpaths
         run: |
@@ -139,8 +138,6 @@ jobs:
         run: |
           cd ui
           npm run build
-      - name: Install NASM
-        uses: ilammy/setup-nasm@v1
       - name: Build artifacts
         run: |
           # Actually do builds and make zips and whatnot
