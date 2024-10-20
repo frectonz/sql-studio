@@ -33,14 +33,7 @@ export const COMMAND_CONFIG: monaco.languages.LanguageConfiguration = {
 export const autoSuggestionCompletionItems = (
     range: monaco.languages.CompletionItem['range'],
 ): monaco.languages.CompletionList => {
-    // const word = model.getWordUntilPosition(position);
-    // const range = {
-    //     startLineNumber: position.lineNumber,
-    //     endLineNumber: position.lineNumber,
-    //     startColumn: word.startColumn,
-    //     endColumn: word.endColumn,
-    // };
-    const suggestions = [
+    const _suggestions = [
         { label: "SELECT", kind: monaco.languages.CompletionItemKind.Keyword, insertText: "SELECT ", range },
         { label: "FROM", kind: monaco.languages.CompletionItemKind.Keyword, insertText: "FROM ", range },
         { label: "WHERE", kind: monaco.languages.CompletionItemKind.Keyword, insertText: "WHERE ", range },
@@ -70,9 +63,6 @@ export const autoSuggestionCompletionItems = (
         { label: "CAST", kind: monaco.languages.CompletionItemKind.Function, insertText: "CAST()", range },
         { label: "DATE", kind: monaco.languages.CompletionItemKind.Function, insertText: "DATE()", range },
         { label: "NOW", kind: monaco.languages.CompletionItemKind.Function, insertText: "NOW()", range },
-        { label: "SELECT", kind: monaco.languages.CompletionItemKind.Keyword, insertText: "SELECT ", range },
-        { label: "FROM", kind: monaco.languages.CompletionItemKind.Keyword, insertText: "FROM ", range },
-        { label: "WHERE", kind: monaco.languages.CompletionItemKind.Keyword, insertText: "WHERE ", range },
         { label: "JOIN", kind: monaco.languages.CompletionItemKind.Keyword, insertText: "JOIN ", range },
         { label: "INSERT INTO", kind: monaco.languages.CompletionItemKind.Keyword, insertText: "INSERT INTO ", range },
         { label: "UPDATE", kind: monaco.languages.CompletionItemKind.Keyword, insertText: "UPDATE ", range },
@@ -95,7 +85,12 @@ export const autoSuggestionCompletionItems = (
         { label: "CREATE MATERIALIZED VIEW", kind: monaco.languages.CompletionItemKind.Snippet, insertText: "CREATE MATERIALIZED VIEW ", range },
         { label: "OPTIMIZE TABLE", kind: monaco.languages.CompletionItemKind.Keyword, insertText: "OPTIMIZE TABLE ", range },
         { label: "ALTER TABLE", kind: monaco.languages.CompletionItemKind.Snippet, insertText: "ALTER TABLE ", range },
+        { label: "EXPLAIN", kind: monaco.languages.CompletionItemKind.Keyword, insertText: "EXPLAIN ", range },
     ];
+
+    // Remove duplicates from suggestions using filter method
+    const suggestions = _suggestions.filter((item, index, self) => self.findIndex(t => t.label === item.label) === index);
+    
 
     return { suggestions };
 };
