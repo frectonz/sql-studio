@@ -9,8 +9,9 @@ import {
   ID_LANGUAGE_SQL,
   autoSuggestionCompletionItems,
 } from "./editor.config";
-import { useGetAllTables, useGetTable } from "./editor.hook";
 import { Card } from "./ui/card";
+import { fetchAutocomplete } from "@/api";
+import { useQuery } from "@tanstack/react-query";
 
 type Props = {
   value: string;
@@ -23,8 +24,10 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
     useState<monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoEl = useRef<HTMLDivElement>(null);
 
-  const { data: dataTable } = useGetAllTables();
-  const { columns, handleSetTables } = useGetTable();
+  const { data: autoCompleteData } = useQuery({
+    queryKey: ["autocomplete"],
+    queryFn: () => fetchAutocomplete(),
+  });
 
   useEffect(() => {
     if (monacoEl) {
@@ -39,59 +42,6 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
 
         monaco.editor.defineTheme("sql-dark", vsPlusTheme.darkThemeData);
         monaco.editor.defineTheme("sql-light", vsPlusTheme.lightThemeData);
-
-        monaco.languages.registerCompletionItemProvider(ID_LANGUAGE_SQL, {
-          provideCompletionItems: (model, position) => {
-            const word = model.getWordUntilPosition(position);
-            const range = {
-              startLineNumber: position.lineNumber,
-              endLineNumber: position.lineNumber,
-              startColumn: word.startColumn,
-              endColumn: word.endColumn,
-            };
-            const { suggestions } = autoSuggestionCompletionItems(range);
-    
-
-            // TODO: Implement tables, columns and tables with columns suggestions
-
-            // const tables = dataTable?.tables.map((table) => table.name) || [];
-            // const tableSuggestions = tables.map((table) => ({
-            //   label: table,
-            //   kind: monaco.languages.CompletionItemKind.Variable,
-            //   insertText: `"${table}"`,
-            //   range,
-            // }));
-    
-            // console.log("tableSuggestions: ", tableSuggestions);
-    
-            // const columnSuggestions = columns.map((column) => ({
-            //   label: column,
-            //   kind: monaco.languages.CompletionItemKind.Variable,
-            //   insertText: column,
-            //   range,
-            // }));
-    
-            // const tableColumnSuggestions = tables.flatMap((table) =>
-            //   columns.map((column) => ({
-            //     label: `${table}.${column}`,
-            //     kind: monaco.languages.CompletionItemKind.Variable,
-            //     insertText: `${table}.${column}`,
-            //     range,
-            //   }))
-            // );
-    
-            // const allSuggestions = [
-            //   ...suggestions,
-            //   ...tableSuggestions,
-            //   // ...columnSuggestions,
-            //   // ...tableColumnSuggestions,
-            // ];
-    
-            // console.log("allSuggestions: ", allSuggestions);
-    
-            return { suggestions };
-          },
-        });
 
         const newEditor = monaco.editor.create(monacoEl.current!, {
           value,
@@ -121,24 +71,73 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
   }, [monacoEl.current]);
 
   useEffect(() => {
+
+      if(!autoCompleteData) return
+
+    monaco.languages.registerCompletionItemProvider(ID_LANGUAGE_SQL, {
+      provideCompletionItems: (model, position) => {
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn,
+        };
+        const { suggestions } = autoSuggestionCompletionItems(range);
+
+        const tableColumnSuggestions = autoCompleteData.tables.reduce((acc: any, { table_name, columns }) => {
+
+          const alias = table_name.substring(0, 3);
+
+          const table = {
+            label: table_name,
+            kind: monaco.languages.CompletionItemKind.Variable,
+            insertText: table_name,
+            range,
+          }
+
+          const aliasTable = {
+            label: `${table_name} AS ${alias}`,
+            kind: monaco.languages.CompletionItemKind.Variable,
+            insertText: `${table_name} AS ${alias}`,
+            range,
+          }
+
+          const col = columns.map((column) => ({
+            label: column,
+            kind: monaco.languages.CompletionItemKind.Variable,
+            insertText: column,
+            range,
+          }));
+
+          const tableColumn = columns.map((column) => ({
+            label: `${table_name}.${column}`,
+            kind: monaco.languages.CompletionItemKind.Variable,
+            insertText: `${table_name}.${column}`,
+            range,
+          }));
+
+          const tableColumnAlias = columns.map((column) => ({
+            label: `${alias}.${column}`,
+            kind: monaco.languages.CompletionItemKind.Variable,
+            insertText: `${alias}.${column}`,
+          }));
+
+          return [...acc, table, aliasTable, ...col, ...tableColumn, ...tableColumnAlias];
+        }, []);
+
+        return { suggestions: [...suggestions, ...tableColumnSuggestions] };
+      },
+    });
+  }, [autoCompleteData]);
+
+  useEffect(() => {
     if (monacoEl.current) {
       monaco.editor.setTheme(
         currentTheme === "light" ? "sql-light" : "sql-dark"
       );
     }
   }, [currentTheme]);
-
-  useEffect(() => {
-    if (!dataTable) return;
-
-    const tables = dataTable.tables.map((table) => table.name);
-    handleSetTables((prev) => {
-      if (prev.length === 0) return prev;
-      const isExist = prev.some((table) => tables.includes(table));
-      if (isExist) return prev;
-      return [...prev, ...tables];
-    });
-  }, [dataTable]);
 
   return (
     <Card className="p-2">
