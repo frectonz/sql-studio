@@ -93,6 +93,19 @@ sql-studio-update
 nix shell github:frectonz/sql-studio
 ```
 
+## Docker
+
+A Docker image of SQL Studio is available on [Docker Hub](https://hub.docker.com/r/frectonz/sql-studio). The following is an example of how to run SQL Studio with the Postgres driver on port `3030`.
+
+```bash
+docker run -p 3030:3030 frectonz/sql-studio /bin/sql-studio \
+  --no-browser \
+  --no-shutdown \
+  --address=0.0.0.0:3030 \
+  postgres \
+  postgres://localhost:5432/
+```
+
 ## Contributing
 
 Before executing `cargo run` you need to build the UI because the rust app statically embedded the UI files in the binary.
