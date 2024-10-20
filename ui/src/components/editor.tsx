@@ -37,7 +37,7 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
         monaco.languages.register({ id: ID_LANGUAGE_SQL });
         monaco.languages.setLanguageConfiguration(
           ID_LANGUAGE_SQL,
-          COMMAND_CONFIG
+          COMMAND_CONFIG,
         );
 
         monaco.editor.defineTheme("sql-dark", vsPlusTheme.darkThemeData);
@@ -71,8 +71,7 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
   }, [monacoEl.current]);
 
   useEffect(() => {
-
-      if(!autoCompleteData) return
+    if (!autoCompleteData) return;
 
     monaco.languages.registerCompletionItemProvider(ID_LANGUAGE_SQL, {
       provideCompletionItems: (model, position) => {
@@ -85,46 +84,55 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
         };
         const { suggestions } = autoSuggestionCompletionItems(range);
 
-        const tableColumnSuggestions = autoCompleteData.tables.reduce((acc: any, { table_name, columns }) => {
+        const tableColumnSuggestions = autoCompleteData.tables.reduce(
+          (acc: any, { table_name, columns }) => {
+            const alias = table_name.substring(0, 3);
 
-          const alias = table_name.substring(0, 3);
+            const table = {
+              label: table_name,
+              kind: monaco.languages.CompletionItemKind.Variable,
+              insertText: table_name,
+              range,
+            };
 
-          const table = {
-            label: table_name,
-            kind: monaco.languages.CompletionItemKind.Variable,
-            insertText: table_name,
-            range,
-          }
+            const aliasTable = {
+              label: `${table_name} AS ${alias}`,
+              kind: monaco.languages.CompletionItemKind.Variable,
+              insertText: `${table_name} AS ${alias}`,
+              range,
+            };
 
-          const aliasTable = {
-            label: `${table_name} AS ${alias}`,
-            kind: monaco.languages.CompletionItemKind.Variable,
-            insertText: `${table_name} AS ${alias}`,
-            range,
-          }
+            const col = columns.map((column) => ({
+              label: column,
+              kind: monaco.languages.CompletionItemKind.Variable,
+              insertText: column,
+              range,
+            }));
 
-          const col = columns.map((column) => ({
-            label: column,
-            kind: monaco.languages.CompletionItemKind.Variable,
-            insertText: column,
-            range,
-          }));
+            const tableColumn = columns.map((column) => ({
+              label: `${table_name}.${column}`,
+              kind: monaco.languages.CompletionItemKind.Variable,
+              insertText: `${table_name}.${column}`,
+              range,
+            }));
 
-          const tableColumn = columns.map((column) => ({
-            label: `${table_name}.${column}`,
-            kind: monaco.languages.CompletionItemKind.Variable,
-            insertText: `${table_name}.${column}`,
-            range,
-          }));
+            const tableColumnAlias = columns.map((column) => ({
+              label: `${alias}.${column}`,
+              kind: monaco.languages.CompletionItemKind.Variable,
+              insertText: `${alias}.${column}`,
+            }));
 
-          const tableColumnAlias = columns.map((column) => ({
-            label: `${alias}.${column}`,
-            kind: monaco.languages.CompletionItemKind.Variable,
-            insertText: `${alias}.${column}`,
-          }));
-
-          return [...acc, table, aliasTable, ...col, ...tableColumn, ...tableColumnAlias];
-        }, []);
+            return [
+              ...acc,
+              table,
+              aliasTable,
+              ...col,
+              ...tableColumn,
+              ...tableColumnAlias,
+            ];
+          },
+          [],
+        );
 
         return { suggestions: [...suggestions, ...tableColumnSuggestions] };
       },
@@ -134,7 +142,7 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
   useEffect(() => {
     if (monacoEl.current) {
       monaco.editor.setTheme(
-        currentTheme === "light" ? "sql-light" : "sql-dark"
+        currentTheme === "light" ? "sql-light" : "sql-dark",
       );
     }
   }, [currentTheme]);
