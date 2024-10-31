@@ -151,7 +151,7 @@ async fn main() -> color_eyre::Result<()> {
     if let Some(ref base_path) = args.base_path {
         let base = format!(r#"<meta name="BASE_PATH" content="{base_path}" />"#);
         index_html = index_html.replace(r#"<!-- __BASE__ -->"#, &base);
-        index_html = index_html.replace("/__ASSETS_PATH__", &base_path);
+        index_html = index_html.replace("/__ASSETS_PATH__", base_path);
     } else {
         index_html = index_html.replace("/__ASSETS_PATH__", "");
     }
