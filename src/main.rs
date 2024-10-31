@@ -55,6 +55,13 @@ enum Command {
         auth_token: String,
     },
 
+    /// A local SQLite database via libSQL.
+    LocalLibsql {
+        /// Path to the sqlite database file to be opened with libSQL.
+        #[arg(env)]
+        database: String,
+    },
+
     /// A PostgreSQL database.
     Postgres {
         /// PostgreSQL connection url [postgresql://postgres:postgres@127.0.0.1/sample]
@@ -119,6 +126,9 @@ async fn main() -> color_eyre::Result<()> {
         }
         Command::Libsql { url, auth_token } => {
             AllDbs::Libsql(libsql::Db::open(url, auth_token, args.timeout.into()).await?)
+        }
+        Command::LocalLibsql { database } => {
+            AllDbs::Libsql(libsql::Db::open_local(database, args.timeout.into()).await?)
         }
         Command::Postgres { url, schema } => {
             AllDbs::Postgres(postgres::Db::open(url, schema, args.timeout.into()).await?)
@@ -814,7 +824,7 @@ mod libsql {
 
     #[derive(Clone)]
     pub struct Db {
-        url: String,
+        name: String,
         db: Arc<libsql::Database>,
         query_timeout: Duration,
     }
@@ -850,7 +860,40 @@ mod libsql {
             );
 
             Ok(Self {
-                url,
+                name: url,
+                query_timeout,
+                db: Arc::new(db),
+            })
+        }
+
+        pub async fn open_local(
+            database: String,
+            query_timeout: Duration,
+        ) -> color_eyre::Result<Self> {
+            let db = Builder::new_local(&database).build().await?;
+            let conn = db.connect()?;
+
+            let tables = conn
+                .query(
+                    r#"
+            SELECT count(*) FROM sqlite_master
+            WHERE type="table"
+                "#,
+                    (),
+                )
+                .await?
+                .next()
+                .await?
+                .ok_or_eyre("no row returned from db")?
+                .get::<i32>(0)?;
+
+            tracing::info!(
+                "found {tables} table{} in {database}",
+                if tables == 1 { "" } else { "s" }
+            );
+
+            Ok(Self {
+                name: database,
                 query_timeout,
                 db: Arc::new(db),
             })
@@ -860,7 +903,7 @@ mod libsql {
     #[async_trait]
     impl Database for Db {
         async fn overview(&self) -> color_eyre::Result<responses::Overview> {
-            let file_name = self.url.to_owned();
+            let file_name = self.name.to_owned();
 
             let conn = self.db.connect()?;
 

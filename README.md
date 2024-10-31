@@ -16,6 +16,12 @@ sql-studio sqlite [sqlite_db]
 sql-studio libsql [url] [auth_token]
 ```
 
+### Local SQLite DB with libSQL driver
+
+```bash
+sql-studio local-libsql [database]
+```
+
 ### PostgreSQL Server
 
 ```bash
