@@ -96,7 +96,7 @@ sql-studio-update
 ## Nix
 
 ```bash
-nix shell github:frectonz/sql-studio
+nix shell nixpkgs#sql-studio
 ```
 
 ## Docker
