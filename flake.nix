@@ -95,7 +95,12 @@
 
           pkgs.httpie
           pkgs.sqlite
-        ];
+
+        ] ++ (pkgs.lib.optionals pkgs.stdenv.isDarwin (
+          with pkgs.darwin.apple_sdk.frameworks; [
+            Foundation
+          ]
+        ));
       };
 
       formatter = pkgs.nixpkgs-fmt;
