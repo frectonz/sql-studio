@@ -3235,10 +3235,10 @@ mod mssql {
                 .await?
                 .into_row()
                 .await?
-                .and_then(|row| row.get::<&str, &str>("count").map(ToOwned::to_owned))
+                .and_then(|row| row.get::<&str, &str>("name").map(ToOwned::to_owned))
                 .ok_or_eyre("couldn't get database name")?;
 
-            let db_size: i32 = client
+            let db_size: i64 = client
                 .query(
                     r#"
                 SELECT SUM(a.total_pages * 8) AS size_kb
@@ -3252,7 +3252,7 @@ mod mssql {
                 .await?
                 .into_row()
                 .await?
-                .and_then(|row| row.get("count"))
+                .and_then(|row| row.get("size_kb"))
                 .ok_or_eyre("couldn't get database size")?;
             let db_size = helpers::format_size(db_size as f64);
 
@@ -3297,7 +3297,8 @@ mod mssql {
                     r#"
                 SELECT COUNT(*) AS count
                 FROM sys.triggers t
-                JOIN sys.schemas s ON t.schema_id = s.schema_id
+                JOIN sys.tables tbl ON t.parent_id = tbl.object_id
+                JOIN sys.schemas s ON tbl.schema_id = s.schema_id
                 WHERE s.name = SCHEMA_NAME();
                     "#,
                     &[],
