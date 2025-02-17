@@ -3620,7 +3620,7 @@ mod mssql {
                 .columns()
                 .await?
                 .unwrap_or_default()
-                .into_iter()
+                .iter()
                 .map(|c| c.name().to_owned())
                 .collect();
 
@@ -3690,7 +3690,28 @@ mod mssql {
         }
 
         async fn query(&self, query: String) -> color_eyre::Result<responses::Query> {
-            todo!()
+            let mut client = self.client.lock().await;
+
+            let mut query = client.query(query, &[]).await?;
+            let columns: Vec<String> = query
+                .columns()
+                .await?
+                .unwrap_or_default()
+                .iter()
+                .map(|c| c.name().to_owned())
+                .collect();
+
+            let rows = tokio::time::timeout(
+                self.query_timeout,
+                query
+                    .into_row_stream()
+                    .map_ok(|row| row.into_iter().map(mssql_value_to_json).collect::<Vec<_>>())
+                    .filter_map(|count| async { count.ok() })
+                    .collect::<Vec<_>>(),
+            )
+            .await?;
+
+            Ok(responses::Query { columns, rows })
         }
     }
 }
