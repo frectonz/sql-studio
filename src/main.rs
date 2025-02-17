@@ -107,7 +107,10 @@ enum Command {
     },
 
     /// A Microsoft SQL Server database.
-    Mssql { connection: String },
+    Mssql {
+        /// ADO.NET connection string.
+        connection: String,
+    },
 }
 
 #[tokio::main]
