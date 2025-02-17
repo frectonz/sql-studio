@@ -3635,7 +3635,58 @@ mod mssql {
         }
 
         async fn tables_with_columns(&self) -> color_eyre::Result<responses::TablesWithColumns> {
-            todo!()
+            let mut client = self.client.lock().await;
+
+            let table_names = client
+                .query(
+                    r#"
+                SELECT t.name AS name
+                FROM sys.tables t
+                JOIN sys.schemas s ON t.schema_id = s.schema_id
+                WHERE s.name = SCHEMA_NAME();
+                    "#,
+                    &[],
+                )
+                .await?
+                .into_row_stream()
+                .try_filter_map(|row| {
+                    let out = Ok(row.get::<&str, &str>("name").map(ToOwned::to_owned));
+                    async { out }
+                })
+                .filter_map(|count| async { count.ok() })
+                .collect::<Vec<_>>()
+                .await;
+
+            let mut tables = Vec::with_capacity(table_names.len());
+            for table_name in table_names {
+                let columns = client
+                    .query(
+                        r#"
+                    SELECT column_name AS name
+                    FROM information_schema.columns
+                    WHERE table_schema = SCHEMA_NAME()
+                    AND table_name = @P1;
+                        "#,
+                        &[&table_name],
+                    )
+                    .await?
+                    .into_row_stream()
+                    .try_filter_map(|row| {
+                        let out = Ok(row.get::<&str, &str>("name").map(ToOwned::to_owned));
+                        async { out }
+                    })
+                    .filter_map(|count| async { count.ok() })
+                    .collect::<Vec<_>>()
+                    .await;
+
+                tables.push(responses::TableWithColumns {
+                    table_name,
+                    columns,
+                });
+            }
+
+            tables.sort_by_key(|t| t.table_name.len());
+            Ok(responses::TablesWithColumns { tables })
         }
 
         async fn query(&self, query: String) -> color_eyre::Result<responses::Query> {
