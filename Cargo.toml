@@ -28,6 +28,8 @@ humantime = "2.1.0"
 clickhouse = { version = "0.13.0", features = ["rustls-tls"] }
 duckdb = { version = "1.0.0", features = ["bundled"] }
 libsql = { version = "0.6.0", features = ["remote"] }
+tiberius = { version = "0.12.3", default-features = false, features = ["rustls", "tds73", "tokio", "tokio-util"] }
+tokio-util = "0.7.13"
 
 [profile.release]
 strip = true
