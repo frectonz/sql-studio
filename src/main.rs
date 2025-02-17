@@ -3510,7 +3510,77 @@ mod mssql {
         }
 
         async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
-            todo!()
+            let mut client = self.client.lock().await;
+
+            let row_count: i32 = client
+                .query(format!("SELECT count(*) AS count FROM {name}"), &[])
+                .await?
+                .into_row()
+                .await?
+                .and_then(|row| row.get("count"))
+                .ok_or_eyre("couldn't count rows")?;
+
+            let table_size: i64 = client
+                .query(
+                    r#"
+                SELECT SUM(a.total_pages) * 8 AS size_kb
+                FROM sys.partitions p
+                JOIN sys.allocation_units a ON p.partition_id = a.container_id
+                JOIN sys.tables t ON p.object_id = t.object_id
+                JOIN sys.schemas s ON t.schema_id = s.schema_id
+                WHERE s.name = SCHEMA_NAME() AND t.name = @P1;
+                    "#,
+                    &[&name],
+                )
+                .await?
+                .into_row()
+                .await?
+                .and_then(|row| row.get("size_kb"))
+                .ok_or_eyre("couldn't count rows")?;
+            let table_size = helpers::format_size(table_size as f64);
+
+            let index_count: i32 = client
+                .query(
+                    r#"
+                SELECT COUNT(*) AS count
+                FROM sys.stats s
+                JOIN sys.tables t ON s.object_id = t.object_id
+                JOIN sys.schemas sc ON t.schema_id = sc.schema_id
+                WHERE sc.name = SCHEMA_NAME() AND t.name = @P1;
+                    "#,
+                    &[&name],
+                )
+                .await?
+                .into_row()
+                .await?
+                .and_then(|row| row.get("count"))
+                .ok_or_eyre("couldn't count indexes")?;
+
+            let column_count: i32 = client
+                .query(
+                    r#"
+                SELECT COUNT(*) AS count
+                FROM sys.columns c
+                JOIN sys.tables t ON c.object_id = t.object_id
+                JOIN sys.schemas s ON t.schema_id = s.schema_id
+                WHERE s.name = SCHEMA_NAME() AND t.name = @P1;
+                    "#,
+                    &[&name],
+                )
+                .await?
+                .into_row()
+                .await?
+                .and_then(|row| row.get("count"))
+                .ok_or_eyre("couldn't count columns")?;
+
+            Ok(responses::Table {
+                name,
+                sql: None,
+                row_count,
+                table_size,
+                index_count,
+                column_count,
+            })
         }
 
         async fn table_data(
