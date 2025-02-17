@@ -3469,7 +3469,44 @@ mod mssql {
         }
 
         async fn tables(&self) -> color_eyre::Result<responses::Tables> {
-            todo!()
+            let mut client = self.client.lock().await;
+
+            let mut tables = client
+                .query(
+                    r#"
+                SELECT t.name AS name
+                FROM sys.tables t
+                JOIN sys.schemas s ON t.schema_id = s.schema_id
+                WHERE s.name = SCHEMA_NAME();
+                    "#,
+                    &[],
+                )
+                .await?
+                .into_row_stream()
+                .try_filter_map(|row| {
+                    let out = Ok(row.get::<&str, &str>("name").map(ToOwned::to_owned));
+                    async { out }
+                })
+                .map_ok(|name| Count { name, count: 0 })
+                .filter_map(|count| async { count.ok() })
+                .collect::<Vec<_>>()
+                .await;
+
+            for count in tables.iter_mut() {
+                let sql = format!("SELECT count(*) AS count FROM {}", count.name);
+
+                count.count = client
+                    .query(sql, &[])
+                    .await?
+                    .into_row()
+                    .await?
+                    .and_then(|row| row.get("count"))
+                    .ok_or_eyre("couldn't count rows")?;
+            }
+
+            tables.sort_by(|a, b| b.count.cmp(&a.count));
+
+            Ok(responses::Tables { tables })
         }
 
         async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
