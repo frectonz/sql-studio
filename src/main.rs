@@ -3171,9 +3171,9 @@ mod mssql {
     use tokio::{net::TcpStream, sync::Mutex};
 
     use crate::{
-        helpers,
+        helpers::{self, mssql_value_to_json},
         responses::{self, Count},
-        Database,
+        Database, ROWS_PER_PAGE,
     };
 
     #[derive(Clone)]
@@ -3588,7 +3588,50 @@ mod mssql {
             name: String,
             page: i32,
         ) -> color_eyre::Result<responses::TableData> {
-            todo!()
+            let mut client = self.client.lock().await;
+
+            let first_column: String = client
+                .query(
+                    r#"
+                SELECT TOP 1 column_name AS name
+                FROM information_schema.columns
+                WHERE table_schema = SCHEMA_NAME()
+                AND table_name = @P1;
+                    "#,
+                    &[&name],
+                )
+                .await?
+                .into_row()
+                .await?
+                .and_then(|row| row.get::<&str, &str>("name").map(ToOwned::to_owned))
+                .ok_or_eyre("couldn't count columns")?;
+
+            let offset = (page - 1) * ROWS_PER_PAGE;
+            let sql = format!(
+                r#"
+            SELECT * FROM "{name}"
+            ORDER BY {first_column}
+            OFFSET {offset} ROWS FETCH NEXT {ROWS_PER_PAGE} ROWS ONLY;
+                "#
+            );
+
+            let mut query = client.query(sql, &[]).await?;
+            let columns: Vec<String> = query
+                .columns()
+                .await?
+                .unwrap_or_default()
+                .into_iter()
+                .map(|c| c.name().to_owned())
+                .collect();
+
+            let rows = query
+                .into_row_stream()
+                .map_ok(|row| row.into_iter().map(mssql_value_to_json).collect::<Vec<_>>())
+                .filter_map(|count| async { count.ok() })
+                .collect::<Vec<_>>()
+                .await;
+
+            Ok(responses::TableData { columns, rows })
         }
 
         async fn tables_with_columns(&self) -> color_eyre::Result<responses::TablesWithColumns> {
@@ -3604,6 +3647,7 @@ mod mssql {
 mod helpers {
     use duckdb::types::ValueRef as DuckdbValue;
     use libsql::Value as LibsqlValue;
+    use tiberius::ColumnData;
     use tokio_rusqlite::types::ValueRef as SqliteValue;
 
     pub fn format_size(mut size: f64) -> String {
@@ -3659,6 +3703,53 @@ mod helpers {
             Decimal(x) => serde_json::json!(x),
             Text(_) => serde_json::Value::String(v.as_str().unwrap().to_owned()),
             v => serde_json::Value::String(format!("{v:?}")),
+        }
+    }
+
+    pub fn mssql_value_to_json(v: ColumnData<'static>) -> serde_json::Value {
+        use ColumnData::*;
+        match v {
+            U8(x) => serde_json::json!(x),
+            I16(x) => serde_json::json!(x),
+            I32(x) => serde_json::json!(x),
+            I64(x) => serde_json::json!(x),
+            F32(x) => serde_json::json!(x),
+            F64(x) => serde_json::json!(x),
+            Bit(x) => serde_json::json!(x),
+            String(x) => serde_json::json!(x),
+            Guid(x) => serde_json::json!(x),
+            Binary(x) => serde_json::json!(x),
+            Numeric(x) => serde_json::json!(x.map(|x| x.value())),
+            Xml(x) => serde_json::json!(x.map(|x| x.to_string())),
+            DateTime(x) => serde_json::json!(x.map(|x| format!(
+                "{} days and {} second fragments",
+                x.days(),
+                x.seconds_fragments()
+            ))),
+            SmallDateTime(x) => serde_json::json!(x.map(|x| format!(
+                "{} days and {} second fragments",
+                x.days(),
+                x.seconds_fragments()
+            ))),
+            Time(x) => serde_json::json!(x.map(|x| format!(
+                "{} increments and {} scale",
+                x.increments(),
+                x.scale()
+            ))),
+            Date(x) => serde_json::json!(x.map(|x| format!("{} days", x.days()))),
+            DateTime2(x) => serde_json::json!(x.map(|x| format!(
+                "{} days, {} increments and {} scale",
+                x.date().days(),
+                x.time().increments(),
+                x.time().scale()
+            ))),
+            DateTimeOffset(x) => serde_json::json!(x.map(|x| format!(
+                "{} days, {} increments, {} scale and {} offset",
+                x.datetime2().date().days(),
+                x.datetime2().time().increments(),
+                x.datetime2().time().scale(),
+                x.offset()
+            ))),
         }
     }
 }
