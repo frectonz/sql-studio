@@ -406,12 +406,7 @@ impl Database for AllDbs {
 mod sqlite {
     use async_trait::async_trait;
     use color_eyre::eyre::OptionExt;
-    use std::{
-        collections::HashMap,
-        path::Path,
-        sync::Arc,
-        time::{Duration, SystemTime},
-    };
+    use std::{collections::HashMap, path::Path, sync::Arc, time::Duration};
     use tokio_rusqlite::{Connection, OpenFlags};
 
     use crate::{helpers, responses, Database, ROWS_PER_PAGE, SAMPLE_DB};
@@ -787,41 +782,31 @@ mod sqlite {
         }
 
         async fn query(&self, query: String) -> color_eyre::Result<responses::Query> {
-            let start = SystemTime::now();
-            let timeout = self.query_timeout;
+            let res = self.conn.call(move |conn| {
+                let mut stmt = conn.prepare(&query)?;
+                let columns = stmt
+                    .column_names()
+                    .into_iter()
+                    .map(ToOwned::to_owned)
+                    .collect::<Vec<_>>();
 
-            let res = self
-                .conn
-                .call(move |conn| {
-                    let mut stmt = conn.prepare(&query)?;
-                    let columns = stmt
-                        .column_names()
-                        .into_iter()
-                        .map(ToOwned::to_owned)
-                        .collect::<Vec<_>>();
+                let columns_len = columns.len();
+                let rows: Result<Vec<_>, _> = stmt
+                    .query_map((), |r| {
+                        let mut rows = Vec::with_capacity(columns_len);
+                        for i in 0..columns_len {
+                            let val = helpers::rusqlite_value_to_json(r.get_ref(i)?);
+                            rows.push(val);
+                        }
+                        Ok(rows)
+                    })?
+                    .collect();
+                let rows = rows?;
 
-                    let columns_len = columns.len();
-                    let rows: Result<Vec<_>, _> = stmt
-                        .query_map((), |r| {
-                            let now = SystemTime::now();
-                            if now - timeout >= start {
-                                // just used a random error, we just want to bail out
-                                return Err(rusqlite::Error::InvalidQuery);
-                            }
+                Ok(responses::Query { columns, rows })
+            });
 
-                            let mut rows = Vec::with_capacity(columns_len);
-                            for i in 0..columns_len {
-                                let val = helpers::rusqlite_value_to_json(r.get_ref(i)?);
-                                rows.push(val);
-                            }
-                            Ok(rows)
-                        })?
-                        .collect();
-                    let rows = rows?;
-
-                    Ok(responses::Query { columns, rows })
-                })
-                .await?;
+            let res = tokio::time::timeout(self.query_timeout, res).await??;
 
             Ok(res)
         }
