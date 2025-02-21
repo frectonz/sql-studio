@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::OptionExt;
 use tokio::sync::mpsc;
@@ -297,20 +296,34 @@ mod statics {
     }
 }
 
-#[async_trait]
 trait Database: Sized + Clone + Send {
-    async fn overview(&self) -> color_eyre::Result<responses::Overview>;
+    fn overview(
+        &self,
+    ) -> impl std::future::Future<Output = color_eyre::Result<responses::Overview>> + Send;
 
-    async fn tables(&self) -> color_eyre::Result<responses::Tables>;
+    fn tables(
+        &self,
+    ) -> impl std::future::Future<Output = color_eyre::Result<responses::Tables>> + Send;
 
-    async fn table(&self, name: String) -> color_eyre::Result<responses::Table>;
+    fn table(
+        &self,
+        name: String,
+    ) -> impl std::future::Future<Output = color_eyre::Result<responses::Table>> + Send;
 
-    async fn table_data(&self, name: String, page: i32)
-        -> color_eyre::Result<responses::TableData>;
+    fn table_data(
+        &self,
+        name: String,
+        page: i32,
+    ) -> impl std::future::Future<Output = color_eyre::Result<responses::TableData>> + Send;
 
-    async fn tables_with_columns(&self) -> color_eyre::Result<responses::TablesWithColumns>;
+    fn tables_with_columns(
+        &self,
+    ) -> impl std::future::Future<Output = color_eyre::Result<responses::TablesWithColumns>> + Send;
 
-    async fn query(&self, query: String) -> color_eyre::Result<responses::Query>;
+    fn query(
+        &self,
+        query: String,
+    ) -> impl std::future::Future<Output = color_eyre::Result<responses::Query>> + Send;
 }
 
 #[derive(Clone)]
@@ -324,7 +337,6 @@ enum AllDbs {
     MsSql(mssql::Db),
 }
 
-#[async_trait]
 impl Database for AllDbs {
     async fn overview(&self) -> color_eyre::Result<responses::Overview> {
         match self {
@@ -404,7 +416,6 @@ impl Database for AllDbs {
 }
 
 mod sqlite {
-    use async_trait::async_trait;
     use color_eyre::eyre::OptionExt;
     use std::{collections::HashMap, path::Path, sync::Arc, time::Duration};
     use tokio_rusqlite::{Connection, OpenFlags};
@@ -454,7 +465,6 @@ mod sqlite {
         }
     }
 
-    #[async_trait]
     impl Database for Db {
         async fn overview(&self) -> color_eyre::Result<responses::Overview> {
             let file_name = Path::new(&self.path)
@@ -816,7 +826,6 @@ mod sqlite {
 mod libsql {
     use std::{collections::HashMap, sync::Arc, time::Duration};
 
-    use async_trait::async_trait;
     use color_eyre::eyre::OptionExt;
     use futures::{StreamExt, TryStreamExt};
     use libsql::Builder;
@@ -901,7 +910,6 @@ mod libsql {
         }
     }
 
-    #[async_trait]
     impl Database for Db {
         async fn overview(&self) -> color_eyre::Result<responses::Overview> {
             let file_name = self.name.to_owned();
@@ -1380,7 +1388,6 @@ mod libsql {
 mod postgres {
     use std::{sync::Arc, time::Duration};
 
-    use async_trait::async_trait;
     use tokio_postgres::{Client, NoTls};
 
     use crate::{
@@ -1440,7 +1447,6 @@ mod postgres {
         }
     }
 
-    #[async_trait]
     impl Database for Db {
         async fn overview(&self) -> color_eyre::Result<responses::Overview> {
             let schema = &self.schema;
@@ -1906,7 +1912,6 @@ mod postgres {
 mod mysql {
     use std::time::Duration;
 
-    use async_trait::async_trait;
     use color_eyre::eyre::OptionExt;
     use mysql_async::{prelude::*, Pool};
 
@@ -1951,7 +1956,6 @@ mod mysql {
         }
     }
 
-    #[async_trait]
     impl Database for Db {
         async fn overview(&self) -> color_eyre::Result<responses::Overview> {
             let mut conn = self.pool.get_conn().await?;
@@ -2343,7 +2347,6 @@ mod mysql {
 }
 
 mod duckdb {
-    use async_trait::async_trait;
     use color_eyre::eyre;
     use color_eyre::eyre::OptionExt;
     use duckdb::{Config, Connection};
@@ -2405,7 +2408,6 @@ mod duckdb {
         }
     }
 
-    #[async_trait]
     impl Database for Db {
         async fn overview(&self) -> color_eyre::Result<responses::Overview> {
             let file_name = Path::new(&self.path)
@@ -2754,7 +2756,6 @@ mod duckdb {
 }
 
 mod clickhouse {
-    use async_trait::async_trait;
     use clickhouse::Client;
     use color_eyre::eyre::OptionExt;
     use std::time::Duration;
@@ -2815,7 +2816,6 @@ mod clickhouse {
         }
     }
 
-    #[async_trait]
     impl Database for Db {
         async fn overview(&self) -> color_eyre::Result<responses::Overview> {
             let file_name = self.database.to_owned();
@@ -3152,7 +3152,6 @@ mod clickhouse {
 mod mssql {
     use std::{sync::Arc, time::Duration};
 
-    use async_trait::async_trait;
     use color_eyre::eyre::OptionExt;
     use futures::{StreamExt, TryStreamExt};
     use tiberius::{Client, Config};
@@ -3208,7 +3207,6 @@ mod mssql {
         }
     }
 
-    #[async_trait]
     impl Database for Db {
         async fn overview(&self) -> color_eyre::Result<responses::Overview> {
             let mut client = self.client.lock().await;
