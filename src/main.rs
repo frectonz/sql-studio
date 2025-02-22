@@ -80,6 +80,7 @@ enum Command {
     },
 
     /// A local DuckDB database.
+    #[cfg(feature = "duckdb")]
     Duckdb {
         /// Path to the the duckdb file.
         #[arg(env)]
@@ -139,6 +140,7 @@ async fn main() -> color_eyre::Result<()> {
             AllDbs::Postgres(postgres::Db::open(url, schema, args.timeout.into()).await?)
         }
         Command::Mysql { url } => AllDbs::Mysql(mysql::Db::open(url, args.timeout.into()).await?),
+        #[cfg(feature = "duckdb")]
         Command::Duckdb { database } => {
             AllDbs::Duckdb(duckdb::Db::open(database, args.timeout.into()).await?)
         }
@@ -332,6 +334,7 @@ enum AllDbs {
     Libsql(libsql::Db),
     Postgres(postgres::Db),
     Mysql(mysql::Db),
+    #[cfg(feature = "duckdb")]
     Duckdb(duckdb::Db),
     Clickhouse(Box<clickhouse::Db>),
     MsSql(mssql::Db),
@@ -344,6 +347,7 @@ impl Database for AllDbs {
             AllDbs::Libsql(x) => x.overview().await,
             AllDbs::Postgres(x) => x.overview().await,
             AllDbs::Mysql(x) => x.overview().await,
+            #[cfg(feature = "duckdb")]
             AllDbs::Duckdb(x) => x.overview().await,
             AllDbs::Clickhouse(x) => x.overview().await,
             AllDbs::MsSql(x) => x.overview().await,
@@ -356,6 +360,7 @@ impl Database for AllDbs {
             AllDbs::Libsql(x) => x.tables().await,
             AllDbs::Postgres(x) => x.tables().await,
             AllDbs::Mysql(x) => x.tables().await,
+            #[cfg(feature = "duckdb")]
             AllDbs::Duckdb(x) => x.tables().await,
             AllDbs::Clickhouse(x) => x.tables().await,
             AllDbs::MsSql(x) => x.tables().await,
@@ -368,6 +373,7 @@ impl Database for AllDbs {
             AllDbs::Libsql(x) => x.table(name).await,
             AllDbs::Postgres(x) => x.table(name).await,
             AllDbs::Mysql(x) => x.table(name).await,
+            #[cfg(feature = "duckdb")]
             AllDbs::Duckdb(x) => x.table(name).await,
             AllDbs::Clickhouse(x) => x.table(name).await,
             AllDbs::MsSql(x) => x.table(name).await,
@@ -384,6 +390,7 @@ impl Database for AllDbs {
             AllDbs::Libsql(x) => x.table_data(name, page).await,
             AllDbs::Postgres(x) => x.table_data(name, page).await,
             AllDbs::Mysql(x) => x.table_data(name, page).await,
+            #[cfg(feature = "duckdb")]
             AllDbs::Duckdb(x) => x.table_data(name, page).await,
             AllDbs::Clickhouse(x) => x.table_data(name, page).await,
             AllDbs::MsSql(x) => x.table_data(name, page).await,
@@ -396,6 +403,7 @@ impl Database for AllDbs {
             AllDbs::Libsql(x) => x.tables_with_columns().await,
             AllDbs::Postgres(x) => x.tables_with_columns().await,
             AllDbs::Mysql(x) => x.tables_with_columns().await,
+            #[cfg(feature = "duckdb")]
             AllDbs::Duckdb(x) => x.tables_with_columns().await,
             AllDbs::Clickhouse(x) => x.tables_with_columns().await,
             AllDbs::MsSql(x) => x.tables_with_columns().await,
@@ -408,6 +416,7 @@ impl Database for AllDbs {
             AllDbs::Libsql(x) => x.query(query).await,
             AllDbs::Postgres(x) => x.query(query).await,
             AllDbs::Mysql(x) => x.query(query).await,
+            #[cfg(feature = "duckdb")]
             AllDbs::Duckdb(x) => x.query(query).await,
             AllDbs::Clickhouse(x) => x.query(query).await,
             AllDbs::MsSql(x) => x.query(query).await,
@@ -2346,6 +2355,7 @@ mod mysql {
     }
 }
 
+#[cfg(feature = "duckdb")]
 mod duckdb {
     use color_eyre::eyre;
     use color_eyre::eyre::OptionExt;
@@ -3703,6 +3713,7 @@ mod mssql {
 }
 
 mod helpers {
+    #[cfg(feature = "duckdb")]
     use duckdb::types::ValueRef as DuckdbValue;
     use libsql::Value as LibsqlValue;
     use tiberius::ColumnData;
@@ -3742,6 +3753,7 @@ mod helpers {
         }
     }
 
+    #[cfg(feature = "duckdb")]
     pub fn duckdb_value_to_json(v: DuckdbValue) -> serde_json::Value {
         use DuckdbValue::*;
         match v {
