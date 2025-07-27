@@ -175,10 +175,13 @@ async fn main() -> color_eyre::Result<()> {
 
     let api = warp::path("api").and(handlers::routes(db, args.no_shutdown, shutdown_tx));
     let homepage = statics::homepage(index_html.clone());
-    let statics = statics::routes(match args.base_path.as_ref() {
-        Some(base) => base,
-        None => "",
-    });
+    let statics = statics::routes(
+        match args.base_path.as_ref() {
+            Some(base) => base,
+            None => "",
+        }
+        .to_owned(),
+    );
 
     let routes = api
         .or(statics)
@@ -191,7 +194,7 @@ async fn main() -> color_eyre::Result<()> {
         tracing::info!("tried to open in browser: {res:?}");
     }
 
-    let routes = if let Some(base_path) = args.base_path {
+    let routes = if let Some(ref base_path) = args.base_path {
         let path = base_path
             .strip_prefix("/")
             .ok_or_eyre("base path should have a forward slash (/) prefix")?;
@@ -222,13 +225,13 @@ mod statics {
     use std::path::Path;
 
     use color_eyre::eyre::OptionExt;
-    use include_dir::{include_dir, Dir};
+    use include_dir::{Dir, include_dir};
     use warp::{
-        http::{
-            header::{CACHE_CONTROL, CONTENT_TYPE},
-            Response,
-        },
         Filter,
+        http::{
+            Response,
+            header::{CACHE_CONTROL, CONTENT_TYPE},
+        },
     };
 
     static STATIC_DIR: Dir = include_dir!("ui/dist");
@@ -289,7 +292,7 @@ mod statics {
     }
 
     pub fn routes(
-        base_path_replacer: &str,
+        base_path_replacer: String,
     ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
         let base_path_replacer = base_path_replacer.to_owned();
         warp::path::tail()
@@ -429,7 +432,7 @@ mod sqlite {
     use std::{collections::HashMap, path::Path, sync::Arc, time::Duration};
     use tokio_rusqlite::{Connection, OpenFlags};
 
-    use crate::{helpers, responses, Database, ROWS_PER_PAGE, SAMPLE_DB};
+    use crate::{Database, ROWS_PER_PAGE, SAMPLE_DB, helpers, responses};
 
     #[derive(Clone)]
     pub struct Db {
@@ -839,7 +842,7 @@ mod libsql {
     use futures::{StreamExt, TryStreamExt};
     use libsql::Builder;
 
-    use crate::{helpers, responses, Database, ROWS_PER_PAGE};
+    use crate::{Database, ROWS_PER_PAGE, helpers, responses};
 
     #[derive(Clone)]
     pub struct Db {
@@ -1400,9 +1403,8 @@ mod postgres {
     use tokio_postgres::{Client, NoTls};
 
     use crate::{
-        helpers,
+        Database, ROWS_PER_PAGE, helpers,
         responses::{self, Count},
-        Database, ROWS_PER_PAGE,
     };
 
     #[derive(Clone)]
@@ -1922,12 +1924,11 @@ mod mysql {
     use std::time::Duration;
 
     use color_eyre::eyre::OptionExt;
-    use mysql_async::{prelude::*, Pool};
+    use mysql_async::{Pool, prelude::*};
 
     use crate::{
-        helpers,
+        Database, ROWS_PER_PAGE, helpers,
         responses::{self, Count},
-        Database, ROWS_PER_PAGE,
     };
 
     #[derive(Clone)]
@@ -2367,9 +2368,8 @@ mod duckdb {
     };
 
     use crate::{
-        helpers,
+        Database, ROWS_PER_PAGE, helpers,
         responses::{self, Count},
-        Database, ROWS_PER_PAGE,
     };
 
     #[derive(Clone)]
@@ -2771,8 +2771,8 @@ mod clickhouse {
     use std::time::Duration;
 
     use crate::{
-        responses::{self, Count},
         Database, ROWS_PER_PAGE,
+        responses::{self, Count},
     };
 
     #[derive(Clone)]
@@ -3168,9 +3168,9 @@ mod mssql {
     use tokio::{net::TcpStream, sync::Mutex};
 
     use crate::{
+        Database, ROWS_PER_PAGE,
         helpers::{self, mssql_value_to_json},
         responses::{self, Count},
-        Database, ROWS_PER_PAGE,
     };
 
     #[derive(Clone)]
@@ -3900,17 +3900,17 @@ mod handlers {
     use tokio::sync::mpsc;
     use warp::Filter;
 
-    use crate::{rejections, responses::Metadata, Database};
+    use crate::{Database, rejections, responses::Metadata};
 
     fn with_state<T: Clone + Send>(
         state: &T,
-    ) -> impl Filter<Extract = (T,), Error = std::convert::Infallible> + Clone {
+    ) -> impl Filter<Extract = (T,), Error = std::convert::Infallible> + Clone + use<T> {
         let state = state.to_owned();
         warp::any().map(move || state.clone())
     }
 
     pub fn routes(
-        db: impl Database,
+        db: impl Database + 'static,
         no_shutdown: bool,
         shutdown_signal: mpsc::Sender<()>,
     ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
