@@ -86,7 +86,8 @@
 
   --rdg-selection-color: hsl(var(--ring));
   --rdg-font-size: 13px;
-  --rdg-cell-frozen-box-shadow: calc(2px * var(--rdg-sign)) 0 5px -2px rgba(136, 136, 136, 0.3);
+  --rdg-cell-frozen-box-shadow: calc(2px * var(--rdg-sign)) 0 5px -2px
+    rgba(136, 136, 136, 0.3);
 }
 
 .rdg-header-row > .rdg-cell {
