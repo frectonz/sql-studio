@@ -11,8 +11,8 @@ import {
   YAxis,
   Tooltip,
   BarChart,
-  TooltipProps,
   ResponsiveContainer,
+  TooltipContentProps,
 } from "recharts";
 import {
   NameType,
@@ -277,7 +277,7 @@ export function TheBarChart({ counts }: TheBarChartProps) {
           radius={[4, 4, 0, 0]}
           className="fill-primary"
         />
-        <Tooltip content={<CustomTooltip />} cursor={{ fill: "#00ffa61e" }} />
+        <Tooltip content={CustomTooltip} cursor={{ fill: "#00ffa61e" }} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -315,7 +315,7 @@ function CustomTooltip({
   active,
   payload,
   label,
-}: TooltipProps<ValueType, NameType>) {
+}: TooltipContentProps<ValueType, NameType>) {
   if (!active || !payload || !payload.length) return null;
 
   return (
