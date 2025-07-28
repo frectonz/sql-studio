@@ -41,7 +41,7 @@
         pname = "ui";
         version = "0.0.0";
         src = ./ui;
-        npmDepsHash = "sha256-NCq8RuaC+dO6Zbgl1ucJxhJrVZ69Va3b2/gYn4fThAw=";
+        npmDepsHash = "sha256-8t92weQfiVrQvDt68amBmKzxjqbIPpSPBYFD2aa5lNM=";
         installPhase = ''
           cp -pr --reflink=auto -- dist "$out/"
         '';
