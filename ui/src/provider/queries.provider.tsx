@@ -35,21 +35,24 @@ export const {
   useStore: useQueries,
 } = createStore((queries, action: Action) => {
   switch (action.type) {
-    case "SAVE_QUERY":
+    case "SAVE_QUERY": {
       const saved = [...queries, action.data];
       localStorage.setItem("queries", JSON.stringify(saved));
       return saved;
+    }
 
-    case "UPDATE_QUERY":
+    case "UPDATE_QUERY": {
       const updated = queries.map((q, i) =>
         i === action.index ? { ...q, query: action.data } : q,
       );
       localStorage.setItem("queries", JSON.stringify(updated));
       return updated;
+    }
 
-    case "DELETE_QUERY":
+    case "DELETE_QUERY": {
       const deleted = queries.filter((_, i) => i !== action.index);
       localStorage.setItem("queries", JSON.stringify(deleted));
       return deleted;
+    }
   }
 }, initialState());

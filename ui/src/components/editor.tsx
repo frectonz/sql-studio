@@ -68,7 +68,7 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
     }
 
     return () => editor?.dispose();
-  }, [monacoEl.current]);
+  }, [editor?.dispose, onChange, value]);
 
   useEffect(() => {
     if (!autoCompleteData) return;
@@ -85,7 +85,20 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
         const { suggestions } = autoSuggestionCompletionItems(range);
 
         const tableColumnSuggestions = autoCompleteData.tables.reduce(
-          (acc: any, { table_name, columns }) => {
+          (
+            acc: {
+              label: string;
+              kind: monaco.languages.CompletionItemKind;
+              insertText: string;
+              range: {
+                startLineNumber: number;
+                endLineNumber: number;
+                startColumn: number;
+                endColumn: number;
+              };
+            }[],
+            { table_name, columns },
+          ) => {
             const alias = table_name.substring(0, 3);
 
             const table = {
@@ -120,6 +133,7 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
               label: `${alias}.${column}`,
               kind: monaco.languages.CompletionItemKind.Variable,
               insertText: `${alias}.${column}`,
+              range,
             }));
 
             return [

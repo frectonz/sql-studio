@@ -217,7 +217,7 @@ function Query({ sql, onChange, onSave, onDelete, onUpdate }: QueryProps) {
 
   useEffect(() => {
     onChange && onChange(code);
-  }, [code]);
+  }, [code, onChange]);
 
   return (
     <div className="grid gap-8">
