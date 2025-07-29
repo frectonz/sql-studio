@@ -41,7 +41,7 @@
         pname = "ui";
         version = "0.0.0";
         src = ./ui;
-        npmDepsHash = "";
+        npmDepsHash = "sha256-5O6nRW3WW/yICJqHij7ROL1WJmZVTwVMRlvKQPrymSo=";
         installPhase = ''
           cp -pr --reflink=auto -- dist "$out/"
         '';
@@ -92,7 +92,7 @@
 
           pkgs.httpie
           pkgs.sqlite
-
+          pkgs.prefetch-npm-deps
         ] ++ (pkgs.lib.optionals pkgs.stdenv.isDarwin (
           with pkgs.darwin.apple_sdk.frameworks; [
             Foundation
