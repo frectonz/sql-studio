@@ -41,7 +41,7 @@
         pname = "ui";
         version = "0.0.0";
         src = ./ui;
-        npmDepsHash = "sha256-0kDlHYABXMKwf/jr/0E5voRcEJ+/EPtVqHvYpZ4jiLo=";
+        npmDepsHash = "sha256-5HbInDZNfzBScEJl51UnOARe+08qC+igzjum48RY5ZA=";
         installPhase = ''
           cp -pr --reflink=auto -- dist "$out/"
         '';
@@ -70,7 +70,7 @@
     in
     {
       packages = {
-        inherit deploy docker;
+        inherit deploy docker ui;
         default = bin;
         stable = pkgs.callPackage ./package.nix { };
       };

@@ -19,7 +19,7 @@ let
   ui = buildNpmPackage {
     inherit version src;
     pname = "${pname}-ui";
-    npmDepsHash = "sha256-0kDlHYABXMKwf/jr/0E5voRcEJ+/EPtVqHvYpZ4jiLo=";
+    npmDepsHash = "sha256-5HbInDZNfzBScEJl51UnOARe+08qC+igzjum48RY5ZA=";
     sourceRoot = "${src.name}/ui";
     installPhase = ''
       cp -pr --reflink=auto -- dist "$out/"
