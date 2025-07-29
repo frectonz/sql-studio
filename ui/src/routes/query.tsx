@@ -2,7 +2,7 @@ import "react-data-grid/lib/styles.css";
 import { useEffect, useState } from "react";
 
 import { z } from "zod";
-import DataGrid from "react-data-grid";
+import { DataGrid } from "react-data-grid";
 import { useQuery } from "@tanstack/react-query";
 import { useDebounce } from "@uidotdev/usehooks";
 import {

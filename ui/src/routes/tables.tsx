@@ -7,7 +7,7 @@ import {
   Table as TableIcon,
 } from "lucide-react";
 import { z } from "zod";
-import DataGrid from "react-data-grid";
+import { DataGrid } from "react-data-grid";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { CodeBlock, irBlack as CodeDarkTheme } from "react-code-blocks";
