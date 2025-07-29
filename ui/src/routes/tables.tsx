@@ -56,7 +56,7 @@ function Tables() {
       <TabsList>
         {data.tables.map((n, i) => (
           <TabsTrigger key={i} value={i.toString()}>
-            <Link search={{ table: n.name }}>
+            <Link to="/tables" search={{ table: n.name }}>
               {n.name} [{n.count.toLocaleString()}]
             </Link>
           </TabsTrigger>
