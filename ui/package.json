@@ -23,7 +23,7 @@
     "@tanstack/react-router": "^1.130.2",
     "@tanstack/react-table": "^8.21.3",
     "@uidotdev/usehooks": "^2.4.1",
-    "class-variance-authority": "^0.7.0",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.533.0",
     "monaco-editor": "^0.52.2",
@@ -48,7 +48,6 @@
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
     "@vitejs/plugin-react": "^4.2.1",
-    "postcss": "^8.4.38",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.2.2",
     "vite": "^5.2.0"
