@@ -1,62 +1,152 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
+@plugin 'tailwindcss-animate';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-\*: initial;
+  --font-mono: JetBrains Mono;
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+
+    to {
+      height: 0;
+    }
+  }
+}
+
+@utility container {
+  margin-inline: auto;
+  padding-inline: 2rem;
+
+  @media (width >= --theme(--breakpoint-sm)) {
+    max-width: none;
+  }
+
+  @media (width >= 1400px) {
+    max-width: 1400px;
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
 @layer base {
-  :root {
-    --text-foreground: 0 0% 0%;
-    --background: 175 30% 98%;
-    --foreground: 175 59% 4%;
-    --muted: 145 20% 95%;
-    --muted-foreground: 145 15% 37%;
-    --popover: 175 30% 97%;
-    --popover-foreground: 175 59% 3%;
-    --card: 175 30% 97%;
-    --card-foreground: 175 59% 3%;
-    --border: 175 4% 90%;
-    --input: 175 4% 90%;
-    --primary: 175 91% 12%;
-    --primary-foreground: 159 100% 50%;
-    --secondary: 145 91% 12%;
-    --secondary-foreground: 145 91% 52%;
-    --accent: 175 91% 12%;
-    --accent-foreground: 159 100% 50%;
-    --destructive: 19 92% 33%;
-    --destructive-foreground: 0 0% 100%;
-    --ring: 175 91% 12%;
-    --radius: 0.5rem;
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
   }
+}
 
-  .dark {
-    --background: 159 65% 4%;
-    --foreground: 159 10% 97.5%;
+:root {
+  --text-foreground: hsl(0 0% 0%);
+  --background: hsl(175 30% 98%);
+  --foreground: hsl(175 59% 4%);
+  --muted: hsl(145 20% 95%);
+  --muted-foreground: hsl(145 15% 37%);
+  --popover: hsl(175 30% 97%);
+  --popover-foreground: hsl(175 59% 3%);
+  --card: hsl(175 30% 97%);
+  --card-foreground: hsl(175 59% 3%);
+  --border: hsl(175 4% 90%);
+  --input: hsl(175 4% 90%);
+  --primary: hsl(175 91% 12%);
+  --primary-foreground: hsl(159 100% 50%);
+  --secondary: hsl(145 91% 12%);
+  --secondary-foreground: hsl(145 91% 52%);
+  --accent: hsl(175 91% 12%);
+  --accent-foreground: hsl(159 100% 50%);
+  --destructive: hsl(19 92% 33%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --ring: hsl(175 91% 12%);
+  --radius: hsl(0.5rem);
+}
 
-    --muted: 159 50% 15%;
-    --muted-foreground: 159 10% 55%;
+.dark {
+  --background: hsl(159 65% 4%);
+  --foreground: hsl(159 10% 97.5%);
 
-    --popover: 159 45% 6.5%;
-    --popover-foreground: 159 10% 97.5%;
+  --muted: hsl(159 50% 15%);
+  --muted-foreground: hsl(159 10% 55%);
 
-    --card: 159 45% 6.5%;
-    --card-foreground: 159 10% 97.5%;
+  --popover: hsl(159 45% 6.5%);
+  --popover-foreground: hsl(159 10% 97.5%);
 
-    --border: 159 50% 15%;
-    --input: 159 50% 15%;
+  --card: hsl(159 45% 6.5%);
+  --card-foreground: hsl(159 10% 97.5%);
 
-    --primary: 159 100% 50%;
-    --primary-foreground: 159 10% 5%;
+  --border: hsl(159 50% 15%);
+  --input: hsl(159 50% 15%);
 
-    --secondary: 159 50% 15%;
-    --secondary-foreground: 159 10% 97.5%;
+  --primary: hsl(159 100% 50%);
+  --primary-foreground: hsl(159 10% 5%);
 
-    --accent: 159 50% 15%;
-    --accent-foreground: 159 10% 97.5%;
+  --secondary: hsl(159 50% 15%);
+  --secondary-foreground: hsl(159 10% 97.5%);
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 159 10% 97.5%;
+  --accent: hsl(159 50% 15%);
+  --accent-foreground: hsl(159 10% 97.5%);
 
-    --ring: 159 100% 50%;
-  }
+  --destructive: hsl(0 62.8% 30.6%);
+  --destructive-foreground: hsl(159 10% 97.5%);
+
+  --ring: hsl(159 100% 50%);
 }
 
 @layer base {
@@ -70,28 +160,28 @@
 }
 
 .rdg {
-  --rdg-color: hsl(var(--foreground));
-  --rdg-border-color: hsl(var(--border));
-  --rdg-summary-border-color: hsl(var(--border));
-  --rdg-background-color: hsl(var(--primary-background));
-  --rdg-header-background-color: hsl(var(--background));
-  --rdg-header-draggable-background-color: hsl(var(--background));
-  --rdg-row-hover-background-color: hsl(var(--muted));
-  --rdg-row-selected-background-color: hsl(var(--muted));
-  --rdg-row-selected-hover-background-color: hsl(var(--muted));
-  --rdg-checkbox-color: hsl(207deg 100% 29%);
-  --rdg-checkbox-focus-color: hsl(207deg 100% 69%);
+  --rdg-color: var(--foreground);
+  --rdg-border-color: var(--border);
+  --rdg-summary-border-color: var(--border);
+  --rdg-background-color: var(--primary-background);
+  --rdg-header-background-color: var(--background);
+  --rdg-header-draggable-background-color: var(--background);
+  --rdg-row-hover-background-color: var(--muted);
+  --rdg-row-selected-background-color: var(--muted);
+  --rdg-row-selected-hover-background-color: var(--muted);
+  --rdg-checkbox-color: 207deg 100% 29%;
+  --rdg-checkbox-focus-color: 207deg 100% 69%;
   --rdg-checkbox-disabled-border-color: #ccc;
   --rdg-checkbox-disabled-background-color: #ddd;
 
-  --rdg-selection-color: hsl(var(--ring));
+  --rdg-selection-color: var(--ring);
   --rdg-font-size: 13px;
   --rdg-cell-frozen-box-shadow: calc(2px * var(--rdg-sign)) 0 5px -2px
     rgba(136, 136, 136, 0.3);
 }
 
 .rdg-header-row > .rdg-cell {
-  border: 1px solid hsl(var(--border));
+  border: 1px solid var(--border);
 }
 
 .rdg-cell[aria-selected="true"] {
