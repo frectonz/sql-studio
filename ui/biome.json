@@ -7,12 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": [
-      "**",
-      "!dist/**",
-      "!.tanstack/**",
-      "!src/routeTree.gen.ts"
-    ]
+    "includes": ["**", "!dist/**", "!.tanstack/**", "!src/routeTree.gen.ts"]
   },
   "formatter": {
     "enabled": true,
@@ -102,12 +97,7 @@
   },
   "overrides": [
     {
-      "includes": [
-        "*.ts",
-        "*.tsx",
-        "*.mts",
-        "*.cts"
-      ],
+      "includes": ["*.ts", "*.tsx", "*.mts", "*.cts"],
       "linter": {
         "rules": {
           "complexity": {

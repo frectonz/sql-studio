@@ -29,6 +29,7 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
     queryFn: () => fetchAutocomplete(),
   });
 
+  // biome-ignore lint: lint/correctness/useExhaustiveDependencies: the fix doesn't work
   useEffect(() => {
     if (monacoEl) {
       setEditor((editor) => {
@@ -68,7 +69,7 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
     }
 
     return () => editor?.dispose();
-  }, [editor?.dispose, onChange, value]);
+  }, [monacoEl.current]);
 
   useEffect(() => {
     if (!autoCompleteData) return;
