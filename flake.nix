@@ -62,7 +62,7 @@
         contents = [ bin ];
       };
 
-      version = "0.1.37";
+      version = "0.1.38";
       deploy = pkgs.writeShellScriptBin "deploy" ''
         ${pkgs.skopeo}/bin/skopeo --insecure-policy copy docker-archive:${docker} docker://docker.io/frectonz/sql-studio:${version} --dest-creds="frectonz:$ACCESS_TOKEN"
         ${pkgs.skopeo}/bin/skopeo --insecure-policy copy docker://docker.io/frectonz/sql-studio:${version} docker://docker.io/frectonz/sql-studio:latest --dest-creds="frectonz:$ACCESS_TOKEN"
