@@ -7,7 +7,7 @@
 }:
 let
   pname = "sql-studio";
-  version = "0.1.41";
+  version = "0.1.42";
 
   src = fetchFromGitHub {
     owner = "frectonz";
