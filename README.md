@@ -90,7 +90,7 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sql-studio/rel
 ### Install prebuilt binaries via powershell script
 
 ```powershell
-powershell -c "irm https://github.com/frectonz/sql-studio/releases/download/0.1.42/sql-studio-installer.ps1 | iex"
+powershell -ExecutionPolicy Bypass -c "irm https://github.com/frectonz/sql-studio/releases/download/0.1.42/sql-studio-installer.ps1 | iex"
 ```
 
 ### Updating
