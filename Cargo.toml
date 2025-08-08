@@ -28,6 +28,8 @@ duckdb = { version = "1.3.2", features = ["bundled"] }
 libsql = { version = "0.9.19", features = ["remote"] }
 tiberius = { version = "0.12.3", default-features = false, features = ["rustls", "tds73", "tokio", "tokio-util"] }
 tokio-util = "0.7.15"
+native-tls = "0.2.14"
+postgres-native-tls = "0.5.1"
 
 [profile.release]
 strip = true

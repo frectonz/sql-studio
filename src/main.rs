@@ -1391,7 +1391,7 @@ mod libsql {
 mod postgres {
     use std::{sync::Arc, time::Duration};
 
-    use tokio_postgres::{Client, NoTls};
+    use tokio_postgres::Client;
 
     use crate::{
         Database, ROWS_PER_PAGE, helpers,
@@ -1411,7 +1411,10 @@ mod postgres {
             schema: String,
             query_timeout: Duration,
         ) -> color_eyre::Result<Self> {
-            let (client, connection) = tokio_postgres::connect(&url, NoTls).await?;
+            let connector = native_tls::TlsConnector::builder().build()?;
+            let connector = postgres_native_tls::MakeTlsConnector::new(connector);
+
+            let (client, connection) = tokio_postgres::connect(&url, connector).await?;
 
             // The connection object performs the actual communication with the database,
             // so spawn it off to run on its own.
