@@ -34,7 +34,8 @@
       };
       commonArgs = {
         inherit src;
-        buildInputs = [ pkgs.git ];
+        buildInputs = [ pkgs.git pkgs.pkg-config ];
+        nativeBuildInputs = [ pkgs.openssl ];
       };
 
       ui = pkgs.buildNpmPackage {
