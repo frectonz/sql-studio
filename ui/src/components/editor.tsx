@@ -1,17 +1,19 @@
-import "@/editorWorker";
-import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
-import { vsPlusTheme } from "monaco-sql-languages";
-import { FunctionComponent, useEffect, useRef, useState } from "react";
+import { FunctionComponent, useEffect, useRef } from "react";
 
-import { useTheme } from "@/provider/theme.provider";
+import type { IDisposable } from "monaco-editor";
+import { vsPlusTheme } from "monaco-sql-languages";
+import EditorComponent, { useMonaco } from "@monaco-editor/react";
+
 import {
   COMMAND_CONFIG,
   ID_LANGUAGE_SQL,
   autoSuggestionCompletionItems,
 } from "./editor.config";
-import { Card } from "./ui/card";
+
 import { fetchAutocomplete } from "@/api";
+import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
+import { useTheme } from "@/provider/theme.provider";
 
 type Props = {
   value: string;
@@ -20,151 +22,125 @@ type Props = {
 
 export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
   const currentTheme = useTheme();
-  const [editor, setEditor] =
-    useState<monaco.editor.IStandaloneCodeEditor | null>(null);
-  const monacoEl = useRef<HTMLDivElement>(null);
+  const monacoInstance = useMonaco();
+  const providerRef = useRef<IDisposable | null>(null);
 
   const { data: autoCompleteData } = useQuery({
     queryKey: ["autocomplete"],
     queryFn: () => fetchAutocomplete(),
   });
 
-  // biome-ignore lint: lint/correctness/useExhaustiveDependencies: the fix doesn't work
+  // Configure Monaco
   useEffect(() => {
-    if (monacoEl) {
-      setEditor((editor) => {
-        if (editor) return editor;
+    if (!monacoInstance) return;
 
-        monaco.languages.register({ id: ID_LANGUAGE_SQL });
-        monaco.languages.setLanguageConfiguration(
-          ID_LANGUAGE_SQL,
-          COMMAND_CONFIG,
-        );
+    monacoInstance.languages.register({ id: ID_LANGUAGE_SQL });
+    monacoInstance.languages.setLanguageConfiguration(
+      ID_LANGUAGE_SQL,
+      COMMAND_CONFIG
+    );
 
-        monaco.editor.defineTheme("sql-dark", vsPlusTheme.darkThemeData);
-        monaco.editor.defineTheme("sql-light", vsPlusTheme.lightThemeData);
+    monacoInstance.editor.defineTheme("sql-dark", vsPlusTheme.darkThemeData);
+    monacoInstance.editor.defineTheme("sql-light", vsPlusTheme.lightThemeData);
+  }, [monacoInstance]);
 
-        const newEditor = monaco.editor.create(monacoEl.current!, {
-          value,
-          language: ID_LANGUAGE_SQL,
-          minimap: {
-            enabled: false,
-          },
-          fontSize: 20,
-          padding: {
-            top: 20,
-            bottom: 20,
-          },
-          fontFamily: "JetBrains Mono",
-          automaticLayout: true,
-          readOnly: onChange === undefined,
-        });
-
-        newEditor.onDidChangeModelContent((_) => {
-          onChange?.(newEditor.getValue());
-        });
-
-        return newEditor;
-      });
-    }
-
-    return () => editor?.dispose();
-  }, [monacoEl.current]);
-
+  // Register completion provider
   useEffect(() => {
-    if (!autoCompleteData) return;
+    if (!monacoInstance || !autoCompleteData) return;
 
-    monaco.languages.registerCompletionItemProvider(ID_LANGUAGE_SQL, {
-      provideCompletionItems: (model, position) => {
-        const word = model.getWordUntilPosition(position);
-        const range = {
-          startLineNumber: position.lineNumber,
-          endLineNumber: position.lineNumber,
-          startColumn: word.startColumn,
-          endColumn: word.endColumn,
-        };
-        const { suggestions } = autoSuggestionCompletionItems(range);
+    providerRef.current?.dispose();
 
-        const tableColumnSuggestions = autoCompleteData.tables.reduce(
-          (
-            acc: {
-              label: string;
-              kind: monaco.languages.CompletionItemKind;
-              insertText: string;
-              range: {
-                startLineNumber: number;
-                endLineNumber: number;
-                startColumn: number;
-                endColumn: number;
+    providerRef.current =
+      monacoInstance.languages.registerCompletionItemProvider(ID_LANGUAGE_SQL, {
+        provideCompletionItems: (model, position) => {
+          const word = model.getWordUntilPosition(position);
+          const range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn,
+          };
+          const { suggestions } = autoSuggestionCompletionItems(range);
+
+          const tableColumnSuggestions = autoCompleteData.tables.flatMap(
+            ({ table_name, columns }) => {
+              const alias = table_name.substring(0, 3);
+
+              const table = {
+                label: table_name,
+                kind: monacoInstance.languages.CompletionItemKind.Variable,
+                insertText: table_name,
+                range,
               };
-            }[],
-            { table_name, columns },
-          ) => {
-            const alias = table_name.substring(0, 3);
 
-            const table = {
-              label: table_name,
-              kind: monaco.languages.CompletionItemKind.Variable,
-              insertText: table_name,
-              range,
-            };
+              const aliasTable = {
+                label: `${table_name} AS ${alias}`,
+                kind: monacoInstance.languages.CompletionItemKind.Variable,
+                insertText: `${table_name} AS ${alias}`,
+                range,
+              };
 
-            const aliasTable = {
-              label: `${table_name} AS ${alias}`,
-              kind: monaco.languages.CompletionItemKind.Variable,
-              insertText: `${table_name} AS ${alias}`,
-              range,
-            };
+              const col = columns.map((column) => ({
+                label: column,
+                kind: monacoInstance.languages.CompletionItemKind.Variable,
+                insertText: column,
+                range,
+              }));
 
-            const col = columns.map((column) => ({
-              label: column,
-              kind: monaco.languages.CompletionItemKind.Variable,
-              insertText: column,
-              range,
-            }));
+              const tableColumn = columns.map((column) => ({
+                label: `${table_name}.${column}`,
+                kind: monacoInstance.languages.CompletionItemKind.Variable,
+                insertText: `${table_name}.${column}`,
+                range,
+              }));
 
-            const tableColumn = columns.map((column) => ({
-              label: `${table_name}.${column}`,
-              kind: monaco.languages.CompletionItemKind.Variable,
-              insertText: `${table_name}.${column}`,
-              range,
-            }));
+              const tableColumnAlias = columns.map((column) => ({
+                label: `${alias}.${column}`,
+                kind: monacoInstance.languages.CompletionItemKind.Variable,
+                insertText: `${alias}.${column}`,
+                range,
+              }));
 
-            const tableColumnAlias = columns.map((column) => ({
-              label: `${alias}.${column}`,
-              kind: monaco.languages.CompletionItemKind.Variable,
-              insertText: `${alias}.${column}`,
-              range,
-            }));
+              return [
+                table,
+                aliasTable,
+                ...col,
+                ...tableColumn,
+                ...tableColumnAlias,
+              ];
+            }
+          );
 
-            return [
-              ...acc,
-              table,
-              aliasTable,
-              ...col,
-              ...tableColumn,
-              ...tableColumnAlias,
-            ];
-          },
-          [],
-        );
+          return { suggestions: [...suggestions, ...tableColumnSuggestions] };
+        },
+      });
 
-        return { suggestions: [...suggestions, ...tableColumnSuggestions] };
-      },
-    });
-  }, [autoCompleteData]);
+    return () => {
+      providerRef.current?.dispose();
+      providerRef.current = null;
+    };
+  }, [monacoInstance, autoCompleteData]);
 
-  useEffect(() => {
-    if (monacoEl.current) {
-      monaco.editor.setTheme(
-        currentTheme === "light" ? "sql-light" : "sql-dark",
-      );
-    }
-  }, [currentTheme]);
+  // Avoid rendering until theme is known
+  if (!currentTheme) return null;
 
   return (
     <Card className="p-2">
-      <div className="w-full h-[200px]" ref={monacoEl} />
+      <EditorComponent
+        height="200px"
+        value={value}
+        onChange={(val) => onChange?.(val ?? "")}
+        language={ID_LANGUAGE_SQL}
+        theme={currentTheme === "light" ? "sql-light" : "sql-dark"}
+        options={{
+          minimap: { enabled: false },
+          fontSize: 20,
+          fontFamily: "JetBrains Mono",
+          padding: { top: 20, bottom: 20 },
+          automaticLayout: true,
+          readOnly: onChange === undefined,
+        }}
+      />
     </Card>
   );
 };
