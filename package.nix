@@ -1,9 +1,10 @@
-{ lib
-, stdenv
-, darwin
-, fetchFromGitHub
-, rustPlatform
-, buildNpmPackage
+{
+  lib,
+  stdenv,
+  darwin,
+  fetchFromGitHub,
+  rustPlatform,
+  buildNpmPackage,
 }:
 let
   pname = "sql-studio";
