@@ -110,13 +110,7 @@
             pkgs.httpie
             pkgs.sqlite
             pkgs.prefetch-npm-deps
-          ]
-          ++ (pkgs.lib.optionals pkgs.stdenv.isDarwin (
-            with pkgs.darwin.apple_sdk.frameworks;
-            [
-              Foundation
-            ]
-          ));
+          ];
         };
 
         formatter = pkgs.treefmt.withConfig {
