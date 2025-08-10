@@ -8,13 +8,13 @@
 }:
 let
   pname = "sql-studio";
-  version = "0.1.44";
+  version = "0.1.45";
 
   src = fetchFromGitHub {
     owner = "frectonz";
     repo = pname;
     rev = version;
-    hash = "sha256-ZWGV4DYf+85LIGVDc8hcWSEJsM6UisuCB2Wd2kiw/sk=";
+    hash = "sha256-RVVCmlfembWI+MLxt+96V2Xmczkscuw79aNPWtYlGG8=";
   };
 
   ui = buildNpmPackage {
