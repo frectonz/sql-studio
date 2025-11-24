@@ -3,6 +3,7 @@ import { FunctionComponent, useEffect, useRef } from "react";
 import type { IDisposable } from "monaco-editor";
 import { vsPlusTheme } from "monaco-sql-languages";
 import EditorComponent, { useMonaco } from "@monaco-editor/react";
+import { format as formatSql } from "sql-formatter";
 
 import {
   COMMAND_CONFIG,
@@ -24,6 +25,7 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
   const currentTheme = useTheme();
   const monacoInstance = useMonaco();
   const providerRef = useRef<IDisposable | null>(null);
+  const formatProviderRefs = useRef<IDisposable[]>([]);
 
   const { data: autoCompleteData } = useQuery({
     queryKey: ["autocomplete"],
@@ -121,6 +123,76 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
     };
   }, [monacoInstance, autoCompleteData]);
 
+  // Register formatting providers (document and range)
+  useEffect(() => {
+    if (!monacoInstance) return;
+
+    // Dispose previous providers if any
+    formatProviderRefs.current.forEach((d) => d.dispose());
+    formatProviderRefs.current = [];
+
+    const getOptions = () => ({
+      language: "sqlite" as const,
+      keywordCase: "upper" as const,
+      indent: "  ",
+    });
+
+    const documentProvider =
+      monacoInstance.languages.registerDocumentFormattingEditProvider(
+        ID_LANGUAGE_SQL,
+        {
+          provideDocumentFormattingEdits: (model) => {
+            const fullRange = model.getFullModelRange();
+            const text = model.getValue();
+            try {
+              const formatted = formatSql(text, getOptions());
+              return [
+                {
+                  range: fullRange,
+                  text: formatted,
+                },
+              ];
+            } catch (err) {
+              // Keep UX stable if formatting fails
+              // eslint-disable-next-line no-console
+              console.error("SQL formatting error (document)", err);
+              return [];
+            }
+          },
+        }
+      );
+
+    const rangeProvider =
+      monacoInstance.languages.registerDocumentRangeFormattingEditProvider(
+        ID_LANGUAGE_SQL,
+        {
+          provideDocumentRangeFormattingEdits: (model, range) => {
+            const text = model.getValueInRange(range);
+            try {
+              const formatted = formatSql(text, getOptions());
+              return [
+                {
+                  range,
+                  text: formatted,
+                },
+              ];
+            } catch (err) {
+              // eslint-disable-next-line no-console
+              console.error("SQL formatting error (range)", err);
+              return [];
+            }
+          },
+        }
+      );
+
+    formatProviderRefs.current = [documentProvider, rangeProvider];
+
+    return () => {
+      formatProviderRefs.current.forEach((d) => d.dispose());
+      formatProviderRefs.current = [];
+    };
+  }, [monacoInstance]);
+
   // Avoid rendering until theme is known
   if (!currentTheme) return null;
 
@@ -138,6 +210,7 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
           fontFamily: "JetBrains Mono",
           padding: { top: 20, bottom: 20 },
           automaticLayout: true,
+          formatOnPaste: true,
           readOnly: onChange === undefined,
         }}
       />

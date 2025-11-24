@@ -29,6 +29,7 @@
     "lucide-react": "^0.533.0",
     "monaco-editor": "^0.52.2",
     "monaco-sql-languages": "^0.15.1",
+    "sql-formatter": "15.4.6",
     "react": "^19.1.1",
     "react-code-blocks": "^0.1.6",
     "react-data-grid": "^7.0.0-beta.56",
