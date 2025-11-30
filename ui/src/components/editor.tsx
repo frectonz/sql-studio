@@ -14,6 +14,7 @@ import { fetchAutocomplete } from "@/api";
 import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "@/provider/theme.provider";
+import { useSqlFormattingProviders } from "@/lib/monaco";
 
 type Props = {
   value: string;
@@ -24,6 +25,7 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
   const currentTheme = useTheme();
   const monacoInstance = useMonaco();
   const providerRef = useRef<IDisposable | null>(null);
+  
 
   const { data: autoCompleteData } = useQuery({
     queryKey: ["autocomplete"],
@@ -121,6 +123,12 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
     };
   }, [monacoInstance, autoCompleteData]);
 
+  // Register formatting providers (document and range)
+  // Use centralized formatting providers
+  // Moved into lib to keep this component lean
+  useSqlFormattingProviders(monacoInstance, { languageId: ID_LANGUAGE_SQL });
+  
+
   // Avoid rendering until theme is known
   if (!currentTheme) return null;
 
@@ -138,6 +146,7 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
           fontFamily: "JetBrains Mono",
           padding: { top: 20, bottom: 20 },
           automaticLayout: true,
+          formatOnPaste: true,
           readOnly: onChange === undefined,
         }}
       />
