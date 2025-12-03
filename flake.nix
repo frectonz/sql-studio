@@ -89,7 +89,6 @@
         packages = {
           inherit deploy docker ui;
           default = bin;
-          stable = pkgs.callPackage ./package.nix { };
         };
 
         devShells.default = pkgs.mkShell {
