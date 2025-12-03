@@ -122,7 +122,7 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
     };
   }, [monacoInstance, autoCompleteData]);
 
-  useSqlFormattingProviders(monacoInstance, { languageId: ID_LANGUAGE_SQL });
+  useSqlFormattingProviders(monacoInstance);
 
   // Avoid rendering until theme is known
   if (!currentTheme) return null;
