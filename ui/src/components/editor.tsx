@@ -14,7 +14,7 @@ import { fetchAutocomplete } from "@/api";
 import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "@/provider/theme.provider";
-import { useSqlFormattingProviders } from "@/lib/monaco";
+import { useSqlFormattingProviders } from "@/lib/sql-formatting";
 
 type Props = {
   value: string;
@@ -25,7 +25,6 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
   const currentTheme = useTheme();
   const monacoInstance = useMonaco();
   const providerRef = useRef<IDisposable | null>(null);
-  
 
   const { data: autoCompleteData } = useQuery({
     queryKey: ["autocomplete"],
@@ -39,7 +38,7 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
     monacoInstance.languages.register({ id: ID_LANGUAGE_SQL });
     monacoInstance.languages.setLanguageConfiguration(
       ID_LANGUAGE_SQL,
-      COMMAND_CONFIG
+      COMMAND_CONFIG,
     );
 
     monacoInstance.editor.defineTheme("sql-dark", vsPlusTheme.darkThemeData);
@@ -110,7 +109,7 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
                 ...tableColumn,
                 ...tableColumnAlias,
               ];
-            }
+            },
           );
 
           return { suggestions: [...suggestions, ...tableColumnSuggestions] };
@@ -123,11 +122,7 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
     };
   }, [monacoInstance, autoCompleteData]);
 
-  // Register formatting providers (document and range)
-  // Use centralized formatting providers
-  // Moved into lib to keep this component lean
   useSqlFormattingProviders(monacoInstance, { languageId: ID_LANGUAGE_SQL });
-  
 
   // Avoid rendering until theme is known
   if (!currentTheme) return null;
