@@ -81,6 +81,12 @@ export function Root() {
             >
               Query
             </Link>
+            <Link
+              to="/schema"
+              className="[&.active]:text-primary [&.active]:font-extrabold text-[14px] uppercase text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Schema
+            </Link>
           </nav>
 
           <MobileNav />
@@ -219,6 +225,14 @@ function MobileNav() {
               className="[&.active]:text-primary [&.active]:font-extrabold text-[14px] uppercase text-muted-foreground transition-colors [&.active]:hover:text-accent-foreground"
             >
               Query
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link
+              to="/schema"
+              className="[&.active]:text-primary [&.active]:font-extrabold text-[14px] uppercase text-muted-foreground transition-colors [&.active]:hover:text-accent-foreground"
+            >
+              Schema
             </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>

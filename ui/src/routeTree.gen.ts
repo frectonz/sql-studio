@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TablesRouteImport } from './routes/tables'
+import { Route as SchemaRouteImport } from './routes/schema'
 import { Route as QueryRouteImport } from './routes/query'
 import { Route as IndexRouteImport } from './routes/index'
 
 const TablesRoute = TablesRouteImport.update({
   id: '/tables',
   path: '/tables',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SchemaRoute = SchemaRouteImport.update({
+  id: '/schema',
+  path: '/schema',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QueryRoute = QueryRouteImport.update({
@@ -32,30 +38,34 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/query': typeof QueryRoute
+  '/schema': typeof SchemaRoute
   '/tables': typeof TablesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/query': typeof QueryRoute
+  '/schema': typeof SchemaRoute
   '/tables': typeof TablesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/query': typeof QueryRoute
+  '/schema': typeof SchemaRoute
   '/tables': typeof TablesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/query' | '/tables'
+  fullPaths: '/' | '/query' | '/schema' | '/tables'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/query' | '/tables'
-  id: '__root__' | '/' | '/query' | '/tables'
+  to: '/' | '/query' | '/schema' | '/tables'
+  id: '__root__' | '/' | '/query' | '/schema' | '/tables'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   QueryRoute: typeof QueryRoute
+  SchemaRoute: typeof SchemaRoute
   TablesRoute: typeof TablesRoute
 }
 
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/tables'
       fullPath: '/tables'
       preLoaderRoute: typeof TablesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/schema': {
+      id: '/schema'
+      path: '/schema'
+      fullPath: '/schema'
+      preLoaderRoute: typeof SchemaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/query': {
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   QueryRoute: QueryRoute,
+  SchemaRoute: SchemaRoute,
   TablesRoute: TablesRoute,
 }
 export const routeTree = rootRouteImport

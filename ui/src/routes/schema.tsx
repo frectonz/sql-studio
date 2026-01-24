@@ -1,0 +1,62 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { GitBranch } from "lucide-react";
+
+import { fetchErd } from "@/api";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErdDiagram } from "@/components/erd/erd-diagram";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+export const Route = createFileRoute("/schema")({
+  component: Schema,
+  loader: () => fetchErd(),
+  pendingComponent: SchemaSkeleton,
+});
+
+function Schema() {
+  const data = Route.useLoaderData();
+
+  if (data.tables.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="flex items-center">
+          <GitBranch className="mb-4 h-12 w-12 text-muted-foreground" />
+          <CardTitle>No Tables Found</CardTitle>
+          <CardDescription>
+            The database has no tables to display in the schema diagram.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-foreground scroll-m-20 text-2xl font-semibold tracking-tight">
+          Entity Relationship Diagram
+        </h2>
+        <div className="text-sm text-muted-foreground">
+          {data.tables.length} tables, {data.relationships.length} relationships
+        </div>
+      </div>
+      <ErdDiagram data={data} />
+    </div>
+  );
+}
+
+function SchemaSkeleton() {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <Skeleton className="w-[300px] h-[32px]" />
+        <Skeleton className="w-[150px] h-[20px]" />
+      </div>
+      <Skeleton className="w-full h-[calc(100vh-12rem)]" />
+    </div>
+  );
+}

@@ -187,3 +187,38 @@
   box-shadow: inset 0 0 0 1px var(--rdg-selection-color);
   outline: 2px solid var(--rdg-selection-color);
 }
+
+/* ReactFlow styles */
+.react-flow__controls {
+  box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+}
+
+.react-flow__controls-button {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  fill: var(--foreground);
+}
+
+.react-flow__controls-button:hover {
+  background: var(--muted);
+}
+
+.react-flow__minimap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.react-flow__handle {
+  width: 8px;
+  height: 8px;
+}
+
+.react-flow__edge-path {
+  stroke-width: 2;
+}
+
+.react-flow__background pattern circle {
+  fill: var(--muted-foreground);
+}
