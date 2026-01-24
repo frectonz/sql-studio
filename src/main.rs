@@ -327,6 +327,8 @@ trait Database: Sized + Clone + Send {
         &self,
         query: String,
     ) -> impl std::future::Future<Output = color_eyre::Result<responses::Query>> + Send;
+
+    fn erd(&self) -> impl std::future::Future<Output = color_eyre::Result<responses::Erd>> + Send;
 }
 
 #[derive(Clone)]
@@ -414,6 +416,18 @@ impl Database for AllDbs {
             AllDbs::Duckdb(x) => x.query(query).await,
             AllDbs::Clickhouse(x) => x.query(query).await,
             AllDbs::MsSql(x) => x.query(query).await,
+        }
+    }
+
+    async fn erd(&self) -> color_eyre::Result<responses::Erd> {
+        match self {
+            AllDbs::Sqlite(x) => x.erd().await,
+            AllDbs::Libsql(x) => x.erd().await,
+            AllDbs::Postgres(x) => x.erd().await,
+            AllDbs::Mysql(x) => x.erd().await,
+            AllDbs::Duckdb(x) => x.erd().await,
+            AllDbs::Clickhouse(x) => x.erd().await,
+            AllDbs::MsSql(x) => x.erd().await,
         }
     }
 }
@@ -822,6 +836,67 @@ mod sqlite {
             let res = tokio::time::timeout(self.query_timeout, res).await??;
 
             Ok(res)
+        }
+
+        async fn erd(&self) -> color_eyre::Result<responses::Erd> {
+            Ok(self
+                .conn
+                .call(move |conn| {
+                    // Get all table names
+                    let mut stmt =
+                        conn.prepare(r#"SELECT name FROM sqlite_master WHERE type="table""#)?;
+                    let table_names = stmt
+                        .query_map([], |row| row.get::<_, String>(0))?
+                        .filter_map(|r| r.ok())
+                        .collect::<Vec<_>>();
+
+                    let mut tables = Vec::with_capacity(table_names.len());
+                    let mut relationships = Vec::new();
+
+                    for table_name in table_names {
+                        // Get column info: cid, name, type, notnull, dflt_value, pk
+                        let mut col_stmt =
+                            conn.prepare(&format!("PRAGMA table_info('{table_name}')"))?;
+                        let columns = col_stmt
+                            .query_map((), |r| {
+                                Ok(responses::ErdColumn {
+                                    name: r.get::<_, String>(1)?,
+                                    data_type: r.get::<_, String>(2)?,
+                                    nullable: r.get::<_, i32>(3)? == 0,
+                                    is_primary_key: r.get::<_, i32>(5)? > 0,
+                                })
+                            })?
+                            .filter_map(|r| r.ok())
+                            .collect::<Vec<_>>();
+
+                        // Get foreign keys: id, seq, table, from, to, on_update, on_delete, match
+                        let mut fk_stmt =
+                            conn.prepare(&format!("PRAGMA foreign_key_list('{table_name}')"))?;
+                        let fks = fk_stmt
+                            .query_map((), |r| {
+                                Ok(responses::ErdRelationship {
+                                    from_table: table_name.clone(),
+                                    from_column: r.get::<_, String>(3)?,
+                                    to_table: r.get::<_, String>(2)?,
+                                    to_column: r.get::<_, String>(4)?,
+                                })
+                            })?
+                            .filter_map(|r| r.ok())
+                            .collect::<Vec<_>>();
+
+                        relationships.extend(fks);
+                        tables.push(responses::ErdTable {
+                            name: table_name,
+                            columns,
+                        });
+                    }
+
+                    Ok(responses::Erd {
+                        tables,
+                        relationships,
+                    })
+                })
+                .await?)
         }
     }
 }
@@ -1385,6 +1460,80 @@ mod libsql {
 
             Ok(responses::Query { columns, rows })
         }
+
+        async fn erd(&self) -> color_eyre::Result<responses::Erd> {
+            let conn = self.db.connect()?;
+
+            // Get all table names
+            let table_names = conn
+                .query(r#"SELECT name FROM sqlite_master WHERE type="table""#, ())
+                .await?
+                .into_stream()
+                .map_ok(|r| r.get::<String>(0))
+                .collect::<Vec<_>>()
+                .await
+                .into_iter()
+                .filter_map(|r| r.ok())
+                .filter_map(|r| r.ok())
+                .collect::<Vec<_>>();
+
+            let mut tables = Vec::with_capacity(table_names.len());
+            let mut relationships = Vec::new();
+
+            for table_name in table_names {
+                // Get column info: cid, name, type, notnull, dflt_value, pk
+                let columns = conn
+                    .query(&format!("PRAGMA table_info('{table_name}')"), ())
+                    .await?
+                    .into_stream()
+                    .map_ok(|r| {
+                        color_eyre::eyre::Ok(responses::ErdColumn {
+                            name: r.get::<String>(1)?,
+                            data_type: r.get::<String>(2)?,
+                            nullable: r.get::<i32>(3)? == 0,
+                            is_primary_key: r.get::<i32>(5)? > 0,
+                        })
+                    })
+                    .collect::<Vec<_>>()
+                    .await
+                    .into_iter()
+                    .filter_map(|r| r.ok())
+                    .filter_map(|r| r.ok())
+                    .collect::<Vec<_>>();
+
+                // Get foreign keys: id, seq, table, from, to, on_update, on_delete, match
+                let fks = conn
+                    .query(&format!("PRAGMA foreign_key_list('{table_name}')"), ())
+                    .await?
+                    .into_stream()
+                    .map_ok(|r| {
+                        let tn = table_name.clone();
+                        color_eyre::eyre::Ok(responses::ErdRelationship {
+                            from_table: tn,
+                            from_column: r.get::<String>(3)?,
+                            to_table: r.get::<String>(2)?,
+                            to_column: r.get::<String>(4)?,
+                        })
+                    })
+                    .collect::<Vec<_>>()
+                    .await
+                    .into_iter()
+                    .filter_map(|r| r.ok())
+                    .filter_map(|r| r.ok())
+                    .collect::<Vec<_>>();
+
+                relationships.extend(fks);
+                tables.push(responses::ErdTable {
+                    name: table_name,
+                    columns,
+                });
+            }
+
+            Ok(responses::Erd {
+                tables,
+                relationships,
+            })
+        }
     }
 }
 
@@ -1420,7 +1569,7 @@ mod postgres {
             // so spawn it off to run on its own.
             tokio::spawn(async move {
                 if let Err(e) = connection.await {
-                    eprintln!("postgres connection error: {}", e);
+                    eprintln!("postgres connection error: {e}");
                 }
             });
 
@@ -1911,6 +2060,91 @@ mod postgres {
 
             Ok(responses::Query { columns, rows })
         }
+
+        async fn erd(&self) -> color_eyre::Result<responses::Erd> {
+            let schema = &self.schema;
+
+            // Get all tables with columns
+            let columns_query = format!(
+                r#"
+                SELECT
+                    c.table_name,
+                    c.column_name,
+                    c.data_type,
+                    c.is_nullable,
+                    CASE WHEN kcu.column_name IS NOT NULL THEN true ELSE false END as is_primary_key
+                FROM information_schema.columns c
+                LEFT JOIN information_schema.table_constraints tc
+                    ON c.table_schema = tc.table_schema
+                    AND c.table_name = tc.table_name
+                    AND tc.constraint_type = 'PRIMARY KEY'
+                LEFT JOIN information_schema.key_column_usage kcu
+                    ON tc.constraint_name = kcu.constraint_name
+                    AND tc.table_schema = kcu.table_schema
+                    AND c.column_name = kcu.column_name
+                    AND c.table_name = kcu.table_name
+                WHERE c.table_schema = '{schema}'
+                ORDER BY c.table_name, c.ordinal_position
+                "#
+            );
+
+            let column_rows = self.client.query(&columns_query, &[]).await?;
+
+            let mut table_map: std::collections::HashMap<String, Vec<responses::ErdColumn>> =
+                std::collections::HashMap::new();
+
+            for row in column_rows {
+                let table_name: String = row.get(0);
+                let column = responses::ErdColumn {
+                    name: row.get(1),
+                    data_type: row.get(2),
+                    nullable: row.get::<_, String>(3) == "YES",
+                    is_primary_key: row.get(4),
+                };
+                table_map.entry(table_name).or_default().push(column);
+            }
+
+            let tables: Vec<responses::ErdTable> = table_map
+                .into_iter()
+                .map(|(name, columns)| responses::ErdTable { name, columns })
+                .collect();
+
+            // Get foreign key relationships
+            let fk_query = format!(
+                r#"
+                SELECT
+                    kcu.table_name as from_table,
+                    kcu.column_name as from_column,
+                    ccu.table_name as to_table,
+                    ccu.column_name as to_column
+                FROM information_schema.table_constraints tc
+                JOIN information_schema.key_column_usage kcu
+                    ON tc.constraint_name = kcu.constraint_name
+                    AND tc.table_schema = kcu.table_schema
+                JOIN information_schema.constraint_column_usage ccu
+                    ON ccu.constraint_name = tc.constraint_name
+                    AND ccu.table_schema = tc.table_schema
+                WHERE tc.constraint_type = 'FOREIGN KEY'
+                AND tc.table_schema = '{schema}'
+                "#
+            );
+
+            let fk_rows = self.client.query(&fk_query, &[]).await?;
+            let relationships: Vec<responses::ErdRelationship> = fk_rows
+                .into_iter()
+                .map(|row| responses::ErdRelationship {
+                    from_table: row.get(0),
+                    from_column: row.get(1),
+                    to_table: row.get(2),
+                    to_column: row.get(3),
+                })
+                .collect();
+
+            Ok(responses::Erd {
+                tables,
+                relationships,
+            })
+        }
     }
 }
 
@@ -2347,6 +2581,94 @@ mod mysql {
 
             Ok(responses::Query { columns, rows })
         }
+
+        async fn erd(&self) -> color_eyre::Result<responses::Erd> {
+            let mut conn = self.pool.get_conn().await?;
+
+            // Get all tables with columns
+            let columns_query = r#"
+                SELECT
+                    c.TABLE_NAME,
+                    c.COLUMN_NAME,
+                    c.DATA_TYPE,
+                    c.IS_NULLABLE,
+                    c.COLUMN_KEY
+                FROM information_schema.columns c
+                WHERE c.TABLE_SCHEMA = database()
+                ORDER BY c.TABLE_NAME, c.ORDINAL_POSITION
+            "#;
+
+            let column_rows: Vec<(String, String, String, String, String)> = columns_query
+                .with(())
+                .map(
+                    &mut conn,
+                    |(table_name, column_name, data_type, is_nullable, column_key): (
+                        String,
+                        String,
+                        String,
+                        String,
+                        String,
+                    )| {
+                        (table_name, column_name, data_type, is_nullable, column_key)
+                    },
+                )
+                .await?;
+
+            let mut table_map: std::collections::HashMap<String, Vec<responses::ErdColumn>> =
+                std::collections::HashMap::new();
+
+            for (table_name, column_name, data_type, is_nullable, column_key) in column_rows {
+                let column = responses::ErdColumn {
+                    name: column_name,
+                    data_type,
+                    nullable: is_nullable == "YES",
+                    is_primary_key: column_key == "PRI",
+                };
+                table_map.entry(table_name).or_default().push(column);
+            }
+
+            let tables: Vec<responses::ErdTable> = table_map
+                .into_iter()
+                .map(|(name, columns)| responses::ErdTable { name, columns })
+                .collect();
+
+            // Get foreign key relationships
+            let fk_query = r#"
+                SELECT
+                    TABLE_NAME as from_table,
+                    COLUMN_NAME as from_column,
+                    REFERENCED_TABLE_NAME as to_table,
+                    REFERENCED_COLUMN_NAME as to_column
+                FROM information_schema.KEY_COLUMN_USAGE
+                WHERE TABLE_SCHEMA = database()
+                AND REFERENCED_TABLE_NAME IS NOT NULL
+            "#;
+
+            let relationships: Vec<responses::ErdRelationship> = fk_query
+                .with(())
+                .map(
+                    &mut conn,
+                    |(from_table, from_column, to_table, to_column): (
+                        String,
+                        String,
+                        String,
+                        String,
+                    )| {
+                        responses::ErdRelationship {
+                            from_table,
+                            from_column,
+                            to_table,
+                            to_column,
+                        }
+                    },
+                )
+                .await?;
+
+            Ok(responses::Erd {
+                tables,
+                relationships,
+            })
+        }
     }
 }
 
@@ -2687,7 +3009,7 @@ mod duckdb {
 
         async fn tables_with_columns(&self) -> color_eyre::Result<responses::TablesWithColumns> {
             let c = self.conn.clone();
-            Ok(tokio::task::spawn_blocking(move || {
+            tokio::task::spawn_blocking(move || {
                 let c = c.lock().expect("could not get lock on connection");
 
                 let mut table_names_stmt = c.prepare(
@@ -2719,7 +3041,7 @@ mod duckdb {
 
                 eyre::Ok(responses::TablesWithColumns { tables })
             })
-            .await??)
+            .await?
         }
 
         async fn query(&self, query: String) -> color_eyre::Result<responses::Query> {
@@ -2754,6 +3076,82 @@ mod duckdb {
             let (columns, rows) = tokio::time::timeout(self.query_timeout, future).await???;
 
             Ok(responses::Query { columns, rows })
+        }
+
+        async fn erd(&self) -> color_eyre::Result<responses::Erd> {
+            let c = self.conn.clone();
+            tokio::task::spawn_blocking(move || {
+                let c = c.lock().expect("could not get lock on connection");
+
+                // Get all tables with columns from information_schema
+                let mut col_stmt = c.prepare(
+                    r#"
+                    SELECT
+                        table_name,
+                        column_name,
+                        data_type,
+                        is_nullable
+                    FROM information_schema.columns
+                    WHERE table_schema = current_schema()
+                    ORDER BY table_name, ordinal_position
+                    "#,
+                )?;
+
+                let column_rows = col_stmt
+                    .query_map([], |row| {
+                        Ok((
+                            row.get::<_, String>(0)?,
+                            row.get::<_, String>(1)?,
+                            row.get::<_, String>(2)?,
+                            row.get::<_, String>(3)?,
+                        ))
+                    })?
+                    .filter_map(|r| r.ok())
+                    .collect::<Vec<(String, String, String, String)>>();
+
+                // Get primary key info - using a query that returns table_name and column_name pairs
+                let mut pk_stmt = c.prepare(
+                    r#"
+                    SELECT table_name, unnest(constraint_column_names) as column_name
+                    FROM duckdb_constraints()
+                    WHERE constraint_type = 'PRIMARY KEY'
+                    "#,
+                )?;
+
+                let pk_columns: std::collections::HashSet<(String, String)> = pk_stmt
+                    .query_map([], |row| {
+                        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                    })?
+                    .filter_map(|r| r.ok())
+                    .collect();
+
+                let mut table_map: std::collections::HashMap<String, Vec<responses::ErdColumn>> =
+                    std::collections::HashMap::new();
+
+                for (table_name, column_name, data_type, is_nullable) in column_rows {
+                    let is_pk = pk_columns.contains(&(table_name.clone(), column_name.clone()));
+
+                    let column = responses::ErdColumn {
+                        name: column_name,
+                        data_type,
+                        nullable: is_nullable == "YES",
+                        is_primary_key: is_pk,
+                    };
+                    table_map.entry(table_name).or_default().push(column);
+                }
+
+                let tables: Vec<responses::ErdTable> = table_map
+                    .into_iter()
+                    .map(|(name, columns)| responses::ErdTable { name, columns })
+                    .collect();
+
+                // DuckDB has limited FK support, return empty relationships
+                eyre::Ok(responses::Erd {
+                    tables,
+                    relationships: Vec::new(),
+                })
+            })
+            .await?
         }
     }
 }
@@ -3147,6 +3545,59 @@ mod clickhouse {
             Ok(responses::Query {
                 columns: Vec::new(),
                 rows: Vec::new(),
+            })
+        }
+
+        async fn erd(&self) -> color_eyre::Result<responses::Erd> {
+            // Get all tables with columns from system.columns
+            #[derive(clickhouse::Row, serde::Deserialize)]
+            struct ColumnInfo {
+                table: String,
+                name: String,
+                #[serde(rename = "type")]
+                data_type: String,
+                is_in_primary_key: u8,
+            }
+
+            let column_rows = self
+                .conn
+                .query(
+                    r#"
+                    SELECT
+                        table,
+                        name,
+                        type,
+                        is_in_primary_key
+                    FROM system.columns
+                    WHERE database = currentDatabase()
+                    ORDER BY table, position
+                    "#,
+                )
+                .fetch_all::<ColumnInfo>()
+                .await?;
+
+            let mut table_map: std::collections::HashMap<String, Vec<responses::ErdColumn>> =
+                std::collections::HashMap::new();
+
+            for row in column_rows {
+                let column = responses::ErdColumn {
+                    name: row.name,
+                    data_type: row.data_type,
+                    nullable: false, // ClickHouse handles nullability differently via Nullable(T)
+                    is_primary_key: row.is_in_primary_key == 1,
+                };
+                table_map.entry(row.table).or_default().push(column);
+            }
+
+            let tables: Vec<responses::ErdTable> = table_map
+                .into_iter()
+                .map(|(name, columns)| responses::ErdTable { name, columns })
+                .collect();
+
+            // ClickHouse doesn't support foreign keys, return empty relationships
+            Ok(responses::Erd {
+                tables,
+                relationships: Vec::new(),
             })
         }
     }
@@ -3702,6 +4153,119 @@ mod mssql {
 
             Ok(responses::Query { columns, rows })
         }
+
+        async fn erd(&self) -> color_eyre::Result<responses::Erd> {
+            let mut client = self.client.lock().await;
+
+            // Get all tables with columns
+            let column_rows = client
+                .query(
+                    r#"
+                    SELECT
+                        t.name AS table_name,
+                        c.name AS column_name,
+                        ty.name AS data_type,
+                        c.is_nullable,
+                        CASE WHEN ic.object_id IS NOT NULL THEN 1 ELSE 0 END AS is_primary_key
+                    FROM sys.tables t
+                    JOIN sys.schemas s ON t.schema_id = s.schema_id
+                    JOIN sys.columns c ON t.object_id = c.object_id
+                    JOIN sys.types ty ON c.user_type_id = ty.user_type_id
+                    LEFT JOIN sys.indexes i ON t.object_id = i.object_id AND i.is_primary_key = 1
+                    LEFT JOIN sys.index_columns ic ON i.object_id = ic.object_id
+                        AND i.index_id = ic.index_id
+                        AND c.column_id = ic.column_id
+                    WHERE s.name = SCHEMA_NAME()
+                    ORDER BY t.name, c.column_id
+                    "#,
+                    &[],
+                )
+                .await?
+                .into_row_stream()
+                .try_filter_map(|row| {
+                    let table_name = row.get::<&str, &str>("table_name").map(ToOwned::to_owned);
+                    let column_name = row.get::<&str, &str>("column_name").map(ToOwned::to_owned);
+                    let data_type = row.get::<&str, &str>("data_type").map(ToOwned::to_owned);
+                    let is_nullable = row.get::<bool, &str>("is_nullable");
+                    let is_pk = row.get::<i32, &str>("is_primary_key");
+
+                    let out = match (table_name, column_name, data_type, is_nullable, is_pk) {
+                        (Some(tn), Some(cn), Some(dt), Some(nullable), Some(pk)) => {
+                            Ok(Some((tn, cn, dt, nullable, pk == 1)))
+                        }
+                        _ => Ok(None),
+                    };
+                    async { out }
+                })
+                .filter_map(|r| async { r.ok() })
+                .collect::<Vec<_>>()
+                .await;
+
+            let mut table_map: std::collections::HashMap<String, Vec<responses::ErdColumn>> =
+                std::collections::HashMap::new();
+
+            for (table_name, column_name, data_type, is_nullable, is_pk) in column_rows {
+                let column = responses::ErdColumn {
+                    name: column_name,
+                    data_type,
+                    nullable: is_nullable,
+                    is_primary_key: is_pk,
+                };
+                table_map.entry(table_name).or_default().push(column);
+            }
+
+            let tables: Vec<responses::ErdTable> = table_map
+                .into_iter()
+                .map(|(name, columns)| responses::ErdTable { name, columns })
+                .collect();
+
+            // Get foreign key relationships
+            let fk_rows = client
+                .query(
+                    r#"
+                    SELECT
+                        OBJECT_NAME(fk.parent_object_id) AS from_table,
+                        COL_NAME(fkc.parent_object_id, fkc.parent_column_id) AS from_column,
+                        OBJECT_NAME(fk.referenced_object_id) AS to_table,
+                        COL_NAME(fkc.referenced_object_id, fkc.referenced_column_id) AS to_column
+                    FROM sys.foreign_keys fk
+                    JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
+                    JOIN sys.tables t ON fk.parent_object_id = t.object_id
+                    JOIN sys.schemas s ON t.schema_id = s.schema_id
+                    WHERE s.name = SCHEMA_NAME()
+                    "#,
+                    &[],
+                )
+                .await?
+                .into_row_stream()
+                .try_filter_map(|row| {
+                    let from_table = row.get::<&str, &str>("from_table").map(ToOwned::to_owned);
+                    let from_column = row.get::<&str, &str>("from_column").map(ToOwned::to_owned);
+                    let to_table = row.get::<&str, &str>("to_table").map(ToOwned::to_owned);
+                    let to_column = row.get::<&str, &str>("to_column").map(ToOwned::to_owned);
+
+                    let out = match (from_table, from_column, to_table, to_column) {
+                        (Some(ft), Some(fc), Some(tt), Some(tc)) => {
+                            Ok(Some(responses::ErdRelationship {
+                                from_table: ft,
+                                from_column: fc,
+                                to_table: tt,
+                                to_column: tc,
+                            }))
+                        }
+                        _ => Ok(None),
+                    };
+                    async { out }
+                })
+                .filter_map(|r| async { r.ok() })
+                .collect::<Vec<_>>()
+                .await;
+
+            Ok(responses::Erd {
+                tables,
+                relationships: fk_rows,
+            })
+        }
     }
 }
 
@@ -3884,6 +4448,34 @@ mod responses {
         pub version: String,
         pub can_shutdown: bool,
     }
+
+    #[derive(Serialize)]
+    pub struct Erd {
+        pub tables: Vec<ErdTable>,
+        pub relationships: Vec<ErdRelationship>,
+    }
+
+    #[derive(Serialize)]
+    pub struct ErdTable {
+        pub name: String,
+        pub columns: Vec<ErdColumn>,
+    }
+
+    #[derive(Serialize)]
+    pub struct ErdColumn {
+        pub name: String,
+        pub data_type: String,
+        pub nullable: bool,
+        pub is_primary_key: bool,
+    }
+
+    #[derive(Serialize)]
+    pub struct ErdRelationship {
+        pub from_table: String,
+        pub from_column: String,
+        pub to_table: String,
+        pub to_column: String,
+    }
 }
 
 mod handlers {
@@ -3940,6 +4532,10 @@ mod handlers {
             .and(with_state(&shutdown_signal))
             .and(warp::any().map(move || no_shutdown))
             .and_then(shutdown);
+        let erd = warp::path!("erd")
+            .and(warp::get())
+            .and(with_state(&db))
+            .and_then(erd);
 
         overview
             .or(tables)
@@ -3949,6 +4545,7 @@ mod handlers {
             .or(data)
             .or(metadata)
             .or(shutdown)
+            .or(erd)
     }
 
     #[derive(Deserialize)]
@@ -4037,6 +4634,14 @@ mod handlers {
             tracing::info!("sent shutdown signal: {res:?}");
         }
         Ok("")
+    }
+
+    async fn erd(db: impl Database) -> Result<impl warp::Reply, warp::Rejection> {
+        let erd = db.erd().await.map_err(|e| {
+            tracing::error!("error while getting ERD data: {e}");
+            warp::reject::custom(rejections::InternalServerError)
+        })?;
+        Ok(warp::reply::json(&erd))
     }
 }
 

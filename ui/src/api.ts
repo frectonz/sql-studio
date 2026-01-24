@@ -100,3 +100,29 @@ export const fetchAutocomplete = () =>
 
 export const sendShutdown = () =>
   fetch(`${BASE_URL}/shutdown`, { method: "POST" });
+
+const erdColumn = z.object({
+  name: z.string(),
+  data_type: z.string(),
+  nullable: z.boolean(),
+  is_primary_key: z.boolean(),
+});
+
+const erdTable = z.object({
+  name: z.string(),
+  columns: erdColumn.array(),
+});
+
+const erdRelationship = z.object({
+  from_table: z.string(),
+  from_column: z.string(),
+  to_table: z.string(),
+  to_column: z.string(),
+});
+
+const erd = z.object({
+  tables: erdTable.array(),
+  relationships: erdRelationship.array(),
+});
+
+export const fetchErd = () => $fetch(erd, `${BASE_URL}/erd`);
