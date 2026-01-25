@@ -20,9 +20,6 @@ export function TableNode({ data }: NodeProps) {
 
   return (
     <div className="bg-card border border-border rounded-lg shadow-md min-w-[250px] overflow-hidden">
-      <Handle type="target" position={Position.Left} className="!bg-primary" />
-      <Handle type="source" position={Position.Right} className="!bg-primary" />
-
       <div className="bg-primary/10 px-3 py-2 border-b border-border flex items-center gap-2">
         <TableIcon className="h-4 w-4 text-primary" />
         <span className="font-semibold text-sm text-foreground uppercase">
@@ -35,10 +32,22 @@ export function TableNode({ data }: NodeProps) {
           <div
             key={column.name}
             className={cn(
-              "px-3 py-1.5 flex items-center gap-2 text-xs",
+              "px-3 py-1.5 flex items-center gap-2 text-xs relative",
               column.is_primary_key && "bg-primary/5",
             )}
           >
+            <Handle
+              type="target"
+              position={Position.Left}
+              id={column.name}
+              className="!bg-primary !w-2 !h-2"
+            />
+            <Handle
+              type="source"
+              position={Position.Right}
+              id={column.name}
+              className="!bg-primary !w-2 !h-2"
+            />
             <div className="w-4 flex-shrink-0">
               {column.is_primary_key && (
                 <KeyRound className="h-3 w-3 text-primary" />
