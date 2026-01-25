@@ -34,19 +34,7 @@ function Schema() {
     );
   }
 
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-foreground scroll-m-20 text-2xl font-semibold tracking-tight">
-          Entity Relationship Diagram
-        </h2>
-        <div className="text-sm text-muted-foreground">
-          {data.tables.length} tables, {data.relationships.length} relationships
-        </div>
-      </div>
-      <ErdDiagram data={data} />
-    </div>
-  );
+  return <ErdDiagram data={data} />;
 }
 
 function SchemaSkeleton() {
