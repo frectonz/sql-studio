@@ -40,10 +40,6 @@ function Schema() {
 function SchemaSkeleton() {
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <Skeleton className="w-[300px] h-[32px]" />
-        <Skeleton className="w-[150px] h-[20px]" />
-      </div>
       <Skeleton className="w-full h-[calc(100vh-12rem)]" />
     </div>
   );
