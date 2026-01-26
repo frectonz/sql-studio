@@ -66,18 +66,19 @@ More features available on the [releases page](https://github.com/frectonz/sql-s
 
 ### Overview Page
 
-![overview](./screenshots/overview.png)
-![overview dark](./screenshots/overview-dark.png)
+<img width="1636" height="1090" alt="overview dark" src="https://github.com/user-attachments/assets/ac4b3a33-801e-46d4-bca3-5d474e8e8995" />
 
 ### Tables Page
 
-![tables](./screenshots/tables.png)
-![tables dark](./screenshots/tables-dark.png)
+<img width="1636" height="1090" alt="table dark" src="https://github.com/user-attachments/assets/32e792db-aaed-4124-a6ac-125a09f9e8f8" />
 
 ### Query Page
 
-![query](./screenshots/query.png)
-![query dark](./screenshots/query-dark.png)
+<img width="1636" height="1090" alt="query dark" src="https://github.com/user-attachments/assets/d034ca87-8b21-400c-899d-389db76a2bfe" />
+
+### Schema Page
+
+<img width="1636" height="1090" alt="schema dark" src="https://github.com/user-attachments/assets/e7d96b4f-a16a-44c4-91e9-d472e5ae9649" />
 
 ## Installation
 
