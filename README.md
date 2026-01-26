@@ -2,7 +2,7 @@
 
 # SQL Studio
 
-Single binary, single command SQL database explorer. SQL studio supports *SQLite*, *libSQL*, *PostgreSQL*, *MySQL*, *DuckDB* and *Microsoft SQL Server*.
+Single binary, single command SQL database explorer. SQL studio supports *SQLite*, *libSQL*, *PostgreSQL*, *MySQL*, *DuckDB*, *ClickHouse*, *Microsoft SQL Server*, *Parquet* and *CSV*.
 
 ### Local SQLite DB File
 
@@ -38,6 +38,18 @@ sql-studio mysql [url]
 
 ```bash
 sql-studio duckdb [duckdb_file]
+```
+
+### Local Parquet File
+
+```bash
+sql-studio parquet [parquet_file]
+```
+
+### Local CSV File
+
+```bash
+sql-studio csv [csv_file]
 ```
 
 ### ClickHouse Server (Partial Support)
