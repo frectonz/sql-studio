@@ -93,6 +93,13 @@ enum Command {
         file: String,
     },
 
+    /// A local CSV file.
+    Csv {
+        /// Path to the CSV file.
+        #[arg(env)]
+        file: String,
+    },
+
     /// A ClickHouse database.
     Clickhouse {
         /// Address to the clickhouse server.
@@ -152,6 +159,7 @@ async fn main() -> color_eyre::Result<()> {
         Command::Parquet { file } => {
             AllDbs::Parquet(parquet::Db::open(file, args.timeout.into()).await?)
         }
+        Command::Csv { file } => AllDbs::Csv(csv::Db::open(file, args.timeout.into()).await?),
         Command::Clickhouse {
             url,
             user,
@@ -349,6 +357,7 @@ enum AllDbs {
     Mysql(mysql::Db),
     Duckdb(duckdb::Db),
     Parquet(parquet::Db),
+    Csv(csv::Db),
     Clickhouse(Box<clickhouse::Db>),
     MsSql(mssql::Db),
 }
@@ -362,6 +371,7 @@ impl Database for AllDbs {
             AllDbs::Mysql(x) => x.overview().await,
             AllDbs::Duckdb(x) => x.overview().await,
             AllDbs::Parquet(x) => x.overview().await,
+            AllDbs::Csv(x) => x.overview().await,
             AllDbs::Clickhouse(x) => x.overview().await,
             AllDbs::MsSql(x) => x.overview().await,
         }
@@ -375,6 +385,7 @@ impl Database for AllDbs {
             AllDbs::Mysql(x) => x.tables().await,
             AllDbs::Duckdb(x) => x.tables().await,
             AllDbs::Parquet(x) => x.tables().await,
+            AllDbs::Csv(x) => x.tables().await,
             AllDbs::Clickhouse(x) => x.tables().await,
             AllDbs::MsSql(x) => x.tables().await,
         }
@@ -388,6 +399,7 @@ impl Database for AllDbs {
             AllDbs::Mysql(x) => x.table(name).await,
             AllDbs::Duckdb(x) => x.table(name).await,
             AllDbs::Parquet(x) => x.table(name).await,
+            AllDbs::Csv(x) => x.table(name).await,
             AllDbs::Clickhouse(x) => x.table(name).await,
             AllDbs::MsSql(x) => x.table(name).await,
         }
@@ -405,6 +417,7 @@ impl Database for AllDbs {
             AllDbs::Mysql(x) => x.table_data(name, page).await,
             AllDbs::Duckdb(x) => x.table_data(name, page).await,
             AllDbs::Parquet(x) => x.table_data(name, page).await,
+            AllDbs::Csv(x) => x.table_data(name, page).await,
             AllDbs::Clickhouse(x) => x.table_data(name, page).await,
             AllDbs::MsSql(x) => x.table_data(name, page).await,
         }
@@ -418,6 +431,7 @@ impl Database for AllDbs {
             AllDbs::Mysql(x) => x.tables_with_columns().await,
             AllDbs::Duckdb(x) => x.tables_with_columns().await,
             AllDbs::Parquet(x) => x.tables_with_columns().await,
+            AllDbs::Csv(x) => x.tables_with_columns().await,
             AllDbs::Clickhouse(x) => x.tables_with_columns().await,
             AllDbs::MsSql(x) => x.tables_with_columns().await,
         }
@@ -431,6 +445,7 @@ impl Database for AllDbs {
             AllDbs::Mysql(x) => x.query(query).await,
             AllDbs::Duckdb(x) => x.query(query).await,
             AllDbs::Parquet(x) => x.query(query).await,
+            AllDbs::Csv(x) => x.query(query).await,
             AllDbs::Clickhouse(x) => x.query(query).await,
             AllDbs::MsSql(x) => x.query(query).await,
         }
@@ -444,6 +459,7 @@ impl Database for AllDbs {
             AllDbs::Mysql(x) => x.erd().await,
             AllDbs::Duckdb(x) => x.erd().await,
             AllDbs::Parquet(x) => x.erd().await,
+            AllDbs::Csv(x) => x.erd().await,
             AllDbs::Clickhouse(x) => x.erd().await,
             AllDbs::MsSql(x) => x.erd().await,
         }
@@ -3491,6 +3507,333 @@ mod parquet {
                 }];
 
                 // Parquet files don't have relationships
+                eyre::Ok(responses::Erd {
+                    tables,
+                    relationships: Vec::new(),
+                })
+            })
+            .await?
+        }
+    }
+}
+
+mod csv {
+    use color_eyre::eyre;
+    use color_eyre::eyre::OptionExt;
+    use duckdb::Connection;
+    use std::{
+        path::Path,
+        sync::{Arc, Mutex},
+        time::Duration,
+    };
+
+    use crate::{
+        Database, ROWS_PER_PAGE, helpers,
+        responses::{self, Count},
+    };
+
+    #[derive(Clone)]
+    pub struct Db {
+        path: String,
+        table_name: String,
+        conn: Arc<Mutex<Connection>>,
+        query_timeout: Duration,
+    }
+
+    impl Db {
+        pub async fn open(path: String, query_timeout: Duration) -> color_eyre::Result<Self> {
+            let p = path.clone();
+            let table_name = Path::new(&path)
+                .file_stem()
+                .ok_or_eyre("failed to get file stem")?
+                .to_str()
+                .ok_or_eyre("file stem is not utf-8")?
+                .to_owned();
+
+            let tn = table_name.clone();
+            let conn = tokio::task::spawn_blocking(move || {
+                let conn = Connection::open_in_memory()?;
+
+                // Create a view that reads from the CSV file
+                conn.execute(
+                    &format!(r#"CREATE VIEW "{tn}" AS SELECT * FROM read_csv('{p}', header = true, auto_detect = true)"#),
+                    [],
+                )?;
+
+                eyre::Ok(conn)
+            })
+            .await??;
+
+            tracing::info!("opened CSV file {path} as table '{table_name}'");
+            Ok(Self {
+                path,
+                table_name,
+                query_timeout,
+                conn: Arc::new(Mutex::new(conn)),
+            })
+        }
+    }
+
+    impl Database for Db {
+        async fn overview(&self) -> color_eyre::Result<responses::Overview> {
+            let file_name = Path::new(&self.path)
+                .file_name()
+                .ok_or_eyre("failed to get file name")?
+                .to_str()
+                .ok_or_eyre("file name is not utf-8")?
+                .to_owned();
+
+            let metadata = tokio::fs::metadata(&self.path).await?;
+
+            let db_size = helpers::format_size(metadata.len() as f64);
+            let modified = Some(metadata.modified()?.into());
+            let created = metadata.created().ok().map(Into::into);
+
+            let c = self.conn.clone();
+            let table_name = self.table_name.clone();
+            let (row_count, column_count) = tokio::task::spawn_blocking(move || {
+                let c = c.lock().expect("could not get lock on connection");
+
+                let row_count: i32 = c.query_row(
+                    &format!(r#"SELECT count(*) FROM "{table_name}""#),
+                    [],
+                    |row| row.get(0),
+                )?;
+
+                let mut columns_stmt =
+                    c.prepare(&format!(r#"PRAGMA table_info('{table_name}')"#))?;
+                let column_count = columns_stmt.query_map([], |_| Ok(()))?.count() as i32;
+
+                eyre::Ok((row_count, column_count))
+            })
+            .await??;
+
+            let row_counts = vec![Count {
+                name: self.table_name.clone(),
+                count: row_count,
+            }];
+
+            let column_counts = vec![Count {
+                name: self.table_name.clone(),
+                count: column_count,
+            }];
+
+            let index_counts = vec![Count {
+                name: self.table_name.clone(),
+                count: 0,
+            }];
+
+            Ok(responses::Overview {
+                file_name,
+                sqlite_version: None,
+                db_size,
+                created,
+                modified,
+                tables: 1,
+                indexes: 0,
+                triggers: 0,
+                views: 0,
+                row_counts,
+                column_counts,
+                index_counts,
+            })
+        }
+
+        async fn tables(&self) -> color_eyre::Result<responses::Tables> {
+            let c = self.conn.clone();
+            let table_name = self.table_name.clone();
+            let count = tokio::task::spawn_blocking(move || {
+                let c = c.lock().expect("could not get lock on connection");
+
+                let count: i32 = c.query_row(
+                    &format!(r#"SELECT count(*) FROM "{table_name}""#),
+                    [],
+                    |row| row.get(0),
+                )?;
+
+                eyre::Ok(count)
+            })
+            .await??;
+
+            Ok(responses::Tables {
+                tables: vec![Count {
+                    name: self.table_name.clone(),
+                    count,
+                }],
+            })
+        }
+
+        async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
+            let c = self.conn.clone();
+            let file_size = tokio::fs::metadata(&self.path).await?.len();
+
+            let (row_count, column_count) = tokio::task::spawn_blocking(move || {
+                let c = c.lock().expect("could not get lock on connection");
+
+                let row_count: i32 =
+                    c.query_row(&format!(r#"SELECT count(*) FROM "{name}""#), [], |row| {
+                        row.get(0)
+                    })?;
+
+                let mut columns_stmt = c.prepare(&format!(r#"PRAGMA table_info('{name}')"#))?;
+                let column_count = columns_stmt.query_map([], |_| Ok(()))?.count() as i32;
+
+                eyre::Ok((row_count, column_count))
+            })
+            .await??;
+
+            Ok(responses::Table {
+                name: self.table_name.clone(),
+                sql: None,
+                row_count,
+                index_count: 0,
+                column_count,
+                table_size: helpers::format_size(file_size as f64),
+            })
+        }
+
+        async fn table_data(
+            &self,
+            name: String,
+            page: i32,
+        ) -> color_eyre::Result<responses::TableData> {
+            let c = self.conn.clone();
+
+            let (columns, rows) = tokio::task::spawn_blocking(move || {
+                let c = c.lock().expect("could not get lock on connection");
+
+                let first_column: String =
+                    c.query_row(&format!("PRAGMA table_info('{name}')"), [], |row| {
+                        row.get(1)
+                    })?;
+
+                let offset = (page - 1) * ROWS_PER_PAGE;
+                let sql = format!(
+                    r#"
+                SELECT * FROM "{name}"
+                ORDER BY "{first_column}"
+                LIMIT {ROWS_PER_PAGE}
+                OFFSET {offset};
+                    "#
+                );
+                let mut stmt = c.prepare(&sql)?;
+
+                let rows = stmt
+                    .query_map([], |r| {
+                        let mut rows = Vec::new();
+                        let mut index = 0;
+
+                        while let Ok(val) = r.get_ref(index) {
+                            let val = helpers::duckdb_value_to_json(val);
+                            rows.push(val);
+                            index += 1;
+                        }
+
+                        Ok(rows)
+                    })?
+                    .filter_map(|r| r.ok())
+                    .collect::<Vec<_>>();
+
+                let columns = stmt.column_names();
+
+                eyre::Ok((columns, rows))
+            })
+            .await??;
+
+            Ok(responses::TableData { columns, rows })
+        }
+
+        async fn tables_with_columns(&self) -> color_eyre::Result<responses::TablesWithColumns> {
+            let c = self.conn.clone();
+            let table_name = self.table_name.clone();
+            tokio::task::spawn_blocking(move || {
+                let c = c.lock().expect("could not get lock on connection");
+
+                let sql = format!(r#"SELECT * FROM "{table_name}" WHERE false"#);
+                let mut stmt = c.prepare(&sql)?;
+                let _ = stmt.query_map([], |_| Ok(()))?;
+                let columns = stmt.column_names();
+
+                eyre::Ok(responses::TablesWithColumns {
+                    tables: vec![responses::TableWithColumns {
+                        table_name,
+                        columns,
+                    }],
+                })
+            })
+            .await?
+        }
+
+        async fn query(&self, query: String) -> color_eyre::Result<responses::Query> {
+            let c = self.conn.clone();
+
+            let future = tokio::task::spawn_blocking(move || {
+                let c = c.lock().expect("could not get lock on connection");
+
+                let mut stmt = c.prepare(&query)?;
+
+                let rows = stmt
+                    .query_map([], |r| {
+                        let mut rows = Vec::new();
+                        let mut index = 0;
+
+                        while let Ok(val) = r.get_ref(index) {
+                            let val = helpers::duckdb_value_to_json(val);
+                            rows.push(val);
+                            index += 1;
+                        }
+
+                        Ok(rows)
+                    })?
+                    .filter_map(|r| r.ok())
+                    .collect::<Vec<_>>();
+
+                let columns = stmt.column_names();
+
+                eyre::Ok((columns, rows))
+            });
+
+            let (columns, rows) = tokio::time::timeout(self.query_timeout, future).await???;
+
+            Ok(responses::Query { columns, rows })
+        }
+
+        async fn erd(&self) -> color_eyre::Result<responses::Erd> {
+            let c = self.conn.clone();
+            let table_name = self.table_name.clone();
+            tokio::task::spawn_blocking(move || {
+                let c = c.lock().expect("could not get lock on connection");
+
+                let mut col_stmt = c.prepare(&format!(
+                    r#"
+                    SELECT
+                        column_name,
+                        data_type,
+                        is_nullable
+                    FROM information_schema.columns
+                    WHERE table_name = '{table_name}'
+                    ORDER BY ordinal_position
+                    "#
+                ))?;
+
+                let columns = col_stmt
+                    .query_map([], |row| {
+                        Ok(responses::ErdColumn {
+                            name: row.get::<_, String>(0)?,
+                            data_type: row.get::<_, String>(1)?,
+                            nullable: row.get::<_, String>(2)? == "YES",
+                            is_primary_key: false,
+                        })
+                    })?
+                    .filter_map(|r| r.ok())
+                    .collect::<Vec<_>>();
+
+                let tables = vec![responses::ErdTable {
+                    name: table_name,
+                    columns,
+                }];
+
+                // CSV files don't have relationships
                 eyre::Ok(responses::Erd {
                     tables,
                     relationships: Vec::new(),
