@@ -47,27 +47,44 @@ function Tables() {
       </Card>
     );
 
-  const tab = table
-    ? data.tables.findIndex(({ name }) => name === table).toString()
-    : "0";
+  const requestedTableIndex = table
+    ? data.tables.findIndex(({ name }) => name === table)
+    : -1;
+
+  const requestedTableMissing = !!table && requestedTableIndex < 0;
+  const tab = String(Math.max(requestedTableIndex, 0));
 
   return (
-    <Tabs defaultValue={tab}>
-      <TabsList>
-        {data.tables.map((n, i) => (
-          <TabsTrigger key={i} value={i.toString()}>
-            <Link to="/tables" search={{ table: n.name }}>
-              {n.name} [{n.count.toLocaleString()}]
-            </Link>
-          </TabsTrigger>
+    <>
+      {requestedTableMissing && (
+        <Card className="mb-3">
+          <CardHeader>
+            <CardTitle>Table not found</CardTitle>
+            <CardDescription>
+              Could not find "{table}". Showing the first available table
+              instead.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
+
+      <Tabs key={tab} defaultValue={tab}>
+        <TabsList>
+          {data.tables.map((n, i) => (
+            <TabsTrigger key={i} value={i.toString()}>
+              <Link to="/tables" search={{ table: n.name }}>
+                {n.name} [{n.count.toLocaleString()}]
+              </Link>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        {data.tables.map(({ name }, i) => (
+          <TabsContent key={i} value={i.toString()} className="py-4">
+            <Table name={name} />
+          </TabsContent>
         ))}
-      </TabsList>
-      {data.tables.map(({ name }, i) => (
-        <TabsContent key={i} value={i.toString()} className="py-4">
-          <Table name={name} />
-        </TabsContent>
-      ))}
-    </Tabs>
+      </Tabs>
+    </>
   );
 }
 
