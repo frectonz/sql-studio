@@ -47,14 +47,12 @@ function Tables() {
       </Card>
     );
 
-  const requestedTableMissing =
-    !!table && !data.tables.some(({ name }) => name === table);
+  const requestedTableIndex = table
+    ? data.tables.findIndex(({ name }) => name === table)
+    : -1;
 
-  const tab = (() => {
-    if (!table) return "0";
-    const index = data.tables.findIndex(({ name }) => name === table);
-    return (index >= 0 ? index : 0).toString();
-  })();
+  const requestedTableMissing = !!table && requestedTableIndex < 0;
+  const tab = String(Math.max(requestedTableIndex, 0));
 
   return (
     <>
@@ -70,7 +68,7 @@ function Tables() {
         </Card>
       )}
 
-      <Tabs defaultValue={tab}>
+      <Tabs key={tab} defaultValue={tab}>
         <TabsList>
           {data.tables.map((n, i) => (
             <TabsTrigger key={i} value={i.toString()}>
