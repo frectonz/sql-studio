@@ -19,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTheme } from "@/provider/theme.provider";
 import { fetchTable, fetchTableData, fetchTables } from "@/api";
@@ -104,6 +105,8 @@ function Table({ name }: Props) {
 
   if (!data) return <TableSkeleton />;
 
+  const isVirtual = data.sql?.startsWith("CREATE VIRTUAL TABLE") ?? false;
+
   const cards: InfoCardProps[] = [
     {
       title: "ROW COUNT",
@@ -133,8 +136,9 @@ function Table({ name }: Props) {
 
   return (
     <div className="flex flex-1 flex-col gap-4 md:gap-8">
-      <h2 className="px-2 text-foreground scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0">
+      <h2 className="px-2 text-foreground scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0 flex items-center gap-3">
         {data.name}
+        {isVirtual && <Badge variant="secondary">Virtual Table</Badge>}
       </h2>
 
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">

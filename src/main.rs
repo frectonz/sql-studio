@@ -578,10 +578,11 @@ mod sqlite {
 
                     let mut row_counts = HashMap::with_capacity(tables as usize);
                     for name in table_names.iter() {
-                        let count =
-                            conn.query_row(&format!("SELECT count(*) FROM '{name}'"), (), |r| {
+                        let count = conn
+                            .query_row(&format!("SELECT count(*) FROM '{name}'"), (), |r| {
                                 r.get::<_, i32>(0)
-                            })?;
+                            })
+                            .unwrap_or(0);
 
                         row_counts.insert(name.to_owned(), count);
                     }
@@ -595,9 +596,13 @@ mod sqlite {
 
                     let mut column_counts = HashMap::with_capacity(tables as usize);
                     for name in table_names.iter() {
-                        let mut columns = conn.prepare(&format!("PRAGMA table_info('{name}')"))?;
-                        let count =
-                            columns.query_map((), |r| r.get::<_, String>(1))?.count() as i32;
+                        let count = conn
+                            .prepare(&format!("PRAGMA table_info('{name}')"))
+                            .and_then(|mut columns| {
+                                Ok(columns.query_map((), |r| r.get::<_, String>(1))?.count()
+                                    as i32)
+                            })
+                            .unwrap_or(0);
 
                         column_counts.insert(name.to_owned(), count);
                     }
@@ -611,16 +616,20 @@ mod sqlite {
 
                     let mut index_counts = HashMap::with_capacity(tables as usize);
                     for name in table_names.iter() {
-                        let count = conn.query_row(
-                            "SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=?1",
-                            [name],
-                            |r| r.get::<_, i32>(0),
-                        )?;
+                        let count = conn
+                            .query_row(
+                                "SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=?1",
+                                [name],
+                                |r| r.get::<_, i32>(0),
+                            )
+                            .unwrap_or(0);
 
-                        let has_primary_key =
-                            conn.query_row(&format!("PRAGMA table_info('{name}')"), [], |r| {
+                        let has_primary_key = conn
+                            .query_row(&format!("PRAGMA table_info('{name}')"), [], |r| {
                                 r.get::<_, i32>(5)
-                            })? == 1;
+                            })
+                            .map(|v| v == 1)
+                            .unwrap_or(false);
 
                         let count = if has_primary_key { count + 1 } else { count };
 
@@ -675,10 +684,11 @@ mod sqlite {
                     let mut table_counts = HashMap::with_capacity(table_names.len());
                     for name in table_names {
                         let name = name?;
-                        let count =
-                            conn.query_row(&format!("SELECT count(*) FROM '{name}'"), (), |r| {
+                        let count = conn
+                            .query_row(&format!("SELECT count(*) FROM '{name}'"), (), |r| {
                                 r.get::<_, i32>(0)
-                            })?;
+                            })
+                            .unwrap_or(0);
 
                         table_counts.insert(name, count);
                     }
@@ -688,7 +698,7 @@ mod sqlite {
                         .map(|(name, count)| responses::Count { name, count })
                         .collect::<Vec<_>>();
 
-                    counts.sort_by_key(|r| r.count);
+                    counts.sort_by(|a, b| a.count.cmp(&b.count).then(a.name.cmp(&b.name)));
 
                     Ok(counts)
                 })
@@ -713,41 +723,50 @@ mod sqlite {
                         |r| r.get::<_, String>(0),
                     )?;
 
-                    let row_count =
-                        conn.query_row(&format!("SELECT count(*) FROM '{name}'"), (), |r| {
+                    let row_count = conn
+                        .query_row(&format!("SELECT count(*) FROM '{name}'"), (), |r| {
                             r.get::<_, i32>(0)
-                        })?;
+                        })
+                        .unwrap_or(0);
 
                     let table_size = if more_than_five {
                         "> 5GB".to_owned()
                     } else {
-                        let table_size = conn.query_row(
+                        conn.query_row(
                             "SELECT SUM(pgsize) FROM dbstat WHERE name = ?1",
                             [&name],
                             |r| r.get::<_, i64>(0),
-                        )?;
-                        helpers::format_size(table_size as f64)
+                        )
+                        .map(|size| helpers::format_size(size as f64))
+                        .unwrap_or_else(|_| "N/A".to_owned())
                     };
 
-                    let index_count = conn.query_row(
-                        "SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=?1",
-                        [&name],
-                        |r| r.get::<_, i32>(0),
-                    )?;
+                    let index_count = conn
+                        .query_row(
+                            "SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=?1",
+                            [&name],
+                            |r| r.get::<_, i32>(0),
+                        )
+                        .unwrap_or(0);
 
-                    let has_primary_key =
-                        conn.query_row(&format!("PRAGMA table_info('{name}')"), [], |r| {
+                    let has_primary_key = conn
+                        .query_row(&format!("PRAGMA table_info('{name}')"), [], |r| {
                             r.get::<_, i32>(5)
-                        })? == 1;
+                        })
+                        .map(|v| v == 1)
+                        .unwrap_or(false);
                     let index_count = if has_primary_key {
                         index_count + 1
                     } else {
                         index_count
                     };
 
-                    let mut columns = conn.prepare(&format!("PRAGMA table_info('{name}')"))?;
-                    let column_count =
-                        columns.query_map((), |r| r.get::<_, String>(1))?.count() as i32;
+                    let column_count = conn
+                        .prepare(&format!("PRAGMA table_info('{name}')"))
+                        .and_then(|mut columns| {
+                            Ok(columns.query_map((), |r| r.get::<_, String>(1))?.count() as i32)
+                        })
+                        .unwrap_or(0);
 
                     Ok(responses::Table {
                         name,
@@ -770,12 +789,20 @@ mod sqlite {
                 .conn
                 .call(move |conn| {
                     let first_column =
-                        conn.query_row(&format!("PRAGMA table_info('{name}')"), [], |r| {
+                        match conn.query_row(&format!("PRAGMA table_info('{name}')"), [], |r| {
                             r.get::<_, String>(1)
-                        })?;
+                        }) {
+                            Ok(col) => col,
+                            Err(_) => {
+                                return Ok(responses::TableData {
+                                    columns: vec![],
+                                    rows: vec![],
+                                });
+                            }
+                        };
 
                     let offset = (page - 1) * ROWS_PER_PAGE;
-                    let mut stmt = conn.prepare(&format!(
+                    let mut stmt = match conn.prepare(&format!(
                         r#"
                         SELECT *
                         FROM '{name}'
@@ -783,7 +810,15 @@ mod sqlite {
                         LIMIT {ROWS_PER_PAGE}
                         OFFSET {offset}
                         "#
-                    ))?;
+                    )) {
+                        Ok(stmt) => stmt,
+                        Err(_) => {
+                            return Ok(responses::TableData {
+                                columns: vec![],
+                                rows: vec![],
+                            });
+                        }
+                    };
                     let columns = stmt
                         .column_names()
                         .into_iter()
@@ -822,12 +857,15 @@ mod sqlite {
                     for name in table_names {
                         let table_name = name?;
 
-                        let mut columns =
-                            conn.prepare(&format!("PRAGMA table_info('{table_name}')"))?;
-                        let columns = columns
-                            .query_map((), |r| r.get::<_, String>(1))?
-                            .filter_map(|res| res.ok())
-                            .collect::<Vec<_>>();
+                        let columns = conn
+                            .prepare(&format!("PRAGMA table_info('{table_name}')"))
+                            .and_then(|mut columns| {
+                                Ok(columns
+                                    .query_map((), |r| r.get::<_, String>(1))?
+                                    .filter_map(|res| res.ok())
+                                    .collect::<Vec<_>>())
+                            })
+                            .unwrap_or_default();
 
                         tables.push(responses::TableWithColumns {
                             table_name,
