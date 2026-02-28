@@ -48,12 +48,12 @@ function Tables() {
       </Card>
     );
 
-  const requestedTableIndex = table
-    ? data.tables.findIndex(({ name }) => name === table)
-    : -1;
+  const selectedTable =
+    table && data.tables.some(({ name }) => name === table)
+      ? table
+      : data.tables[0].name;
 
-  const requestedTableMissing = !!table && requestedTableIndex < 0;
-  const tab = String(Math.max(requestedTableIndex, 0));
+  const requestedTableMissing = !!table && selectedTable !== table;
 
   return (
     <>
@@ -69,18 +69,18 @@ function Tables() {
         </Card>
       )}
 
-      <Tabs key={tab} defaultValue={tab}>
+      <Tabs value={selectedTable}>
         <TabsList>
-          {data.tables.map((n, i) => (
-            <TabsTrigger key={i} value={i.toString()}>
+          {data.tables.map((n) => (
+            <TabsTrigger key={n.name} value={n.name}>
               <Link to="/tables" search={{ table: n.name }}>
                 {n.name} [{n.count.toLocaleString()}]
               </Link>
             </TabsTrigger>
           ))}
         </TabsList>
-        {data.tables.map(({ name }, i) => (
-          <TabsContent key={i} value={i.toString()} className="py-4">
+        {data.tables.map(({ name }) => (
+          <TabsContent key={name} value={name} className="py-4">
             <Table name={name} />
           </TabsContent>
         ))}
