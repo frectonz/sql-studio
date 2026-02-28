@@ -71,13 +71,29 @@ function Query() {
     <Card className="p-2 overflow-auto">
       <DataGrid
         defaultColumnOptions={{ resizable: true }}
-        columns={data.columns.map((col) => ({ key: col, name: col }))}
+        columns={data.columns.map((col) => ({
+          key: col,
+          name: col,
+          renderCell: ({ row }: { row: Record<string, unknown> }) => (
+            <div style={{ whiteSpace: "pre-wrap" }}>
+              {String(row[col] ?? "")}
+            </div>
+          ),
+        }))}
         rows={data.rows.map((row) =>
           row.reduce((acc, curr, i) => {
             acc[data.columns[i]] = curr;
             return acc;
           }, {}),
         )}
+        rowHeight={(row) => {
+          const maxLines = data.columns.reduce((max, col) => {
+            const val = String(row[col] ?? "");
+            const lines = val.split(/\r?\n/).length;
+            return Math.max(max, lines);
+          }, 1);
+          return Math.max(35, maxLines * 20 + 15);
+        }}
         className={cn(currentTheme === "light" ? "rdg-light" : "rdg-dark")}
       />
     </Card>
