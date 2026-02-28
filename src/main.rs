@@ -1934,7 +1934,7 @@ mod postgres {
 
             let table_size: i64 = self
                 .client
-                .query_one(&format!("SELECT pg_total_relation_size('{name}')"), &[])
+                .query_one(&format!(r#"SELECT pg_total_relation_size('"{name}"')"#), &[])
                 .await?
                 .get(0);
             let table_size = helpers::format_size(table_size as f64);
@@ -2008,7 +2008,7 @@ mod postgres {
             let sql = format!(
                 r#"
             SELECT * FROM "{name}"
-            ORDER BY {first_column}
+            ORDER BY "{first_column}"
             LIMIT {ROWS_PER_PAGE}
             OFFSET {offset}
                 "#
