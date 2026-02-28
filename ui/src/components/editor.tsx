@@ -43,7 +43,10 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
 
     monacoInstance.editor.defineTheme("sql-dark", vsPlusTheme.darkThemeData);
     monacoInstance.editor.defineTheme("sql-light", vsPlusTheme.lightThemeData);
-  }, [monacoInstance]);
+    monacoInstance.editor.setTheme(
+      currentTheme === "light" ? "sql-light" : "sql-dark",
+    );
+  }, [monacoInstance, currentTheme]);
 
   // Register completion provider
   useEffect(() => {
