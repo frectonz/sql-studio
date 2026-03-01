@@ -1934,7 +1934,10 @@ mod postgres {
 
             let table_size: i64 = self
                 .client
-                .query_one(&format!(r#"SELECT pg_total_relation_size('"{name}"')"#), &[])
+                .query_one(
+                    &format!(r#"SELECT pg_total_relation_size('"{name}"')"#),
+                    &[],
+                )
                 .await?
                 .get(0);
             let table_size = helpers::format_size(table_size as f64);
