@@ -22,6 +22,7 @@ const geistMonoDocs = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://sql-studio-docs.frectonz.et"),
   title: {
     default: "SQL Studio",
     template: docsConfig.metadata?.titleTemplate ?? "%s",
