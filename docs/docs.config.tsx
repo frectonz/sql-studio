@@ -18,6 +18,7 @@ import { greentree } from "@farming-labs/theme/greentree";
 
 export default defineDocs({
   entry: "docs",
+  staticExport: true,
   github: {
     url: "https://github.com/frectonz/sql-studio",
     branch: "main",

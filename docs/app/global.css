@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @import "@farming-labs/theme/greentree/css";
 
+/* Hide search triggers — static export, no search API */
+@layer base {
+  button[data-search],
+  button[data-search-full] {
+    display: none !important;
+  }
+}
+
 body:has(.ld-bg) {
   background-color: #071611 !important;
 }
