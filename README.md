@@ -4,6 +4,8 @@
 
 Single binary, single command SQL database explorer. SQL studio supports *SQLite*, *libSQL*, *PostgreSQL*, *MySQL*, *DuckDB*, *ClickHouse*, *Microsoft SQL Server*, *Parquet* and *CSV*.
 
+[Documentation](https://sql-studio-docs.frectonz.et/)
+
 ### Local SQLite DB File
 
 ```bash
