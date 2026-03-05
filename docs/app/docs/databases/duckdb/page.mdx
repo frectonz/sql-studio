@@ -1,0 +1,31 @@
+---
+title: "DuckDB"
+description: "Open a local DuckDB database file in SQL Studio."
+icon: "harddrive"
+---
+
+# DuckDB
+
+Open a local DuckDB database file. DuckDB is an in-process analytical database, ideal for working with large datasets.
+
+## Usage
+
+```bash
+sql-studio duckdb <DATABASE>
+```
+
+## Arguments
+
+| Argument | Description | Env Var |
+|----------|-------------|---------|
+| `DATABASE` | Path to the DuckDB database file | `DATABASE` |
+
+## Examples
+
+```bash
+# Open a DuckDB file
+sql-studio duckdb ./analytics.duckdb
+
+# Open with a custom timeout for large queries
+sql-studio --timeout 30secs duckdb ./analytics.duckdb
+```

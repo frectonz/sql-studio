@@ -1,0 +1,27 @@
+---
+title: "CSV"
+description: "Open a local CSV file in SQL Studio."
+icon: "spreadsheet"
+---
+
+# CSV
+
+Open a local CSV file. SQL Studio uses DuckDB under the hood to query CSV files, giving you full SQL access to tabular data.
+
+## Usage
+
+```bash
+sql-studio csv <FILE>
+```
+
+## Arguments
+
+| Argument | Description | Env Var |
+|----------|-------------|---------|
+| `FILE` | Path to the CSV file | `FILE` |
+
+## Examples
+
+```bash
+sql-studio csv ./data.csv
+```

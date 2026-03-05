@@ -1,0 +1,32 @@
+---
+title: "Databases"
+description: "Overview of all databases supported by SQL Studio."
+icon: "database"
+---
+
+# Databases
+
+SQL Studio supports a wide range of SQL databases and file formats. Each database has its own subcommand with specific arguments.
+
+## Supported Databases
+
+| Database | Subcommand | Type |
+|----------|-----------|------|
+| [SQLite](/docs/databases/sqlite) | `sqlite` | Local file |
+| [libSQL](/docs/databases/libsql) | `libsql` | Remote server |
+| [Local libSQL](/docs/databases/local-libsql) | `local-libsql` | Local file (libSQL driver) |
+| [PostgreSQL](/docs/databases/postgresql) | `postgres` | Remote server |
+| [MySQL / MariaDB](/docs/databases/mysql) | `mysql` | Remote server |
+| [DuckDB](/docs/databases/duckdb) | `duckdb` | Local file |
+| [Parquet](/docs/databases/parquet) | `parquet` | Local file |
+| [CSV](/docs/databases/csv) | `csv` | Local file |
+| [ClickHouse](/docs/databases/clickhouse) | `clickhouse` | Remote server |
+| [Microsoft SQL Server](/docs/databases/mssql) | `mssql` | Remote server |
+
+## General Syntax
+
+```bash
+sql-studio [OPTIONS] <SUBCOMMAND> [ARGS...]
+```
+
+Global options like `--address`, `--timeout`, and `--base-path` can be placed before the subcommand. See [Configuration](/docs/configuration) for details.

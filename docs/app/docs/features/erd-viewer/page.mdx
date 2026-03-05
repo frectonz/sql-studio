@@ -1,0 +1,34 @@
+---
+title: "ERD Viewer"
+description: "Interactive entity-relationship diagram for your database schema."
+icon: "gitbranch"
+---
+
+# ERD Viewer
+
+The ERD (Entity-Relationship Diagram) Viewer provides an interactive visual representation of your database schema.
+
+![ERD viewer showing entity-relationship diagram](/erd.png)
+
+## Schema Visualization
+
+The ERD shows:
+
+- **Tables** — each table is displayed as a node
+- **Columns** — each table node lists its columns with data types, nullability, and primary key indicators
+- **Relationships** — foreign key relationships are drawn as edges between tables
+
+## Interactive Canvas
+
+The diagram is built with [React Flow](https://reactflow.dev/), giving you:
+
+- **Pan and zoom** — navigate large schemas by dragging and scrolling
+- **Drag nodes** — rearrange tables to create a layout that makes sense for your schema
+- **Auto-layout** — tables are automatically positioned when the diagram first loads
+
+## Use Cases
+
+- Understand the structure of an unfamiliar database
+- Verify foreign key relationships
+- Document your schema visually
+- Onboard new team members by showing them the data model

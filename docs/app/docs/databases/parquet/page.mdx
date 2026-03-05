@@ -1,0 +1,27 @@
+---
+title: "Parquet"
+description: "Open a local Parquet file in SQL Studio."
+icon: "spreadsheet"
+---
+
+# Parquet
+
+Open a local Apache Parquet file. SQL Studio uses DuckDB under the hood to query Parquet files, giving you full SQL access to columnar data.
+
+## Usage
+
+```bash
+sql-studio parquet <FILE>
+```
+
+## Arguments
+
+| Argument | Description | Env Var |
+|----------|-------------|---------|
+| `FILE` | Path to the Parquet file | `FILE` |
+
+## Examples
+
+```bash
+sql-studio parquet ./data.parquet
+```

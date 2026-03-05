@@ -1,0 +1,119 @@
+@import "tailwindcss";
+@import "@farming-labs/theme/greentree/css";
+
+body:has(.ld-bg) {
+  background-color: #071611 !important;
+}
+
+/* ===== Landing Page — SQL Studio Theme ===== */
+
+:root {
+  --ss-bg: hsl(159, 50%, 6%);
+  --ss-card: hsl(159, 40%, 10%);
+  --ss-border: hsl(159, 40%, 20%);
+  --ss-primary: hsl(159, 100%, 50%);
+  --ss-foreground: hsl(159, 10%, 97.5%);
+  --ss-muted: hsl(159, 10%, 55%);
+  --ss-muted-dim: hsl(159, 10%, 42%);
+  --ss-watermark: hsl(159, 30%, 9%);
+}
+
+@keyframes ld-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ld-up {
+  animation: ld-fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Hero image 3D tilt */
+.ld-hero-tilt {
+  transition: transform 0.4s ease;
+}
+
+.ld-hero-tilt:hover {
+  transform: rotateY(0deg) rotateX(0deg);
+}
+
+@supports (animation-timeline: view()) {
+  .ld-scroll {
+    animation: ld-fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 25%;
+  }
+}
+
+.ld-mono {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Card */
+.ld-card {
+  background: var(--ss-card);
+  border: 1px solid var(--ss-border);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.ld-card:hover {
+  border-color: var(--ss-primary);
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0 var(--ss-primary);
+}
+
+/* Feature card */
+.ld-feature {
+  background: var(--ss-card);
+  border: 1px solid var(--ss-border);
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.ld-feature:hover {
+  border-color: var(--ss-primary);
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0 hsla(159, 100%, 50%, 0.3);
+}
+
+.ld-feature img {
+  transition: transform 0.4s ease;
+}
+
+.ld-feature:hover img {
+  transform: scale(1.02);
+}
+
+/* Install block */
+.ld-install {
+  background: var(--ss-card);
+  border: 1px solid var(--ss-border);
+  transition: border-color 0.15s ease;
+}
+
+.ld-install:hover {
+  border-color: var(--ss-primary);
+}
+
+/* Background */
+.ld-bg {
+  background-color: var(--ss-bg);
+}
+
+/* Large decorative watermark text */
+.ld-watermark {
+  position: absolute;
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  color: var(--ss-watermark);
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+  white-space: nowrap;
+  line-height: 1;
+}

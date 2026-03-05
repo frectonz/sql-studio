@@ -1,0 +1,27 @@
+---
+title: "Local libSQL"
+description: "Open a local SQLite database using the libSQL driver."
+icon: "harddrive"
+---
+
+# Local libSQL
+
+Open a local SQLite database file using the libSQL driver instead of the standard SQLite driver. This can be useful if you need libSQL-specific features.
+
+## Usage
+
+```bash
+sql-studio local-libsql <DATABASE>
+```
+
+## Arguments
+
+| Argument | Description | Env Var |
+|----------|-------------|---------|
+| `DATABASE` | Path to the SQLite database file | `DATABASE` |
+
+## Examples
+
+```bash
+sql-studio local-libsql ./my-database.db
+```

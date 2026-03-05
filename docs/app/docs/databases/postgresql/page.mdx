@@ -1,0 +1,47 @@
+---
+title: "PostgreSQL"
+description: "Connect SQL Studio to a PostgreSQL database."
+icon: "server"
+---
+
+# PostgreSQL
+
+Connect to a PostgreSQL (or PostgreSQL-compatible) database.
+
+## Usage
+
+```bash
+sql-studio postgres [OPTIONS] <URL>
+```
+
+## Arguments
+
+| Argument | Description | Env Var |
+|----------|-------------|---------|
+| `URL` | PostgreSQL connection URL | `URL` |
+
+## Options
+
+| Option | Description | Default | Env Var |
+|--------|-------------|---------|---------|
+| `-s`, `--schema` | PostgreSQL schema to use | `public` | `SCHEMA` |
+
+## Connection URL Format
+
+```
+postgresql://user:password@host:port/database
+```
+
+## Examples
+
+```bash
+# Connect to a local PostgreSQL database
+sql-studio postgres postgresql://postgres:postgres@127.0.0.1/sample
+
+# Specify a schema
+sql-studio postgres --schema myschema postgresql://user:pass@localhost/mydb
+
+# Using environment variables
+export URL="postgresql://user:pass@localhost/mydb"
+sql-studio postgres "$URL"
+```

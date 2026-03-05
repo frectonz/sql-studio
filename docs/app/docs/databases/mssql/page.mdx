@@ -1,0 +1,39 @@
+---
+title: "Microsoft SQL Server"
+description: "Connect SQL Studio to a Microsoft SQL Server database."
+icon: "server"
+---
+
+# Microsoft SQL Server
+
+Connect to a Microsoft SQL Server (MSSQL) database using an ADO.NET connection string.
+
+## Usage
+
+```bash
+sql-studio mssql <CONNECTION>
+```
+
+## Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `CONNECTION` | ADO.NET connection string |
+
+## Connection String Format
+
+```
+Server=tcp:localhost,1433;Database=mydb;User Id=sa;Password=YourPassword;TrustServerCertificate=true
+```
+
+## Notes
+
+- SQL Studio uses the Tiberius driver with `rustls` for TLS.
+- Set `TrustServerCertificate=true` for local development with self-signed certificates.
+
+## Examples
+
+```bash
+# Connect to a local MSSQL instance
+sql-studio mssql "Server=tcp:localhost,1433;Database=sample;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true"
+```

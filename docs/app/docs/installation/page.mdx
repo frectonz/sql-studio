@@ -1,0 +1,75 @@
+---
+title: "Installation"
+description: "Install SQL Studio on macOS, Linux, Windows, or via Docker."
+icon: "terminal"
+---
+
+# Installation
+
+## Shell Script (macOS & Linux)
+
+The fastest way to install SQL Studio:
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sql-studio/releases/download/0.1.50/sql-studio-installer.sh | sh
+```
+
+## PowerShell (Windows)
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://github.com/frectonz/sql-studio/releases/download/0.1.50/sql-studio-installer.ps1 | iex"
+```
+
+## Nix
+
+SQL Studio is available in Nixpkgs:
+
+```bash
+nix shell nixpkgs#sql-studio
+```
+
+## Docker
+
+A Docker image is published on [Docker Hub](https://hub.docker.com/r/frectonz/sql-studio):
+
+```bash
+docker run -p 3030:3030 frectonz/sql-studio /bin/sql-studio \
+  --no-browser \
+  --no-shutdown \
+  --address=0.0.0.0:3030 \
+  sqlite preview
+```
+
+When running in Docker you will typically want:
+
+| Flag | Why |
+|------|-----|
+| `--no-browser` | No desktop browser inside a container |
+| `--no-shutdown` | Keep the server running |
+| `--address=0.0.0.0:3030` | Bind to all interfaces so the host can reach it |
+
+## From Source
+
+```bash
+git clone git@github.com:frectonz/sql-studio.git
+cd sql-studio
+
+# Build the frontend
+cd ui
+npm install
+npm run build
+cd ..
+
+# Build the binary
+cargo build --release
+```
+
+The binary is at `target/release/sql-studio`.
+
+## Updating
+
+If you installed via the shell script or PowerShell installer, update with:
+
+```bash
+sql-studio-update
+```
