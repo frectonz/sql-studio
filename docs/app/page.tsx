@@ -116,9 +116,9 @@ export default function LandingPage() {
 
           {/* Left — text */}
           <div className="px-6 pb-16 pt-20 md:pb-24 md:pt-28" style={{ borderRight: "none" }}>
-            <div className="ld-up mb-6 inline-block border px-3 py-1 text-xs font-bold tracking-widest uppercase" style={{ animationDelay: "0.1s", color: "var(--ss-primary)", borderColor: "var(--ss-primary)" }}>
-              V0.1.50
-            </div>
+            <Link href="https://github.com/frectonz/sql-studio/releases/tag/0.1.50" className="ld-up mb-6 inline-block border px-3 py-1 text-xs font-bold tracking-widest" style={{ animationDelay: "0.1s", color: "var(--ss-primary)", borderColor: "var(--ss-primary)" }} target="_blank" rel="noopener noreferrer">
+              v0.1.50
+            </Link>
 
             <h1 className="ld-up font-black text-6xl sm:text-7xl md:text-8xl lg:text-9xl" style={{ animationDelay: "0.2s", lineHeight: 0.85, letterSpacing: "-0.04em" }}>
               SQL<br /><span style={{ color: "var(--ss-primary)" }}>Studio</span>
