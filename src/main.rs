@@ -1632,8 +1632,12 @@ mod postgres {
             schema: String,
             query_timeout: Duration,
         ) -> color_eyre::Result<Self> {
-            let connector = native_tls::TlsConnector::builder().build()?;
-            let connector = postgres_native_tls::MakeTlsConnector::new(connector);
+            let mut root_store = rustls::RootCertStore::empty();
+            root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+            let tls_config = rustls::ClientConfig::builder()
+                .with_root_certificates(root_store)
+                .with_no_client_auth();
+            let connector = tokio_postgres_rustls::MakeRustlsConnect::new(tls_config);
 
             let (client, connection) = tokio_postgres::connect(&url, connector).await?;
 
