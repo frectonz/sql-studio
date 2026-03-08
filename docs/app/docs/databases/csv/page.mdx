@@ -17,6 +17,8 @@ twitter:
 
 Open a local CSV file. SQL Studio uses DuckDB under the hood to query CSV files, giving you full SQL access to tabular data.
 
+> **Note:** CSV support is not available in the musl (static Linux) build because it depends on DuckDB. Use the glibc Linux build, macOS, or Windows instead.
+
 ## Usage
 
 ```bash
