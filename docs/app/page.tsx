@@ -62,6 +62,10 @@ const INSTALL_METHODS = [
     label: "SHELL",
     command: "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sql-studio/releases/download/0.1.51/sql-studio-installer.sh | sh",
   },
+  {
+    label: "POWERSHELL",
+    command: "powershell -ExecutionPolicy Bypass -c \"irm https://github.com/frectonz/sql-studio/releases/download/0.1.51/sql-studio-installer.ps1 | iex\"",
+  },
   { label: "NIX", command: "nix shell nixpkgs#sql-studio" },
   { label: "DOCKER", command: "docker run -p 3030:3030 frectonz/sql-studio" },
 ];
