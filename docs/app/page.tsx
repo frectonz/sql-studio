@@ -60,7 +60,7 @@ const FEATURES = [
 const INSTALL_METHODS = [
   {
     label: "SHELL",
-    command: "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sql-studio/releases/download/0.1.50/sql-studio-installer.sh | sh",
+    command: "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sql-studio/releases/download/0.1.51/sql-studio-installer.sh | sh",
   },
   { label: "NIX", command: "nix shell nixpkgs#sql-studio" },
   { label: "DOCKER", command: "docker run -p 3030:3030 frectonz/sql-studio" },
@@ -130,8 +130,8 @@ export default function LandingPage() {
 
           {/* Left — text */}
           <div className="px-6 pb-16 pt-20 md:pb-24 md:pt-28" style={{ borderRight: "none" }}>
-            <Link href="https://github.com/frectonz/sql-studio/releases/tag/0.1.50" className="ld-up mb-6 inline-block border px-3 py-1 text-xs font-bold tracking-widest" style={{ animationDelay: "0.1s", color: "var(--ss-primary)", borderColor: "var(--ss-primary)" }} target="_blank" rel="noopener noreferrer">
-              v0.1.50
+            <Link href="https://github.com/frectonz/sql-studio/releases/tag/0.1.51" className="ld-up mb-6 inline-block border px-3 py-1 text-xs font-bold tracking-widest" style={{ animationDelay: "0.1s", color: "var(--ss-primary)", borderColor: "var(--ss-primary)" }} target="_blank" rel="noopener noreferrer">
+              v0.1.51
             </Link>
 
             <h1 className="ld-up font-black text-6xl sm:text-7xl md:text-8xl lg:text-9xl" style={{ animationDelay: "0.2s", lineHeight: 0.85, letterSpacing: "-0.04em" }}>
