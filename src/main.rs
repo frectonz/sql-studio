@@ -80,6 +80,7 @@ enum Command {
     },
 
     /// A local DuckDB database.
+    #[cfg(not(target_env = "musl"))]
     Duckdb {
         /// Path to the the duckdb file.
         #[arg(env)]
@@ -87,6 +88,7 @@ enum Command {
     },
 
     /// A local Parquet file.
+    #[cfg(not(target_env = "musl"))]
     Parquet {
         /// Path to the parquet file.
         #[arg(env)]
@@ -94,6 +96,7 @@ enum Command {
     },
 
     /// A local CSV file.
+    #[cfg(not(target_env = "musl"))]
     Csv {
         /// Path to the CSV file.
         #[arg(env)]
@@ -153,12 +156,15 @@ async fn main() -> color_eyre::Result<()> {
             AllDbs::Postgres(postgres::Db::open(url, schema, args.timeout.into()).await?)
         }
         Command::Mysql { url } => AllDbs::Mysql(mysql::Db::open(url, args.timeout.into()).await?),
+        #[cfg(not(target_env = "musl"))]
         Command::Duckdb { database } => {
             AllDbs::Duckdb(duckdb::Db::open(database, args.timeout.into()).await?)
         }
+        #[cfg(not(target_env = "musl"))]
         Command::Parquet { file } => {
             AllDbs::Parquet(parquet::Db::open(file, args.timeout.into()).await?)
         }
+        #[cfg(not(target_env = "musl"))]
         Command::Csv { file } => AllDbs::Csv(csv::Db::open(file, args.timeout.into()).await?),
         Command::Clickhouse {
             url,
@@ -355,8 +361,11 @@ enum AllDbs {
     Libsql(libsql::Db),
     Postgres(postgres::Db),
     Mysql(mysql::Db),
+    #[cfg(not(target_env = "musl"))]
     Duckdb(duckdb::Db),
+    #[cfg(not(target_env = "musl"))]
     Parquet(parquet::Db),
+    #[cfg(not(target_env = "musl"))]
     Csv(csv::Db),
     Clickhouse(Box<clickhouse::Db>),
     MsSql(mssql::Db),
@@ -369,8 +378,11 @@ impl Database for AllDbs {
             AllDbs::Libsql(x) => x.overview().await,
             AllDbs::Postgres(x) => x.overview().await,
             AllDbs::Mysql(x) => x.overview().await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Duckdb(x) => x.overview().await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Parquet(x) => x.overview().await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Csv(x) => x.overview().await,
             AllDbs::Clickhouse(x) => x.overview().await,
             AllDbs::MsSql(x) => x.overview().await,
@@ -383,8 +395,11 @@ impl Database for AllDbs {
             AllDbs::Libsql(x) => x.tables().await,
             AllDbs::Postgres(x) => x.tables().await,
             AllDbs::Mysql(x) => x.tables().await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Duckdb(x) => x.tables().await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Parquet(x) => x.tables().await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Csv(x) => x.tables().await,
             AllDbs::Clickhouse(x) => x.tables().await,
             AllDbs::MsSql(x) => x.tables().await,
@@ -397,8 +412,11 @@ impl Database for AllDbs {
             AllDbs::Libsql(x) => x.table(name).await,
             AllDbs::Postgres(x) => x.table(name).await,
             AllDbs::Mysql(x) => x.table(name).await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Duckdb(x) => x.table(name).await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Parquet(x) => x.table(name).await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Csv(x) => x.table(name).await,
             AllDbs::Clickhouse(x) => x.table(name).await,
             AllDbs::MsSql(x) => x.table(name).await,
@@ -415,8 +433,11 @@ impl Database for AllDbs {
             AllDbs::Libsql(x) => x.table_data(name, page).await,
             AllDbs::Postgres(x) => x.table_data(name, page).await,
             AllDbs::Mysql(x) => x.table_data(name, page).await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Duckdb(x) => x.table_data(name, page).await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Parquet(x) => x.table_data(name, page).await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Csv(x) => x.table_data(name, page).await,
             AllDbs::Clickhouse(x) => x.table_data(name, page).await,
             AllDbs::MsSql(x) => x.table_data(name, page).await,
@@ -429,8 +450,11 @@ impl Database for AllDbs {
             AllDbs::Libsql(x) => x.tables_with_columns().await,
             AllDbs::Postgres(x) => x.tables_with_columns().await,
             AllDbs::Mysql(x) => x.tables_with_columns().await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Duckdb(x) => x.tables_with_columns().await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Parquet(x) => x.tables_with_columns().await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Csv(x) => x.tables_with_columns().await,
             AllDbs::Clickhouse(x) => x.tables_with_columns().await,
             AllDbs::MsSql(x) => x.tables_with_columns().await,
@@ -443,8 +467,11 @@ impl Database for AllDbs {
             AllDbs::Libsql(x) => x.query(query).await,
             AllDbs::Postgres(x) => x.query(query).await,
             AllDbs::Mysql(x) => x.query(query).await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Duckdb(x) => x.query(query).await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Parquet(x) => x.query(query).await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Csv(x) => x.query(query).await,
             AllDbs::Clickhouse(x) => x.query(query).await,
             AllDbs::MsSql(x) => x.query(query).await,
@@ -457,8 +484,11 @@ impl Database for AllDbs {
             AllDbs::Libsql(x) => x.erd().await,
             AllDbs::Postgres(x) => x.erd().await,
             AllDbs::Mysql(x) => x.erd().await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Duckdb(x) => x.erd().await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Parquet(x) => x.erd().await,
+            #[cfg(not(target_env = "musl"))]
             AllDbs::Csv(x) => x.erd().await,
             AllDbs::Clickhouse(x) => x.erd().await,
             AllDbs::MsSql(x) => x.erd().await,
@@ -2751,6 +2781,7 @@ mod mysql {
     }
 }
 
+#[cfg(not(target_env = "musl"))]
 mod duckdb {
     use color_eyre::eyre;
     use color_eyre::eyre::OptionExt;
@@ -3235,6 +3266,7 @@ mod duckdb {
     }
 }
 
+#[cfg(not(target_env = "musl"))]
 mod parquet {
     use color_eyre::eyre;
     use color_eyre::eyre::OptionExt;
@@ -3562,6 +3594,7 @@ mod parquet {
     }
 }
 
+#[cfg(not(target_env = "musl"))]
 mod csv {
     use color_eyre::eyre;
     use color_eyre::eyre::OptionExt;
@@ -5003,6 +5036,7 @@ mod mssql {
 }
 
 mod helpers {
+    #[cfg(not(target_env = "musl"))]
     use duckdb::types::ValueRef as DuckdbValue;
     use libsql::Value as LibsqlValue;
     use tiberius::ColumnData;
@@ -5042,6 +5076,7 @@ mod helpers {
         }
     }
 
+    #[cfg(not(target_env = "musl"))]
     pub fn duckdb_value_to_json(v: DuckdbValue) -> serde_json::Value {
         use DuckdbValue::*;
         match v {
