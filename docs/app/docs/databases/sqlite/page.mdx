@@ -1,0 +1,51 @@
+---
+title: "SQLite"
+description: "Connect SQL Studio to a local SQLite database file."
+icon: "harddrive"
+openGraph:
+  images:
+    - url: "/og/databases/sqlite.png"
+      width: 1200
+      height: 630
+twitter:
+  card: "summary_large_image"
+  images:
+    - "/og/databases/sqlite.png"
+---
+
+# SQLite
+
+Open a local SQLite database file in SQL Studio.
+
+## Usage
+
+```bash
+sql-studio sqlite <DATABASE>
+```
+
+## Arguments
+
+| Argument | Description | Env Var |
+|----------|-------------|---------|
+| `DATABASE` | Path to the SQLite database file | `DATABASE` |
+
+## Preview Mode
+
+If you don't have a database file handy, use the special `preview` path to launch SQL Studio with a built-in sample database:
+
+```bash
+sql-studio sqlite preview
+```
+
+## Examples
+
+```bash
+# Open a local database
+sql-studio sqlite ./chinook.db
+
+# Open with a custom port
+sql-studio --address 127.0.0.1:8080 sqlite ./chinook.db
+
+# Preview mode
+sql-studio sqlite preview
+```

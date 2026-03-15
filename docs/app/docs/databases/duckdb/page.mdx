@@ -1,0 +1,42 @@
+---
+title: "DuckDB"
+description: "Open a local DuckDB database file in SQL Studio."
+icon: "harddrive"
+openGraph:
+  images:
+    - url: "/og/databases/duckdb.png"
+      width: 1200
+      height: 630
+twitter:
+  card: "summary_large_image"
+  images:
+    - "/og/databases/duckdb.png"
+---
+
+# DuckDB
+
+Open a local DuckDB database file. DuckDB is an in-process analytical database, ideal for working with large datasets.
+
+> **Note:** DuckDB support is not available in the musl (static Linux) build due to compatibility limitations. Use the glibc Linux build, macOS, or Windows instead.
+
+## Usage
+
+```bash
+sql-studio duckdb <DATABASE>
+```
+
+## Arguments
+
+| Argument | Description | Env Var |
+|----------|-------------|---------|
+| `DATABASE` | Path to the DuckDB database file | `DATABASE` |
+
+## Examples
+
+```bash
+# Open a DuckDB file
+sql-studio duckdb ./analytics.duckdb
+
+# Open with a custom timeout for large queries
+sql-studio --timeout 30secs duckdb ./analytics.duckdb
+```

@@ -1,0 +1,77 @@
+---
+title: "Introduction"
+description: "SQL Studio — single binary, single command SQL database explorer."
+icon: "book"
+openGraph:
+  images:
+    - url: "/og/docs.png"
+      width: 1200
+      height: 630
+twitter:
+  card: "summary_large_image"
+  images:
+    - "/og/docs.png"
+---
+
+# Introduction
+
+SQL Studio is a **single binary, single command** web-based SQL database explorer. Point it at any supported database and instantly get a rich UI for browsing schemas, tables, and running queries — no installation wizards, no configuration files.
+
+## Supported Databases
+
+- **SQLite** — local `.db` / `.sqlite` files
+- **libSQL** — remote libSQL (Turso) servers
+- **PostgreSQL** — any PostgreSQL-compatible server
+- **MySQL / MariaDB** — MySQL and MariaDB servers
+- **DuckDB** — local `.duckdb` analytics files
+- **ClickHouse** — ClickHouse analytics servers
+- **Microsoft SQL Server** — MSSQL via ADO.NET connection strings
+- **Parquet** — local `.parquet` columnar files
+- **CSV** — local `.csv` files
+
+## Key Features
+
+- **Overview Dashboard** — database metadata, row counts, column counts, and index statistics at a glance
+- **Table Explorer** — browse every table with metadata cards, creation SQL, and infinite-scroll data grids
+- **Query Editor** — Monaco-powered SQL editor with IntelliSense auto-complete, auto-execute toggle, and configurable query timeouts
+- **ERD Viewer** — interactive entity-relationship diagram showing tables, columns, and foreign key relationships
+
+## Screenshots
+
+### Overview Page
+
+![Overview page showing database metadata and bar charts](/overview.png)
+
+### Tables Page
+
+![Tables page showing table metadata and data grid](/tables.png)
+
+### Query Page
+
+![Query page with Monaco editor and results](/query.png)
+
+### Schema Page
+
+![ERD viewer showing entity-relationship diagram](/erd.png)
+
+## Quick Example
+
+```bash
+# Try it instantly with a built-in sample database
+sql-studio sqlite preview
+
+# Or point it at your own database
+sql-studio sqlite ./my-database.db
+sql-studio postgres postgresql://user:pass@localhost/mydb
+```
+
+SQL Studio opens your default browser automatically and serves the UI on `http://127.0.0.1:3030`.
+
+---
+
+## Next Steps
+
+- [Installation](/docs/installation) — install via shell script, Nix, Docker, or from source
+- [Quick Start](/docs/quick-start) — try SQL Studio in under a minute
+- [Databases](/docs/databases) — learn about each supported database
+- [Features](/docs/features) — explore the UI in detail

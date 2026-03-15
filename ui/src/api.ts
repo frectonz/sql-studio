@@ -1,12 +1,26 @@
 import { z } from "zod";
 import { createZodFetcher } from "zod-fetch";
 
-const BASE_URL = import.meta.env.PROD ? "/api" : "http://localhost:3030/api";
+let basePath = document.querySelector<HTMLMetaElement>(
+  `meta[name="BASE_PATH"]`,
+);
+const BASE_URL = import.meta.env.PROD
+  ? basePath
+    ? `${basePath.content}/api`
+    : "/api"
+  : "http://localhost:3030/api";
+
+const counts = z
+  .object({
+    name: z.string(),
+    count: z.number(),
+  })
+  .array();
 
 const overview = z.object({
   file_name: z.string(),
-  sqlite_version: z.string(),
-  file_size: z.string(),
+  sqlite_version: z.string().nullable(),
+  db_size: z.string(),
   created: z
     .string()
     .datetime()
@@ -15,31 +29,24 @@ const overview = z.object({
   modified: z
     .string()
     .datetime()
-    .transform((x) => new Date(x)),
+    .transform((x) => new Date(x))
+    .nullable(),
   tables: z.number(),
   indexes: z.number(),
   triggers: z.number(),
   views: z.number(),
-  counts: z
-    .object({
-      name: z.string(),
-      count: z.number(),
-    })
-    .array(),
+  row_counts: counts,
+  column_counts: counts,
+  index_counts: counts,
 });
 
 const tables = z.object({
-  tables: z
-    .object({
-      name: z.string(),
-      count: z.number(),
-    })
-    .array(),
+  tables: counts,
 });
 
 const table = z.object({
   name: z.string(),
-  sql: z.string(),
+  sql: z.string().nullable(),
   row_count: z.number(),
   index_count: z.number(),
   column_count: z.number(),
@@ -54,6 +61,20 @@ const tableData = z.object({
 const query = z.object({
   columns: z.string().array(),
   rows: z.any().array().array(),
+});
+
+const metadata = z.object({
+  version: z.string(),
+  can_shutdown: z.boolean(),
+});
+
+const autocomplete = z.object({
+  tables: z
+    .object({
+      columns: z.string().array(),
+      table_name: z.string(),
+    })
+    .array(),
 });
 
 const $fetch = createZodFetcher();
@@ -73,3 +94,35 @@ export const fetchQuery = (value: string) =>
     },
     body: JSON.stringify({ query: value }),
   });
+export const fetchMetadata = () => $fetch(metadata, `${BASE_URL}/metadata`);
+export const fetchAutocomplete = () =>
+  $fetch(autocomplete, `${BASE_URL}/autocomplete`);
+
+export const sendShutdown = () =>
+  fetch(`${BASE_URL}/shutdown`, { method: "POST" });
+
+const erdColumn = z.object({
+  name: z.string(),
+  data_type: z.string(),
+  nullable: z.boolean(),
+  is_primary_key: z.boolean(),
+});
+
+const erdTable = z.object({
+  name: z.string(),
+  columns: erdColumn.array(),
+});
+
+const erdRelationship = z.object({
+  from_table: z.string(),
+  from_column: z.string(),
+  to_table: z.string(),
+  to_column: z.string(),
+});
+
+const erd = z.object({
+  tables: erdTable.array(),
+  relationships: erdRelationship.array(),
+});
+
+export const fetchErd = () => $fetch(erd, `${BASE_URL}/erd`);

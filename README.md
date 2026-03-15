@@ -1,55 +1,136 @@
-# SQLite Studio
+![banner](./logo_banner.jpg)
 
-Single binary, single command SQLite database explorer.
+# SQL Studio
+
+Single binary, single command SQL database explorer. SQL studio supports *SQLite*, *libSQL*, *PostgreSQL*, *MySQL*, *DuckDB*, *ClickHouse*, *Microsoft SQL Server*, *Parquet* and *CSV*.
+
+[Documentation](https://sql-studio-docs.frectonz.et/)
+
+### Local SQLite DB File
 
 ```bash
-sqlite-studio <sqlite_db>
+sql-studio sqlite [sqlite_db]
+```
+
+### Remote libSQL Server
+
+```bash
+sql-studio libsql [url] [auth_token]
+```
+
+### Local SQLite DB with libSQL driver
+
+```bash
+sql-studio local-libsql [database]
+```
+
+### PostgreSQL Server
+
+```bash
+sql-studio postgres [url]
+```
+
+### MySQL/MariaDB Server
+
+```bash
+sql-studio mysql [url]
+```
+
+### Local DuckDB File
+
+```bash
+sql-studio duckdb [duckdb_file]
+```
+
+### Local Parquet File
+
+```bash
+sql-studio parquet [parquet_file]
+```
+
+### Local CSV File
+
+```bash
+sql-studio csv [csv_file]
+```
+
+### ClickHouse Server (Partial Support)
+
+```bash
+sql-studio clickhouse [URL] [USER] [PASSWORD] [DATABASE]
+```
+
+### Microsoft SQL Server
+
+```bash
+sql-studio mssql [connection]
 ```
 
 ## Features
 
 - Overview page with common metadata.
-- Tables page with each table's metadata, including the disk size being used by each table.
+- Tables page with each table's metadata.
+- Queries page with more access to your db.
 - Infinite scroll rows view.
-- A custom query page that gives you more access to your db.
+- Rich SQL IntelliSense for custom queries.
 
-More features available on the [releases page](https://github.com/frectonz/sqlite-studio/releases).
+More features available on the [releases page](https://github.com/frectonz/sql-studio/releases).
 
 ## Screenshots
 
-### Home Page
+### Overview Page
 
-![homepage](./screenshots/homepage.png)
+<img width="1636" height="1090" alt="schema dark" src="https://github.com/user-attachments/assets/e7d96b4f-a16a-44c4-91e9-d472e5ae9649" />
 
 ### Tables Page
 
-![tables](./screenshots/tables.png)
-![infinite scroll](https://github.com/frectonz/sqlite-studio/assets/53809656/b6d8f627-4a21-46c2-bef7-8dea206b3689)
+<img width="1636" height="1090" alt="query dark" src="https://github.com/user-attachments/assets/d034ca87-8b21-400c-899d-389db76a2bfe" />
 
 ### Query Page
 
-![query](./screenshots/query.png)
-![query gif](https://github.com/frectonz/sqlite-studio/assets/53809656/3e47a890-ddd9-4c7f-be88-53e30cc23b15)
+<img width="1636" height="1090" alt="table dark" src="https://github.com/user-attachments/assets/32e792db-aaed-4124-a6ac-125a09f9e8f8" />
 
-## How To Run It
+### Schema Page
 
-### Pre-Built Binaries
+<img width="1636" height="1090" alt="overview dark" src="https://github.com/user-attachments/assets/ac4b3a33-801e-46d4-bca3-5d474e8e8995" />
 
-You can find pre-built binaries for the following targets on the [releases](https://github.com/frectonz/sqlite-studio/releases) page.
+## Installation
 
-- Linux `sqlite-studio_<release>_x86_64-unknown-linux-musl.zip`
-- Windows `sqlite-studio_<release>_x86_64-pc-windows-gnu.zip`
-- MacOS x86 `sqlite-studio_<release>_x86_64-apple-darwin.zip`
-
-After downloading the ZIP archive, you can extract it and get the binary.
-
-### Nix
-
-If you are using [Nix](https://nixos.org/), to build it from source.
+### Install prebuilt binaries via shell script (MacOS and Linux)
 
 ```bash
-nix shell github:frectonz/sqlite-studio
-sqlite-studio <sqlite_db>
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sql-studio/releases/download/0.1.51/sql-studio-installer.sh | sh
+```
+
+### Install prebuilt binaries via powershell script
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://github.com/frectonz/sql-studio/releases/download/0.1.51/sql-studio-installer.ps1 | iex"
+```
+
+### Updating
+
+```bash
+sql-studio-update
+```
+
+## Nix
+
+```bash
+nix shell nixpkgs#sql-studio
+```
+
+## Docker
+
+A Docker image of SQL Studio is available on [Docker Hub](https://hub.docker.com/r/frectonz/sql-studio). The following is an example of how to run SQL Studio with the Postgres driver on port `3030`.
+
+```bash
+docker run -p 3030:3030 frectonz/sql-studio /bin/sql-studio \
+  --no-browser \
+  --no-shutdown \
+  --address=0.0.0.0:3030 \
+  postgres \
+  postgres://localhost:5432/
 ```
 
 ## Contributing
@@ -57,12 +138,12 @@ sqlite-studio <sqlite_db>
 Before executing `cargo run` you need to build the UI because the rust app statically embedded the UI files in the binary.
 
 ```bash
-git clone git@github.com:frectonz/sqlite-studio.git
-cd sqlite-studio
+git clone git@github.com:frectonz/sql-studio.git
+cd sql-studio
 nix develop # if you use nix
 cd ui
 npm install
 npm run build
 cd ..
-cargo run <sqlite_db>
+cargo run
 ```

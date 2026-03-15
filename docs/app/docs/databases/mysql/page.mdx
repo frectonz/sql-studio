@@ -1,0 +1,50 @@
+---
+title: "MySQL"
+description: "Connect SQL Studio to a MySQL or MariaDB database."
+icon: "server"
+openGraph:
+  images:
+    - url: "/og/databases/mysql.png"
+      width: 1200
+      height: 630
+twitter:
+  card: "summary_large_image"
+  images:
+    - "/og/databases/mysql.png"
+---
+
+# MySQL / MariaDB
+
+Connect to a MySQL or MariaDB database.
+
+## Usage
+
+```bash
+sql-studio mysql <URL>
+```
+
+## Arguments
+
+| Argument | Description | Env Var |
+|----------|-------------|---------|
+| `URL` | MySQL connection URL | `URL` |
+
+## Connection URL Format
+
+```
+mysql://user:password@host:port/database
+```
+
+## Notes
+
+SQL Studio uses `rustls` for TLS, so connections to MySQL servers with TLS enabled are supported out of the box.
+
+## Examples
+
+```bash
+# Connect to a local MySQL database
+sql-studio mysql mysql://root:password@localhost/sample
+
+# Connect to a remote MySQL database
+sql-studio mysql mysql://user:pass@db.example.com:3306/mydb
+```

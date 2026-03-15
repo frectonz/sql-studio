@@ -1,0 +1,43 @@
+---
+title: "libSQL"
+description: "Connect SQL Studio to a remote libSQL (Turso) server."
+icon: "server"
+openGraph:
+  images:
+    - url: "/og/databases/libsql.png"
+      width: 1200
+      height: 630
+twitter:
+  card: "summary_large_image"
+  images:
+    - "/og/databases/libsql.png"
+---
+
+# libSQL
+
+Connect to a remote SQLite database via the libSQL protocol (used by [Turso](https://turso.tech)).
+
+## Usage
+
+```bash
+sql-studio libsql <URL> <AUTH_TOKEN>
+```
+
+## Arguments
+
+| Argument | Description | Env Var |
+|----------|-------------|---------|
+| `URL` | libSQL server address | `URL` |
+| `AUTH_TOKEN` | Authentication token | `AUTH_TOKEN` |
+
+## Examples
+
+```bash
+# Connect to a Turso database
+sql-studio libsql libsql://my-db-myorg.turso.io my-auth-token
+
+# Using environment variables
+export URL="libsql://my-db-myorg.turso.io"
+export AUTH_TOKEN="my-auth-token"
+sql-studio libsql "$URL" "$AUTH_TOKEN"
+```

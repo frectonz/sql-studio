@@ -1,0 +1,55 @@
+---
+title: "ClickHouse"
+description: "Connect SQL Studio to a ClickHouse server."
+icon: "server"
+openGraph:
+  images:
+    - url: "/og/databases/clickhouse.png"
+      width: 1200
+      height: 630
+twitter:
+  card: "summary_large_image"
+  images:
+    - "/og/databases/clickhouse.png"
+---
+
+# ClickHouse
+
+Connect to a ClickHouse analytics database. ClickHouse support is currently partial.
+
+## Usage
+
+```bash
+sql-studio clickhouse [URL] [USER] [PASSWORD] [DATABASE]
+```
+
+## Arguments
+
+| Argument | Description | Default | Env Var |
+|----------|-------------|---------|---------|
+| `URL` | ClickHouse server address | `http://localhost:8123` | `URL` |
+| `USER` | Username | `default` | `USER` |
+| `PASSWORD` | Password | _(empty)_ | `PASSWORD` |
+| `DATABASE` | Database name | `default` | `DATABASE` |
+
+## Notes
+
+- All arguments have sensible defaults, so you can connect to a local ClickHouse instance with just `sql-studio clickhouse`.
+- SQL Studio uses `rustls` for TLS connections.
+
+## Examples
+
+```bash
+# Connect to a local ClickHouse with defaults
+sql-studio clickhouse
+
+# Connect to a remote ClickHouse
+sql-studio clickhouse https://ch.example.com:8443 admin secret mydb
+
+# Using environment variables
+export URL="https://ch.example.com:8443"
+export USER="admin"
+export PASSWORD="secret"
+export DATABASE="mydb"
+sql-studio clickhouse
+```

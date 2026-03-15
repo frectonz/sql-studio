@@ -1,0 +1,38 @@
+---
+title: "CSV"
+description: "Open a local CSV file in SQL Studio."
+icon: "spreadsheet"
+openGraph:
+  images:
+    - url: "/og/databases/csv.png"
+      width: 1200
+      height: 630
+twitter:
+  card: "summary_large_image"
+  images:
+    - "/og/databases/csv.png"
+---
+
+# CSV
+
+Open a local CSV file. SQL Studio uses DuckDB under the hood to query CSV files, giving you full SQL access to tabular data.
+
+> **Note:** CSV support is not available in the musl (static Linux) build because it depends on DuckDB. Use the glibc Linux build, macOS, or Windows instead.
+
+## Usage
+
+```bash
+sql-studio csv <FILE>
+```
+
+## Arguments
+
+| Argument | Description | Env Var |
+|----------|-------------|---------|
+| `FILE` | Path to the CSV file | `FILE` |
+
+## Examples
+
+```bash
+sql-studio csv ./data.csv
+```

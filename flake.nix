@@ -6,18 +6,22 @@
       url = "github:oxalica/rust-overlay";
       inputs = {
         nixpkgs.follows = "nixpkgs";
-        flake-utils.follows = "flake-utils";
       };
     };
     crane = {
       url = "github:ipetkov/crane";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-      };
     };
   };
-  outputs = { self, nixpkgs, flake-utils, rust-overlay, crane }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+      rust-overlay,
+      crane,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs {
@@ -29,53 +33,72 @@
 
         src = pkgs.lib.cleanSourceWith {
           src = ./.;
-          filter = path: type:
-            (pkgs.lib.hasSuffix "\.css" path) ||
-            (pkgs.lib.hasSuffix "\.js" path) ||
-            (pkgs.lib.hasSuffix "\.svg" path) ||
-            (pkgs.lib.hasSuffix "\.sqlite3" path) ||
-            (craneLib.filterCargoSources path type)
-          ;
+          filter =
+            path: type:
+            (pkgs.lib.hasSuffix "\.css" path)
+            || (pkgs.lib.hasSuffix "\.js" path)
+            || (pkgs.lib.hasSuffix "\.svg" path)
+            || (pkgs.lib.hasSuffix "\.sqlite3" path)
+            || (craneLib.filterCargoSources path type);
         };
-        commonArgs = { inherit src; };
+
+        commonArgs = {
+          inherit src;
+          buildInputs = [
+            pkgs.git
+            pkgs.pkg-config
+          ];
+          nativeBuildInputs = [ pkgs.openssl ];
+        };
 
         ui = pkgs.buildNpmPackage {
           pname = "ui";
           version = "0.0.0";
           src = ./ui;
-          npmDepsHash = "sha256-Q7AVCPU+rZhsMRts3Sn/P2G22pePOI0BAnMrcXkUgUo=";
+          npmDepsHash = "sha256-4mDe8b5J1wrHz7OCClkE5WTbtfs3TMZB/vhiVuaHiyQ=";
           installPhase = ''
             cp -pr --reflink=auto -- dist "$out/"
           '';
         };
 
         cargoArtifacts = craneLib.buildDepsOnly commonArgs;
-        bin = craneLib.buildPackage (commonArgs // {
-          inherit cargoArtifacts;
-          preBuild = ''
-            cp -pr --reflink=auto -- ${ui} ui/dist
-          '';
-        });
+        bin = craneLib.buildPackage (
+          commonArgs
+          // {
+            inherit cargoArtifacts;
+            preBuild = ''
+              cp -pr --reflink=auto -- ${ui} ui/dist
+            '';
+          }
+        );
 
         docker = pkgs.dockerTools.buildLayeredImage {
-          name = "sqlite-studio";
+          name = "sql-studio";
           tag = "latest";
           created = "now";
-          config.Cmd = [ "${bin}/bin/sqlite-studio" "preview" "--address=0.0.0.0:3030" ];
-          config.Expose = "3030";
+          contents = [ bin ];
         };
+
+        version = "0.1.46";
+        deploy = pkgs.writeShellScriptBin "deploy" ''
+          ${pkgs.skopeo}/bin/skopeo --insecure-policy copy docker-archive:${docker} docker://docker.io/frectonz/sql-studio:${version} --dest-creds="frectonz:$ACCESS_TOKEN"
+          ${pkgs.skopeo}/bin/skopeo --insecure-policy copy docker://docker.io/frectonz/sql-studio:${version} docker://docker.io/frectonz/sql-studio:latest --dest-creds="frectonz:$ACCESS_TOKEN"
+        '';
       in
       {
         packages = {
+          inherit deploy docker ui;
           default = bin;
-          docker = docker;
         };
 
         devShells.default = pkgs.mkShell {
           buildInputs = [
+            pkgs.bacon
             pkgs.emmet-ls
+            pkgs.cargo-dist
             pkgs.cargo-watch
             pkgs.rust-analyzer
+            pkgs.cargo-outdated
             rustToolchain
 
             pkgs.nodejs
@@ -85,10 +108,24 @@
 
             pkgs.httpie
             pkgs.sqlite
+            pkgs.prefetch-npm-deps
           ];
         };
 
-        formatter = pkgs.nixpkgs-fmt;
+        formatter = pkgs.treefmt.withConfig {
+          runtimeInputs = [ pkgs.nixfmt-rfc-style ];
+
+          settings = {
+            # Log level for files treefmt won't format
+            on-unmatched = "info";
+
+            # Configure nixfmt for .nix files
+            formatter.nixfmt = {
+              command = "nixfmt";
+              includes = [ "*.nix" ];
+            };
+          };
+        };
       }
     );
 }

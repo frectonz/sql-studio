@@ -1,0 +1,38 @@
+---
+title: "Parquet"
+description: "Open a local Parquet file in SQL Studio."
+icon: "spreadsheet"
+openGraph:
+  images:
+    - url: "/og/databases/parquet.png"
+      width: 1200
+      height: 630
+twitter:
+  card: "summary_large_image"
+  images:
+    - "/og/databases/parquet.png"
+---
+
+# Parquet
+
+Open a local Apache Parquet file. SQL Studio uses DuckDB under the hood to query Parquet files, giving you full SQL access to columnar data.
+
+> **Note:** Parquet support is not available in the musl (static Linux) build because it depends on DuckDB. Use the glibc Linux build, macOS, or Windows instead.
+
+## Usage
+
+```bash
+sql-studio parquet <FILE>
+```
+
+## Arguments
+
+| Argument | Description | Env Var |
+|----------|-------------|---------|
+| `FILE` | Path to the Parquet file | `FILE` |
+
+## Examples
+
+```bash
+sql-studio parquet ./data.parquet
+```

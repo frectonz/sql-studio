@@ -1,0 +1,110 @@
+---
+title: "Configuration"
+description: "Global CLI options, environment variables, and deployment configuration."
+icon: "settings"
+openGraph:
+  images:
+    - url: "/og/configuration.png"
+      width: 1200
+      height: 630
+twitter:
+  card: "summary_large_image"
+  images:
+    - "/og/configuration.png"
+---
+
+# Configuration
+
+## Global CLI Options
+
+These options apply to all database subcommands and must be placed **before** the subcommand.
+
+```bash
+sql-studio [OPTIONS] <SUBCOMMAND> [ARGS...]
+```
+
+| Option | Short | Description | Default | Env Var |
+|--------|-------|-------------|---------|---------|
+| `--address` | `-a` | Address and port to bind to | `127.0.0.1:3030` | `ADDRESS` |
+| `--timeout` | `-t` | Timeout for queries from the query page | `5secs` | `TIMEOUT` |
+| `--base-path` | `-b` | Base URL path for the UI (e.g. `/sql-studio`) | _(none)_ | `BASE_PATH` |
+| `--no-browser` | | Don't open the URL in the system browser | `false` | `NO_BROWSER` |
+| `--no-shutdown` | | Don't show the shutdown button in the UI | `false` | `NO_SHUTDOWN` |
+
+### Timeout Format
+
+The `--timeout` option accepts human-readable durations: `5secs`, `30secs`, `1min`, `2min 30secs`, etc.
+
+### Examples
+
+```bash
+# Custom address and longer timeout
+sql-studio --address 0.0.0.0:8080 --timeout 30secs sqlite ./my.db
+
+# Serve under a base path
+sql-studio --base-path /sql-studio sqlite ./my.db
+```
+
+## Environment Variables
+
+Every CLI option can be set via an environment variable. This is particularly useful for Docker deployments or CI environments.
+
+```bash
+export ADDRESS="0.0.0.0:3030"
+export TIMEOUT="30secs"
+export BASE_PATH="/sql-studio"
+export NO_BROWSER="true"
+export NO_SHUTDOWN="true"
+
+sql-studio sqlite ./my.db
+```
+
+## Logging
+
+SQL Studio uses the `tracing` crate with `env-filter` support. Control log verbosity with the `RUST_LOG` environment variable:
+
+```bash
+# Show info-level logs
+RUST_LOG=info sql-studio sqlite ./my.db
+
+# Show debug-level logs
+RUST_LOG=debug sql-studio sqlite ./my.db
+
+# Show only SQL Studio logs
+RUST_LOG=sql_studio=debug sql-studio sqlite ./my.db
+```
+
+## Deployment
+
+### Reverse Proxy
+
+When deploying behind a reverse proxy (e.g. Nginx, Caddy, Traefik), use the `--base-path` option so all UI routes are served under a prefix:
+
+```bash
+sql-studio --base-path /sql-studio --no-browser --no-shutdown sqlite ./my.db
+```
+
+Then configure your reverse proxy to forward `/sql-studio/*` to `http://127.0.0.1:3030/sql-studio/`.
+
+### Docker
+
+```bash
+docker run -p 3030:3030 frectonz/sql-studio /bin/sql-studio \
+  --no-browser \
+  --no-shutdown \
+  --address=0.0.0.0:3030 \
+  postgres \
+  postgresql://user:pass@host/mydb
+```
+
+For file-based databases (SQLite, DuckDB, Parquet, CSV), mount a volume:
+
+```bash
+docker run -p 3030:3030 \
+  -v /path/to/data:/data \
+  frectonz/sql-studio /bin/sql-studio \
+  --no-browser \
+  --no-shutdown \
+  --address=0.0.0.0:3030 \
+  sqlite /data/my-database.db
+```

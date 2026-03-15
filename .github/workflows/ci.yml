@@ -1,4 +1,4 @@
-name: Build SQLite Studio
+name: Build SQL Studio
 
 on: 
   push:
@@ -11,7 +11,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -33,3 +32,15 @@ jobs:
 
     - name: Build Rust project
       run: cargo build --release
+
+  build-with-nix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Build Release
+        run: nix build .
+
+      - name: Build Docker Image
+        run: nix build .#docker
