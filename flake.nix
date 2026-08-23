@@ -102,9 +102,9 @@
             rustToolchain
 
             pkgs.nodejs
-            pkgs.nodePackages.typescript-language-server
-            pkgs.nodePackages.vscode-langservers-extracted
-            pkgs.nodePackages."@tailwindcss/language-server"
+            pkgs.typescript-language-server
+            pkgs.tailwindcss-language-server
+            pkgs.vscode-langservers-extracted
 
             pkgs.httpie
             pkgs.sqlite
