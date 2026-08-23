@@ -7,32 +7,32 @@ description = "Single binary, single command SQL Database Explorer."
 authors = ["frectonz"]
 
 [dependencies]
-chrono = { version = "0.4.41", features = ["serde"] }
-clap = { version = "4.5.41", features = ["derive", "env"] }
+chrono = { version = "0.4.45", features = ["serde"] }
+clap = { version = "4.6.6", features = ["derive", "env"] }
+clickhouse = { version = "0.15.1", features = ["rustls-tls"] }
 color-eyre = "0.6.5"
+futures = "0.3.34"
+humantime = "2.4.0"
 include_dir = "0.7.4"
-serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.141"
-tokio = { version = "1.47.0", features = ["full"] }
-tokio-rusqlite = { version = "0.6.0", features = ["bundled"] }
-tracing = "0.1.41"
-tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
-warp = "0.3.7"
-open = "5.3.2"
-futures = "0.3.31"
-tokio-postgres = "0.7.13"
-mysql_async = { version = "0.36.1", default-features = false, features = ["rustls-tls", "default-rustls"] }
-humantime = "2.2.0"
-clickhouse = { version = "0.13.3", features = ["rustls-tls"] }
-libsql = { version = "0.9.19", features = ["remote"] }
+libsql = { version = "0.9.30", features = ["remote"] }
+mysql_async = { version = "0.37.0", default-features = false, features = ["rustls-tls", "default-rustls"] }
+open = "5.4.1"
+rustls = "0.23.43"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
 tiberius = { version = "0.12.3", default-features = false, features = ["rustls", "tds73", "tokio", "tokio-util"] }
-tokio-util = "0.7.15"
-tokio-postgres-rustls = "0.13.0"
-rustls = "0.23"
-webpki-roots = "1.0"
+tokio = { version = "1.53.1", features = ["full"] }
+tokio-postgres = "0.7.18"
+tokio-postgres-rustls = "0.14.0"
+tokio-rusqlite = { version = "0.7.0", features = ["bundled"] }
+tokio-util = "0.7.19"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+warp = { version = "0.4.3", features = ["server"] }
+webpki-roots = "1.0.9"
 
 [target.'cfg(not(target_env = "musl"))'.dependencies]
-duckdb = { version = "1.4.4", features = ["bundled"] }
+duckdb = { version = "1.10505.0", features = ["bundled"] }
 
 [profile.release]
 strip = true

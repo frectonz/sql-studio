@@ -226,18 +226,21 @@ async fn main() -> color_eyre::Result<()> {
     };
 
     let address = args.address.parse::<std::net::SocketAddr>()?;
-    let (_, fut) = warp::serve(routes).bind_with_graceful_shutdown(address, async move {
-        tokio::select! {
-            _ = tokio::signal::ctrl_c() => {
-                    println!();
+    warp::serve(routes)
+        .bind(address)
+        .await
+        .graceful(async move {
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {
+                        println!();
+                }
+                _ = shutdown_rx.recv() => {
+                    tracing::info!("received shutdown signal")
+                }
             }
-            _ = shutdown_rx.recv() => {
-                tracing::info!("received shutdown signal")
-            }
-        }
-    });
-
-    fut.await;
+        })
+        .run()
+        .await;
     tracing::info!("shutting down...");
 
     Ok(())
@@ -499,7 +502,7 @@ impl Database for AllDbs {
 mod sqlite {
     use color_eyre::eyre::OptionExt;
     use std::{collections::HashMap, path::Path, sync::Arc, time::Duration};
-    use tokio_rusqlite::{Connection, OpenFlags};
+    use tokio_rusqlite::{Connection, OpenFlags, rusqlite};
 
     use crate::{Database, ROWS_PER_PAGE, SAMPLE_DB, helpers, responses};
 
@@ -519,8 +522,18 @@ mod sqlite {
                 Connection::open_with_flags(&path, OpenFlags::SQLITE_OPEN_READ_WRITE).await?
             };
 
+            let db = Self {
+                path: if path == "preview" {
+                    "sample.db".to_owned()
+                } else {
+                    path
+                },
+                query_timeout,
+                conn: Arc::new(conn),
+            };
+
             // This is meant to test if the file at path is actually a DB.
-            let tables = conn
+            let tables = db
                 .call(|conn| {
                     Ok(conn.query_row(
                         r#"
@@ -533,16 +546,16 @@ mod sqlite {
                 })
                 .await?;
 
-            tracing::info!("found {tables} tables in {path}");
-            Ok(Self {
-                path: if path == "preview" {
-                    "sample.db".to_owned()
-                } else {
-                    path
-                },
-                query_timeout,
-                conn: Arc::new(conn),
-            })
+            tracing::info!("found {tables} tables in {}", db.path);
+            Ok(db)
+        }
+
+        async fn call<F, R>(&self, function: F) -> Result<R, tokio_rusqlite::Error>
+        where
+            F: FnOnce(&mut rusqlite::Connection) -> rusqlite::Result<R> + Send + 'static,
+            R: Send + 'static,
+        {
+            self.conn.call(function).await
         }
     }
 
@@ -563,7 +576,6 @@ mod sqlite {
             let created = metadata.created().ok().map(Into::into);
 
             let (tables, indexes, triggers, views, row_counts, column_counts, index_counts) = self
-                .conn
                 .call(move |conn| {
                     let tables = conn.query_row(
                         r#"
@@ -703,7 +715,6 @@ mod sqlite {
 
         async fn tables(&self) -> color_eyre::Result<responses::Tables> {
             let tables = self
-                .conn
                 .call(move |conn| {
                     let mut stmt =
                         conn.prepare(r#"SELECT name FROM sqlite_master WHERE type="table""#)?;
@@ -742,7 +753,6 @@ mod sqlite {
             let more_than_five = metadata.len() > 5_000_000_000;
 
             Ok(self
-                .conn
                 .call(move |conn| {
                     let sql = conn.query_row(
                         r#"
@@ -816,7 +826,6 @@ mod sqlite {
             page: i32,
         ) -> color_eyre::Result<responses::TableData> {
             Ok(self
-                .conn
                 .call(move |conn| {
                     let first_column =
                         match conn.query_row(&format!("PRAGMA table_info('{name}')"), [], |r| {
@@ -875,7 +884,6 @@ mod sqlite {
 
         async fn tables_with_columns(&self) -> color_eyre::Result<responses::TablesWithColumns> {
             Ok(self
-                .conn
                 .call(move |conn| {
                     let mut stmt =
                         conn.prepare(r#"SELECT name FROM sqlite_master WHERE type="table""#)?;
@@ -911,7 +919,7 @@ mod sqlite {
         }
 
         async fn query(&self, query: String) -> color_eyre::Result<responses::Query> {
-            let res = self.conn.call(move |conn| {
+            let res = self.call(move |conn| {
                 let mut stmt = conn.prepare(&query)?;
                 let columns = stmt
                     .column_names()
@@ -942,7 +950,6 @@ mod sqlite {
 
         async fn erd(&self) -> color_eyre::Result<responses::Erd> {
             Ok(self
-                .conn
                 .call(move |conn| {
                     // Get all table names
                     let mut stmt =
@@ -1516,7 +1523,7 @@ mod libsql {
 
         async fn query(&self, query: String) -> color_eyre::Result<responses::Query> {
             let conn = self.db.connect()?;
-            let mut stmt = conn.prepare(&query).await?;
+            let stmt = conn.prepare(&query).await?;
 
             let rows = stmt
                 .query(())
@@ -5086,14 +5093,16 @@ mod helpers {
             SmallInt(x) => serde_json::json!(x),
             Int(x) => serde_json::json!(x),
             BigInt(x) => serde_json::json!(x),
-            HugeInt(x) => serde_json::json!(x),
+            HugeInt(x) => serde_json::Number::from_i128(x)
+                .map(serde_json::Value::Number)
+                .unwrap_or_else(|| serde_json::Value::String(x.to_string())),
             UTinyInt(x) => serde_json::json!(x),
             USmallInt(x) => serde_json::json!(x),
             UInt(x) => serde_json::json!(x),
             UBigInt(x) => serde_json::json!(x),
             Float(x) => serde_json::json!(x),
             Double(x) => serde_json::json!(x),
-            Decimal(x) => serde_json::json!(x),
+            Decimal(x) => serde_json::json!(x.to_string()),
             Text(_) => serde_json::Value::String(v.as_str().unwrap().to_owned()),
             v => serde_json::Value::String(format!("{v:?}")),
         }
