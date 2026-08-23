@@ -137,7 +137,7 @@ function Index() {
                 {data.modified && (
                   <MetadataRow
                     name="MODIFIED ON"
-                    description="The date and time when the DB was created."
+                    description="The date and time when the DB was last modified."
                     value={data.modified.toUTCString()}
                   />
                 )}
