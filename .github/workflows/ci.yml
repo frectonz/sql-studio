@@ -33,6 +33,42 @@ jobs:
     - name: Build Rust project
       run: cargo build --release
 
+  docs:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 11
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: pnpm
+        cache-dependency-path: docs/pnpm-lock.yaml
+
+    - name: Install pnpm dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Check formatting
+      run: pnpm exec biome format
+
+    - name: Lint
+      run: pnpm lint
+
+    - name: Typecheck
+      run: pnpm typecheck
+
+    - name: Build docs
+      run: pnpm build
+
   build-with-nix:
     runs-on: ubuntu-latest
     steps:
