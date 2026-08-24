@@ -11,6 +11,11 @@
   }
 }
 
+/* Hide the frontmatter description when the page body opens with its own intro paragraph */
+.fd-title-decorations-host:has(+ p) .fd-page-description {
+  display: none;
+}
+
 body:has(.ld-bg) {
   background-color: #071611 !important;
 }
