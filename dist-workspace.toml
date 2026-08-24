@@ -4,7 +4,7 @@ members = ["cargo:."]
 # Config for 'dist'
 [dist]
 # The preferred dist version to use in CI (Cargo.toml SemVer syntax)
-cargo-dist-version = "0.30.4"
+cargo-dist-version = "0.32.0"
 # CI backends to support
 ci = "github"
 # The installers to generate for each app
@@ -15,5 +15,10 @@ targets = ["aarch64-apple-darwin", "aarch64-unknown-linux-gnu", "x86_64-apple-da
 install-updater = true
 # Path that installers should place binaries in
 install-path = "CARGO_HOME"
+# Build (but don't publish) on pull requests
+pr-run-mode = "upload"
 # Skip checking whether the specified configuration files are up to date
 allow-dirty = ["ci"]
+
+[dist.github-custom-runners]
+x86_64-unknown-linux-musl = "ubuntu-24.04-arm"

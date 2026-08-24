@@ -30,9 +30,7 @@ tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 warp = { version = "0.4.3", features = ["server"] }
 webpki-roots = "1.0.9"
-
-[target.'cfg(not(target_env = "musl"))'.dependencies]
-duckdb = { version = "1.10505.0", features = ["bundled"] }
+duckdb = { version = "1.10505.0", features = ["bundled", "parquet"] }
 
 [profile.release]
 strip = true
