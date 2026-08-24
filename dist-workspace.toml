@@ -15,6 +15,8 @@ targets = ["aarch64-apple-darwin", "aarch64-unknown-linux-gnu", "x86_64-apple-da
 install-updater = true
 # Path that installers should place binaries in
 install-path = "CARGO_HOME"
+# Build (but don't publish) on pull requests
+pr-run-mode = "upload"
 # Skip checking whether the specified configuration files are up to date
 allow-dirty = ["ci"]
 
