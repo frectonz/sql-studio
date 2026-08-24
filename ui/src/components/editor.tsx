@@ -1,8 +1,11 @@
 import { FunctionComponent, useEffect, useRef } from "react";
 
+import * as monaco from "monaco-editor/editor.js";
+import "monaco-editor/languages/definitions/sql/register.js";
+import editorWorker from "monaco-editor/editor/editor.worker.js?worker";
 import type { IDisposable } from "monaco-editor";
-import { vsPlusTheme } from "monaco-sql-languages";
-import EditorComponent, { useMonaco } from "@monaco-editor/react";
+import { darkThemeData, lightThemeData } from "./editor.theme";
+import EditorComponent, { loader, useMonaco } from "@monaco-editor/react";
 
 import {
   COMMAND_CONFIG,
@@ -15,6 +18,11 @@ import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "@/provider/theme.provider";
 import { useSqlFormattingProviders } from "@/lib/sql-formatting";
+
+self.MonacoEnvironment = {
+  getWorker: () => new editorWorker(),
+};
+loader.config({ monaco });
 
 type Props = {
   value: string;
@@ -41,8 +49,8 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
       COMMAND_CONFIG,
     );
 
-    monacoInstance.editor.defineTheme("sql-dark", vsPlusTheme.darkThemeData);
-    monacoInstance.editor.defineTheme("sql-light", vsPlusTheme.lightThemeData);
+    monacoInstance.editor.defineTheme("sql-dark", darkThemeData);
+    monacoInstance.editor.defineTheme("sql-light", lightThemeData);
     monacoInstance.editor.setTheme(
       currentTheme === "light" ? "sql-light" : "sql-dark",
     );

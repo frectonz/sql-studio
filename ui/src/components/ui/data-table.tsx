@@ -1,9 +1,13 @@
 import {
   ColumnDef,
+  RowData,
+  columnVisibilityFeature,
+  createPaginatedRowModel,
   flexRender,
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
+  rowPaginationFeature,
+  rowSelectionFeature,
+  tableFeatures,
+  useTable,
 } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 
@@ -24,20 +28,26 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
+export const dataTableFeatures = tableFeatures({
+  columnVisibilityFeature,
+  rowPaginationFeature,
+  rowSelectionFeature,
+  paginatedRowModel: createPaginatedRowModel(),
+});
+
+interface DataTableProps<TData extends RowData> {
+  columns: ColumnDef<typeof dataTableFeatures, TData, unknown>[];
   data: TData[];
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends RowData>({
   columns,
   data,
-}: DataTableProps<TData, TValue>) {
-  const table = useReactTable({
+}: DataTableProps<TData>) {
+  const table = useTable({
+    features: dataTableFeatures,
     data,
     columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   return (
@@ -94,7 +104,7 @@ export function DataTable<TData, TValue>({
       </div>
       <div className="flex items-center justify-between space-x-2 py-4">
         <div className="flex text-sm text-muted-foreground">
-          Page {table.getState().pagination.pageIndex + 1} of{" "}
+          Page {table.state.pagination.pageIndex + 1} of{" "}
           {table.getPageCount().toLocaleString()} page(s).
         </div>
         <div className="space-x-2">
@@ -122,7 +132,7 @@ export function DataTable<TData, TValue>({
           >
             <SelectTrigger className="text-sm">
               <SelectValue>
-                Rows per page: {table.getState().pagination.pageSize}
+                Rows per page: {table.state.pagination.pageSize}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
