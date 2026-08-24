@@ -54,7 +54,7 @@ sql-studio parquet [parquet_file]
 sql-studio csv [csv_file]
 ```
 
-### ClickHouse Server (Partial Support)
+### ClickHouse Server
 
 ```bash
 sql-studio clickhouse [URL] [USER] [PASSWORD] [DATABASE]

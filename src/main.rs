@@ -3944,7 +3944,6 @@ mod csv {
 
 mod clickhouse {
     use clickhouse::Client;
-    use color_eyre::eyre::OptionExt;
     use std::time::Duration;
 
     use crate::{
@@ -3956,13 +3955,55 @@ mod clickhouse {
     pub struct Db {
         conn: Client,
         database: String,
-        _query_timeout: Duration,
+        query_timeout: Duration,
     }
 
     #[derive(serde::Deserialize, clickhouse::Row, Debug)]
     pub struct ClickhouseCount {
         pub name: String,
-        pub count: i64,
+        pub count: u64,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct JsonCompactMeta {
+        name: String,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct JsonCompact {
+        meta: Vec<JsonCompactMeta>,
+        data: Vec<Vec<serde_json::Value>>,
+    }
+
+    async fn fetch_count(query: clickhouse::query::Query) -> color_eyre::Result<i32> {
+        Ok(query.fetch_one::<u64>().await? as i32)
+    }
+
+    fn quote_ident(name: &str) -> String {
+        format!("`{}`", name.replace('`', "\\`"))
+    }
+
+    impl Db {
+        async fn fetch_json_compact(
+            &self,
+            sql: &str,
+        ) -> color_eyre::Result<(Vec<String>, Vec<Vec<serde_json::Value>>)> {
+            let bytes = self
+                .conn
+                .query(sql)
+                .fetch_bytes("JSONCompact")?
+                .collect()
+                .await?;
+
+            if bytes.iter().all(u8::is_ascii_whitespace) {
+                return Ok((Vec::new(), Vec::new()));
+            }
+
+            let JsonCompact { meta, data } = serde_json::from_slice(&bytes)?;
+            let columns = meta.into_iter().map(|m| m.name).collect();
+
+            Ok((columns, data))
+        }
     }
 
     impl Db {
@@ -3979,16 +4020,14 @@ mod clickhouse {
                 .with_password(password)
                 .with_database(&database);
 
-            let tables: i32 = conn
-                .query(
-                    r#"
+            let tables = fetch_count(conn.query(
+                r#"
             SELECT count(*)
             FROM system.tables
             WHERE database = currentDatabase()
                     "#,
-                )
-                .fetch_one()
-                .await?;
+            ))
+            .await?;
 
             tracing::info!(
                 "found {tables} table{} in {database}",
@@ -3998,7 +4037,7 @@ mod clickhouse {
             Ok(Self {
                 conn,
                 database,
-                _query_timeout: query_timeout,
+                query_timeout,
             })
         }
     }
@@ -4007,49 +4046,51 @@ mod clickhouse {
         async fn overview(&self) -> color_eyre::Result<responses::Overview> {
             let file_name = self.database.to_owned();
 
-            let db_size = String::new();
-            let modified = None;
-            let created = None;
-
-            let tables: i32 = self
+            let db_size: String = self
                 .conn
                 .query(
                     r#"
-            SELECT count(*)
-            FROM system.tables
+            SELECT formatReadableSize(sum(bytes))
+            FROM system.parts
             WHERE database = currentDatabase()
+            AND active
                     "#,
                 )
                 .fetch_one()
                 .await?;
+            let modified = None;
+            let created = None;
 
-            let indexes: i32 = self
-                .conn
-                .query(
-                    r#"
+            let tables = fetch_count(self.conn.query(
+                r#"
+            SELECT count(*)
+            FROM system.tables
+            WHERE database = currentDatabase()
+                    "#,
+            ))
+            .await?;
+
+            let indexes = fetch_count(self.conn.query(
+                r#"
             SELECT count(*)
             FROM system.columns
             WHERE database = currentDatabase() 
             AND (is_in_primary_key = true OR is_in_sorting_key = true)
                     "#,
-                )
-                .fetch_one()
-                .await?;
+            ))
+            .await?;
 
             let triggers: i32 = 0;
 
-            let views: i32 = self
-                .conn
-                .query(
-                    r#"
+            let views = fetch_count(self.conn.query(
+                r#"
             SELECT count(*)
             FROM system.tables
             WHERE database = currentDatabase() 
             AND engine = 'View'
                     "#,
-                )
-                .fetch_one()
-                .await?;
+            ))
+            .await?;
 
             let mut row_counts = self
                 .conn
@@ -4067,11 +4108,11 @@ mod clickhouse {
                 .collect::<Vec<_>>();
 
             for count in row_counts.iter_mut() {
-                count.count = self
-                    .conn
-                    .query(&format!("SELECT count(*) FROM {}", count.name))
-                    .fetch_one()
-                    .await?;
+                count.count = fetch_count(self.conn.query(&format!(
+                    "SELECT count(*) FROM {}",
+                    quote_ident(&count.name)
+                )))
+                .await?;
             }
 
             row_counts.sort_by(|a, b| b.count.cmp(&a.count));
@@ -4107,20 +4148,20 @@ mod clickhouse {
                 .collect::<Vec<_>>();
 
             for count in index_counts.iter_mut() {
-                count.count = self
-                    .conn
-                    .query(
-                        r#"
+                count.count = fetch_count(
+                    self.conn
+                        .query(
+                            r#"
                 SELECT count(*)
                 FROM system.columns
                 WHERE database = currentDatabase() 
                 AND table = ?
                 AND (is_in_primary_key = true OR is_in_sorting_key = true)
                         "#,
-                    )
-                    .bind(&count.name)
-                    .fetch_one()
-                    .await?;
+                        )
+                        .bind(&count.name),
+                )
+                .await?;
             }
 
             index_counts.sort_by(|a, b| b.count.cmp(&a.count));
@@ -4164,11 +4205,11 @@ mod clickhouse {
                 .collect::<Vec<_>>();
 
             for count in tables.iter_mut() {
-                count.count = self
-                    .conn
-                    .query(&format!("SELECT count(*) FROM {}", count.name))
-                    .fetch_one()
-                    .await?;
+                count.count = fetch_count(self.conn.query(&format!(
+                    "SELECT count(*) FROM {}",
+                    quote_ident(&count.name)
+                )))
+                .await?;
             }
 
             tables.sort_by_key(|r| r.count);
@@ -4191,11 +4232,11 @@ mod clickhouse {
                 .fetch_one()
                 .await?;
 
-            let row_count = self
-                .conn
-                .query(&format!("SELECT count(*) FROM {name}"))
-                .fetch_one()
-                .await?;
+            let row_count = fetch_count(
+                self.conn
+                    .query(&format!("SELECT count(*) FROM {}", quote_ident(&name))),
+            )
+            .await?;
 
             let table_size = self
                 .conn
@@ -4210,34 +4251,34 @@ mod clickhouse {
                 .fetch_one::<String>()
                 .await?;
 
-            let index_count: i32 = self
-                .conn
-                .query(
-                    r#"
+            let index_count = fetch_count(
+                self.conn
+                    .query(
+                        r#"
             SELECT count(*)
             FROM system.columns
             WHERE database = currentDatabase() 
             AND table = ?
             AND (is_in_primary_key = true OR is_in_sorting_key = true)
                     "#,
-                )
-                .bind(&name)
-                .fetch_one()
-                .await?;
+                    )
+                    .bind(&name),
+            )
+            .await?;
 
-            let column_count: i32 = self
-                .conn
-                .query(
-                    r#"
+            let column_count = fetch_count(
+                self.conn
+                    .query(
+                        r#"
             SELECT count() AS count
             FROM system.columns
             WHERE database = currentDatabase()
             AND table =  ?
                     "#,
-                )
-                .bind(&name)
-                .fetch_one()
-                .await?;
+                    )
+                    .bind(&name),
+            )
+            .await?;
 
             Ok(responses::Table {
                 name,
@@ -4254,7 +4295,7 @@ mod clickhouse {
             name: String,
             page: i32,
         ) -> color_eyre::Result<responses::TableData> {
-            let mut columns = self
+            let first_column: String = self
                 .conn
                 .query(
                     r#"
@@ -4262,30 +4303,29 @@ mod clickhouse {
             FROM system.columns
             WHERE database = currentDatabase()
             AND table = ?
+            ORDER BY position
+            LIMIT 1
                     "#,
                 )
                 .bind(&name)
-                .fetch_all::<String>()
+                .fetch_one()
                 .await?;
-            columns.truncate(5);
-
-            let first_column = columns.first().ok_or_eyre("no first column found")?;
 
             let offset = (page - 1) * ROWS_PER_PAGE;
-            let _sql = format!(
+            let sql = format!(
                 r#"
-            SELECT {} FROM {name}
-            ORDER BY {first_column}
+            SELECT * FROM {}
+            ORDER BY {}
             LIMIT {ROWS_PER_PAGE}
             OFFSET {offset}
                 "#,
-                columns.join(",")
+                quote_ident(&name),
+                quote_ident(&first_column),
             );
 
-            Ok(responses::TableData {
-                columns,
-                rows: Vec::new(),
-            })
+            let (columns, rows) = self.fetch_json_compact(&sql).await?;
+
+            Ok(responses::TableData { columns, rows })
         }
 
         async fn tables_with_columns(&self) -> color_eyre::Result<responses::TablesWithColumns> {
@@ -4303,7 +4343,7 @@ mod clickhouse {
 
             let mut tables = Vec::with_capacity(table_names.len());
             for table_name in table_names {
-                let mut columns = self
+                let columns = self
                     .conn
                     .query(
                         r#"
@@ -4311,12 +4351,12 @@ mod clickhouse {
                         FROM system.columns
                         WHERE database = currentDatabase()
                         AND table = ?
+                        ORDER BY position
                         "#,
                     )
                     .bind(&table_name)
                     .fetch_all::<String>()
                     .await?;
-                columns.truncate(5);
 
                 tables.push(responses::TableWithColumns {
                     table_name,
@@ -4327,11 +4367,12 @@ mod clickhouse {
             Ok(responses::TablesWithColumns { tables })
         }
 
-        async fn query(&self, _query: String) -> color_eyre::Result<responses::Query> {
-            Ok(responses::Query {
-                columns: Vec::new(),
-                rows: Vec::new(),
-            })
+        async fn query(&self, query: String) -> color_eyre::Result<responses::Query> {
+            let query = query.trim().trim_end_matches(';');
+            let (columns, rows) =
+                tokio::time::timeout(self.query_timeout, self.fetch_json_compact(query)).await??;
+
+            Ok(responses::Query { columns, rows })
         }
 
         async fn erd(&self) -> color_eyre::Result<responses::Erd> {

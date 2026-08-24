@@ -15,7 +15,7 @@ twitter:
 
 # ClickHouse
 
-Connect to a ClickHouse analytics database. ClickHouse support is currently partial.
+Connect to a ClickHouse analytics database.
 
 ## Usage
 
@@ -36,6 +36,7 @@ sql-studio clickhouse [URL] [USER] [PASSWORD] [DATABASE]
 
 - All arguments have sensible defaults, so you can connect to a local ClickHouse instance with just `sql-studio clickhouse`.
 - SQL Studio uses `rustls` for TLS connections.
+- ClickHouse has no foreign keys, so the ERD viewer shows tables without relationships.
 
 ## Examples
 
