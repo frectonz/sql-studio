@@ -353,19 +353,17 @@ export default function LandingPage() {
           </p>
 
           <div
-            className="tw:grid tw:grid-cols-2 tw:gap-0 tw:sm:grid-cols-3 tw:md:grid-cols-5"
-            style={{ border: "1px solid var(--ss-border)" }}
+            className="tw:grid tw:grid-cols-2 tw:gap-px tw:sm:grid-cols-3 tw:md:grid-cols-5"
+            style={{
+              background: "var(--ss-border)",
+              border: "1px solid var(--ss-border)",
+            }}
           >
-            {DATABASES.map((db, i) => (
+            {DATABASES.map((db) => (
               <Link
                 key={db.name}
                 href={db.href}
-                className="ld-card tw:block tw:border-0 tw:px-4 tw:py-4"
-                style={{
-                  borderRight:
-                    (i + 1) % 5 !== 0 ? "1px solid var(--ss-border)" : "none",
-                  borderBottom: i < 5 ? "1px solid var(--ss-border)" : "none",
-                }}
+                className="ld-card tw:block tw:px-4 tw:py-4"
               >
                 <div
                   className="tw:mb-2 tw:text-xs tw:font-black tw:uppercase tw:tracking-wider"

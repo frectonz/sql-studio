@@ -73,17 +73,12 @@ body:has(.ld-bg) {
 /* Card */
 .ld-card {
   background: var(--ss-card);
-  border: 1px solid var(--ss-border);
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease,
-    border-color 0.15s ease;
 }
 
 .ld-card:hover {
-  border-color: var(--ss-primary);
-  transform: translate(-1px, -1px);
-  box-shadow: 2px 2px 0 var(--ss-primary);
+  position: relative;
+  z-index: 1;
+  outline: 1px solid var(--ss-primary);
 }
 
 /* Feature card */
