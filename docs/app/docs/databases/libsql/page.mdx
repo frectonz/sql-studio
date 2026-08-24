@@ -1,6 +1,6 @@
 ---
 title: "libSQL"
-description: "Connect SQL Studio to a remote libSQL (Turso) server."
+description: "Connect SQL Studio to a libSQL database."
 icon: "turso"
 openGraph:
   images:
@@ -15,29 +15,40 @@ twitter:
 
 # libSQL
 
-Connect to a remote SQLite database via the libSQL protocol (used by [Turso](https://turso.tech)).
+Connect to a libSQL database, used by [Turso](https://turso.tech).
 
 ## Usage
 
 ```bash
-sql-studio libsql <URL> <AUTH_TOKEN>
+sql-studio libsql <DATABASE> [AUTH_TOKEN]
 ```
 
 ## Arguments
 
 | Argument | Description | Env Var |
 |----------|-------------|---------|
-| `URL` | libSQL server address | `URL` |
-| `AUTH_TOKEN` | Authentication token | `AUTH_TOKEN` |
+| `DATABASE` | Path to a local SQLite database file, or the URL of a libSQL server | `DATABASE` |
+| `AUTH_TOKEN` | Authentication token, only used when connecting to a server | `AUTH_TOKEN` |
+
+## Notes
+
+- `DATABASE` is treated as a server URL when it starts with `libsql://`, `http://`, `https://`, `ws://` or `wss://`. Anything else is opened as a local file.
+- The local mode is useful when you need libSQL-specific features that the standard SQLite driver doesn't provide.
 
 ## Examples
 
 ```bash
+# Open a local database file
+sql-studio libsql ./my-database.db
+
 # Connect to a Turso database
 sql-studio libsql libsql://my-db-myorg.turso.io my-auth-token
 
+# Connect to a local libSQL server without authentication
+sql-studio libsql http://127.0.0.1:8080
+
 # Using environment variables
-export URL="libsql://my-db-myorg.turso.io"
+export DATABASE="libsql://my-db-myorg.turso.io"
 export AUTH_TOKEN="my-auth-token"
-sql-studio libsql "$URL" "$AUTH_TOKEN"
+sql-studio libsql
 ```

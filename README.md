@@ -12,16 +12,10 @@ Single binary, single command SQL database explorer. SQL studio supports *SQLite
 sql-studio sqlite [sqlite_db]
 ```
 
-### Remote libSQL Server
+### libSQL
 
 ```bash
-sql-studio libsql [url] [auth_token]
-```
-
-### Local SQLite DB with libSQL driver
-
-```bash
-sql-studio local-libsql [database]
+sql-studio libsql [database] [auth_token]
 ```
 
 ### PostgreSQL Server

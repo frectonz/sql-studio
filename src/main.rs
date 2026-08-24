@@ -43,22 +43,16 @@ enum Command {
         database: String,
     },
 
-    /// A remote SQLite database via libSQL.
+    /// A libSQL database.
+    #[command(alias = "local-libsql")]
     Libsql {
-        /// libSQL server address
-        #[arg(env)]
-        url: String,
-
-        /// libSQL authentication token.
-        #[arg(env)]
-        auth_token: String,
-    },
-
-    /// A local SQLite database via libSQL.
-    LocalLibsql {
-        /// Path to the sqlite database file to be opened with libSQL.
+        /// Path to a local SQLite database file, or the URL of a libSQL server.
         #[arg(env)]
         database: String,
+
+        /// libSQL authentication token. [only used when connecting to a server]
+        #[arg(env)]
+        auth_token: Option<String>,
     },
 
     /// A PostgreSQL database.
@@ -146,12 +140,10 @@ async fn main() -> color_eyre::Result<()> {
         Command::Sqlite { database } => {
             AllDbs::Sqlite(sqlite::Db::open(database, args.timeout.into()).await?)
         }
-        Command::Libsql { url, auth_token } => {
-            AllDbs::Libsql(libsql::Db::open(url, auth_token, args.timeout.into()).await?)
-        }
-        Command::LocalLibsql { database } => {
-            AllDbs::Libsql(libsql::Db::open_local(database, args.timeout.into()).await?)
-        }
+        Command::Libsql {
+            database,
+            auth_token,
+        } => AllDbs::Libsql(libsql::Db::open(database, auth_token, args.timeout.into()).await?),
         Command::Postgres { url, schema } => {
             AllDbs::Postgres(postgres::Db::open(url, schema, args.timeout.into()).await?)
         }
@@ -1026,48 +1018,25 @@ mod libsql {
         query_timeout: Duration,
     }
 
+    fn is_remote(database: &str) -> bool {
+        ["libsql://", "http://", "https://", "ws://", "wss://"]
+            .iter()
+            .any(|scheme| database.starts_with(scheme))
+    }
+
     impl Db {
         pub async fn open(
-            url: String,
-            auth_token: String,
-            query_timeout: Duration,
-        ) -> color_eyre::Result<Self> {
-            let db = Builder::new_remote(url.to_owned(), auth_token)
-                .build()
-                .await?;
-            let conn = db.connect()?;
-
-            let tables = conn
-                .query(
-                    r#"
-            SELECT count(*) FROM sqlite_master
-            WHERE type="table"
-                "#,
-                    (),
-                )
-                .await?
-                .next()
-                .await?
-                .ok_or_eyre("no row returned from db")?
-                .get::<i32>(0)?;
-
-            tracing::info!(
-                "found {tables} table{} in {url}",
-                if tables == 1 { "" } else { "s" }
-            );
-
-            Ok(Self {
-                name: url,
-                query_timeout,
-                db: Arc::new(db),
-            })
-        }
-
-        pub async fn open_local(
             database: String,
+            auth_token: Option<String>,
             query_timeout: Duration,
         ) -> color_eyre::Result<Self> {
-            let db = Builder::new_local(&database).build().await?;
+            let db = if is_remote(&database) {
+                Builder::new_remote(database.clone(), auth_token.unwrap_or_default())
+                    .build()
+                    .await?
+            } else {
+                Builder::new_local(&database).build().await?
+            };
             let conn = db.connect()?;
 
             let tables = conn

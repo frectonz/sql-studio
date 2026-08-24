@@ -5,18 +5,18 @@ import { CopyButton } from "./copy-button";
 export const metadata: Metadata = {
   title: "SQL Studio — Single Binary SQL Database Explorer",
   description:
-    "Single binary SQL database explorer. 10 databases. One interface. No config files.",
+    "Single binary SQL database explorer. 9 databases. One interface. No config files.",
   openGraph: {
     title: "SQL Studio",
     description:
-      "Single binary SQL database explorer. 10 databases. One interface.",
+      "Single binary SQL database explorer. 9 databases. One interface.",
     images: [{ url: "/og/index.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "SQL Studio",
     description:
-      "Single binary SQL database explorer. 10 databases. One interface.",
+      "Single binary SQL database explorer. 9 databases. One interface.",
     images: ["/og/index.png"],
   },
 };
@@ -48,8 +48,8 @@ const DATABASES = [
   },
   {
     name: "libSQL",
-    command: "libsql [url] [token]",
-    description: "Remote Turso",
+    command: "libsql [db] [token]",
+    description: "Turso",
     href: "/docs/databases/libsql",
   },
   {
@@ -75,12 +75,6 @@ const DATABASES = [
     command: "csv [file]",
     description: "CSV files",
     href: "/docs/databases/csv",
-  },
-  {
-    name: "Local libSQL",
-    command: "local-libsql [db]",
-    description: "Local libSQL",
-    href: "/docs/databases/local-libsql",
   },
 ];
 
@@ -260,7 +254,7 @@ export default function LandingPage() {
               className="ld-up tw:mt-8 tw:max-w-md tw:text-sm tw:leading-relaxed"
               style={{ animationDelay: "0.35s", color: "var(--ss-muted)" }}
             >
-              Single binary SQL database explorer. 10 databases. One interface.
+              Single binary SQL database explorer. 9 databases. One interface.
               No config files.
             </p>
 

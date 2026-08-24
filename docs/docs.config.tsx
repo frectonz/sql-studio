@@ -134,7 +134,6 @@ export default defineDocs({
       children: [
         { slug: "sqlite" },
         { slug: "libsql" },
-        { slug: "local-libsql" },
         { slug: "postgresql" },
         { slug: "mysql" },
         { slug: "duckdb" },
