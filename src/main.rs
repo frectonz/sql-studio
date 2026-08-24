@@ -1663,6 +1663,19 @@ mod postgres {
         query_timeout: Duration,
     }
 
+    fn parse_config(url: &str) -> Result<tokio_postgres::Config, tokio_postgres::Error> {
+        let mut config = url.parse::<tokio_postgres::Config>()?;
+        if config.get_hosts().is_empty() {
+            #[cfg(unix)]
+            {
+                config.host_path("/var/run/postgresql");
+                config.host_path("/tmp");
+            }
+            config.host("localhost");
+        }
+        Ok(config)
+    }
+
     impl Db {
         pub async fn open(
             url: String,
@@ -1676,7 +1689,7 @@ mod postgres {
                 .with_no_client_auth();
             let connector = tokio_postgres_rustls::MakeRustlsConnect::new(tls_config);
 
-            let (client, connection) = tokio_postgres::connect(&url, connector).await?;
+            let (client, connection) = parse_config(&url)?.connect(connector).await?;
 
             // The connection object performs the actual communication with the database,
             // so spawn it off to run on its own.
