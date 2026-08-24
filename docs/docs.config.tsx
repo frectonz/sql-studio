@@ -4,17 +4,40 @@ import {
   BookOpen,
   Code,
   Database,
-  FileSpreadsheet,
   FileText,
   GitBranch,
-  HardDrive,
   Layout,
   Rocket,
-  Server,
   Settings,
   Table,
   Terminal,
 } from "lucide-react";
+import type { SimpleIcon } from "simple-icons";
+import {
+  siApacheparquet,
+  siClickhouse,
+  siDuckdb,
+  siMysql,
+  siPostgresql,
+  siSqlite,
+  siTurso,
+} from "simple-icons";
+import { CsvIcon, MssqlIcon } from "./icons";
+
+function BrandIcon({ icon }: { icon: SimpleIcon }) {
+  return (
+    <svg
+      role="img"
+      aria-label={icon.title}
+      viewBox="0 0 24 24"
+      width={16}
+      height={16}
+      fill="currentColor"
+    >
+      <path d={icon.path} />
+    </svg>
+  );
+}
 
 export default defineDocs({
   entry: "docs",
@@ -86,10 +109,16 @@ export default defineDocs({
     table: <Table size={16} />,
     code: <Code size={16} />,
     gitbranch: <GitBranch size={16} />,
-    harddrive: <HardDrive size={16} />,
-    server: <Server size={16} />,
-    spreadsheet: <FileSpreadsheet size={16} />,
     file: <FileText size={16} />,
+    sqlite: <BrandIcon icon={siSqlite} />,
+    postgresql: <BrandIcon icon={siPostgresql} />,
+    mysql: <BrandIcon icon={siMysql} />,
+    duckdb: <BrandIcon icon={siDuckdb} />,
+    turso: <BrandIcon icon={siTurso} />,
+    clickhouse: <BrandIcon icon={siClickhouse} />,
+    parquet: <BrandIcon icon={siApacheparquet} />,
+    mssql: <MssqlIcon />,
+    csv: <CsvIcon />,
   },
 
   sidebar: { flat: true },
