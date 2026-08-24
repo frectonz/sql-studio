@@ -22,31 +22,65 @@ export const metadata: Metadata = {
 };
 
 const DATABASES = [
-  { name: "SQLite", command: "sqlite [file]", description: "Local .db files" },
+  {
+    name: "SQLite",
+    command: "sqlite [file]",
+    description: "Local .db files",
+    href: "/docs/databases/sqlite",
+  },
   {
     name: "PostgreSQL",
     command: "postgres [url]",
     description: "PostgreSQL servers",
+    href: "/docs/databases/postgresql",
   },
-  { name: "MySQL", command: "mysql [url]", description: "MySQL & MariaDB" },
-  { name: "DuckDB", command: "duckdb [file]", description: "Analytics files" },
+  {
+    name: "MySQL",
+    command: "mysql [url]",
+    description: "MySQL & MariaDB",
+    href: "/docs/databases/mysql",
+  },
+  {
+    name: "DuckDB",
+    command: "duckdb [file]",
+    description: "Analytics files",
+    href: "/docs/databases/duckdb",
+  },
   {
     name: "libSQL",
     command: "libsql [url] [token]",
     description: "Remote Turso",
+    href: "/docs/databases/libsql",
   },
   {
     name: "ClickHouse",
     command: "clickhouse [...]",
     description: "Analytics servers",
+    href: "/docs/databases/clickhouse",
   },
-  { name: "MSSQL", command: "mssql [conn]", description: "SQL Server" },
-  { name: "Parquet", command: "parquet [file]", description: "Columnar files" },
-  { name: "CSV", command: "csv [file]", description: "CSV files" },
+  {
+    name: "MSSQL",
+    command: "mssql [conn]",
+    description: "SQL Server",
+    href: "/docs/databases/mssql",
+  },
+  {
+    name: "Parquet",
+    command: "parquet [file]",
+    description: "Columnar files",
+    href: "/docs/databases/parquet",
+  },
+  {
+    name: "CSV",
+    command: "csv [file]",
+    description: "CSV files",
+    href: "/docs/databases/csv",
+  },
   {
     name: "Local libSQL",
     command: "local-libsql [db]",
     description: "Local libSQL",
+    href: "/docs/databases/local-libsql",
   },
 ];
 
@@ -56,24 +90,28 @@ const FEATURES = [
     description:
       "Database metadata, row counts, index statistics, and bar charts at a glance",
     image: "/overview.png",
+    href: "/docs/features/overview",
   },
   {
     title: "TABLES",
     description:
       "Browse tables with metadata cards, creation SQL, and infinite-scroll data grids",
     image: "/tables.png",
+    href: "/docs/features/table-explorer",
   },
   {
     title: "QUERY",
     description:
       "Monaco-powered SQL editor with IntelliSense, auto-execute, and configurable timeouts",
     image: "/query.png",
+    href: "/docs/features/query-editor",
   },
   {
     title: "ERD",
     description:
       "Interactive entity-relationship diagrams with foreign key visualization",
     image: "/erd.png",
+    href: "/docs/features/erd-viewer",
   },
 ];
 
@@ -319,9 +357,10 @@ export default function LandingPage() {
             style={{ border: "1px solid var(--ss-border)" }}
           >
             {DATABASES.map((db, i) => (
-              <div
+              <Link
                 key={db.name}
-                className="ld-card tw:border-0 tw:px-4 tw:py-4"
+                href={db.href}
+                className="ld-card tw:block tw:border-0 tw:px-4 tw:py-4"
                 style={{
                   borderRight:
                     (i + 1) % 5 !== 0 ? "1px solid var(--ss-border)" : "none",
@@ -346,7 +385,7 @@ export default function LandingPage() {
                 >
                   {db.description}
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -390,9 +429,10 @@ export default function LandingPage() {
               const span =
                 i === 0 || i === 3 ? "tw:md:col-span-7" : "tw:md:col-span-5";
               return (
-                <div
+                <Link
                   key={feature.title}
-                  className={`ld-feature ld-scroll tw:group ${span}`}
+                  href={feature.href}
+                  className={`ld-feature ld-scroll tw:group tw:block ${span}`}
                 >
                   <div className="tw:p-3 tw:md:p-4">
                     <img
@@ -422,7 +462,7 @@ export default function LandingPage() {
                       {feature.description}
                     </p>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>
