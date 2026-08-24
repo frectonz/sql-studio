@@ -43,6 +43,7 @@ export default defineDocs({
   entry: "docs",
   staticExport: true,
   review: false,
+  llmsTxt: false,
   github: {
     url: "https://github.com/frectonz/sql-studio",
     branch: "main",
