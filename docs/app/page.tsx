@@ -110,15 +110,15 @@ export default function LandingPage() {
     <div className="ld-mono ld-bg" style={{ color: "var(--ss-foreground)", minHeight: "100vh" }}>
       {/* NAV */}
       <nav style={{ borderBottom: "2px solid var(--ss-border)" }}>
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
+        <div className="tw:mx-auto tw:flex tw:h-14 tw:max-w-6xl tw:items-center tw:justify-between tw:px-6">
           <Link href="/" style={{ color: "var(--ss-primary)" }}>
             <Logo />
           </Link>
-          <div className="flex items-center gap-6 text-xs tracking-widest" style={{ color: "var(--ss-muted)" }}>
-            <Link href="/docs" className="transition-colors duration-100 hover:text-white">
+          <div className="tw:flex tw:items-center tw:gap-6 tw:text-xs tw:tracking-widest" style={{ color: "var(--ss-muted)" }}>
+            <Link href="/docs" className="tw:transition-colors tw:duration-100 tw:hover:text-white">
               DOCS
             </Link>
-            <Link href="https://github.com/frectonz/sql-studio" className="transition-colors duration-100 hover:text-white" target="_blank" rel="noopener noreferrer">
+            <Link href="https://github.com/frectonz/sql-studio" className="tw:transition-colors tw:duration-100 tw:hover:text-white" target="_blank" rel="noopener noreferrer">
               GITHUB
             </Link>
           </div>
@@ -126,32 +126,32 @@ export default function LandingPage() {
       </nav>
 
       {/* HERO */}
-      <section className="relative overflow-hidden" style={{ borderBottom: "2px solid var(--ss-border)" }}>
+      <section className="tw:relative tw:overflow-hidden" style={{ borderBottom: "2px solid var(--ss-border)" }}>
         <div className="ld-watermark" style={{ fontSize: "40vw", top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}>
           SELECT&nbsp;*
         </div>
-        <div className="relative z-10 mx-auto grid max-w-6xl grid-cols-1 lg:grid-cols-[2fr_3fr]">
+        <div className="tw:relative tw:z-10 tw:mx-auto tw:grid tw:max-w-6xl tw:grid-cols-1 tw:lg:grid-cols-[2fr_3fr]">
 
           {/* Left — text */}
-          <div className="px-6 pb-16 pt-20 md:pb-24 md:pt-28" style={{ borderRight: "none" }}>
-            <Link href="https://github.com/frectonz/sql-studio/releases/tag/0.1.51" className="ld-up mb-6 inline-block border px-3 py-1 text-xs font-bold tracking-widest" style={{ animationDelay: "0.1s", color: "var(--ss-primary)", borderColor: "var(--ss-primary)" }} target="_blank" rel="noopener noreferrer">
+          <div className="tw:px-6 tw:pb-16 tw:pt-20 tw:md:pb-24 tw:md:pt-28" style={{ borderRight: "none" }}>
+            <Link href="https://github.com/frectonz/sql-studio/releases/tag/0.1.51" className="ld-up tw:mb-6 tw:inline-block tw:border tw:px-3 tw:py-1 tw:text-xs tw:font-bold tw:tracking-widest" style={{ animationDelay: "0.1s", color: "var(--ss-primary)", borderColor: "var(--ss-primary)" }} target="_blank" rel="noopener noreferrer">
               v0.1.51
             </Link>
 
-            <h1 className="ld-up font-black text-6xl sm:text-7xl md:text-8xl lg:text-9xl" style={{ animationDelay: "0.2s", lineHeight: 0.85, letterSpacing: "-0.04em" }}>
+            <h1 className="ld-up tw:font-black tw:text-6xl tw:sm:text-7xl tw:md:text-8xl tw:lg:text-9xl" style={{ animationDelay: "0.2s", lineHeight: 0.85, letterSpacing: "-0.04em" }}>
               SQL<br /><span style={{ color: "var(--ss-primary)" }}>Studio</span>
             </h1>
 
-            <p className="ld-up mt-8 max-w-md text-sm leading-relaxed" style={{ animationDelay: "0.35s", color: "var(--ss-muted)" }}>
+            <p className="ld-up tw:mt-8 tw:max-w-md tw:text-sm tw:leading-relaxed" style={{ animationDelay: "0.35s", color: "var(--ss-muted)" }}>
               Single binary SQL database explorer. 10 databases. One interface. No config files.
             </p>
 
-            <div className="ld-up mt-8 flex flex-wrap gap-3" style={{ animationDelay: "0.45s" }}>
-              <Link href="/docs/installation" className="inline-flex items-center gap-2 border px-5 py-2.5 text-sm font-bold uppercase tracking-wider transition-all duration-100 hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[2px_2px_0_hsl(159,100%,50%)]" style={{ background: "var(--ss-primary)", color: "hsl(159, 10%, 5%)", borderColor: "var(--ss-primary)" }}>
+            <div className="ld-up tw:mt-8 tw:flex tw:flex-wrap tw:gap-3" style={{ animationDelay: "0.45s" }}>
+              <Link href="/docs/installation" className="tw:inline-flex tw:items-center tw:gap-2 tw:border tw:px-5 tw:py-2.5 tw:text-sm tw:font-bold tw:uppercase tw:tracking-wider tw:transition-all tw:duration-100 tw:hover:translate-x-[-1px] tw:hover:translate-y-[-1px] tw:hover:shadow-[2px_2px_0_hsl(159,100%,50%)]" style={{ background: "var(--ss-primary)", color: "hsl(159, 10%, 5%)", borderColor: "var(--ss-primary)" }}>
                 GET STARTED
                 <ArrowIcon />
               </Link>
-              <Link href="https://sql-studio.frectonz.et/" className="inline-flex items-center gap-2 border px-5 py-2.5 text-sm font-bold uppercase tracking-wider transition-all duration-100 hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[2px_2px_0_hsl(159,50%,15%)]" style={{ borderColor: "var(--ss-border)", color: "var(--ss-muted)" }} target="_blank" rel="noopener noreferrer">
+              <Link href="https://sql-studio.frectonz.et/" className="tw:inline-flex tw:items-center tw:gap-2 tw:border tw:px-5 tw:py-2.5 tw:text-sm tw:font-bold tw:uppercase tw:tracking-wider tw:transition-all tw:duration-100 tw:hover:translate-x-[-1px] tw:hover:translate-y-[-1px] tw:hover:shadow-[2px_2px_0_hsl(159,50%,15%)]" style={{ borderColor: "var(--ss-border)", color: "var(--ss-muted)" }} target="_blank" rel="noopener noreferrer">
                 LIVE PREVIEW
                 <ArrowIcon />
               </Link>
@@ -161,42 +161,42 @@ export default function LandingPage() {
           </div>
 
           {/* Right — hero image with 3D tilt */}
-          <div className="ld-up flex items-center justify-center pb-16 pt-8 lg:pb-24 lg:pt-28" style={{ animationDelay: "0.5s", perspective: "1200px" }}>
+          <div className="ld-up tw:flex tw:items-center tw:justify-center tw:pb-16 tw:pt-8 tw:lg:pb-24 tw:lg:pt-28" style={{ animationDelay: "0.5s", perspective: "1200px" }}>
             <div className="ld-hero-tilt" style={{ transformStyle: "preserve-3d", transform: "rotateY(-8deg) rotateX(4deg)", width: "100%" }}>
-              <img src="/overview.png" alt="SQL Studio overview dashboard" className="block w-full object-contain" />
+              <img src="/overview.png" alt="SQL Studio overview dashboard" className="tw:block tw:w-full tw:object-contain" />
             </div>
           </div>
         </div>
       </section>
 
       {/* DATABASES */}
-      <section className="relative overflow-hidden" style={{ borderBottom: "2px solid var(--ss-border)" }}>
+      <section className="tw:relative tw:overflow-hidden" style={{ borderBottom: "2px solid var(--ss-border)" }}>
         <div className="ld-watermark" style={{ fontSize: "25vw", bottom: "-5%", right: "-3%" }}>
           SELECT&nbsp;*
         </div>
-        <div className="relative z-10 mx-auto max-w-6xl px-6 py-20 md:py-28">
-          <div className="ld-scroll mb-2">
-            <span className="text-xs font-bold tracking-widest" style={{ color: "var(--ss-primary)" }}>
+        <div className="tw:relative tw:z-10 tw:mx-auto tw:max-w-6xl tw:px-6 tw:py-20 tw:md:py-28">
+          <div className="ld-scroll tw:mb-2">
+            <span className="tw:text-xs tw:font-bold tw:tracking-widest" style={{ color: "var(--ss-primary)" }}>
               [01] COMPATIBILITY
             </span>
           </div>
-          <h2 className="ld-scroll mb-4 text-3xl font-black uppercase tracking-tighter md:text-5xl">
+          <h2 className="ld-scroll tw:mb-4 tw:text-3xl tw:font-black tw:uppercase tw:tracking-tighter tw:md:text-5xl">
             10 DATABASES.<br />ONE TOOL.
           </h2>
-          <p className="ld-scroll mb-12 max-w-md text-sm" style={{ color: "var(--ss-muted-dim)" }}>
+          <p className="ld-scroll tw:mb-12 tw:max-w-md tw:text-sm" style={{ color: "var(--ss-muted-dim)" }}>
             From local SQLite files to remote PostgreSQL clusters. Same interface, same command.
           </p>
 
-          <div className="grid grid-cols-2 gap-0 sm:grid-cols-3 md:grid-cols-5" style={{ border: "1px solid var(--ss-border)" }}>
+          <div className="tw:grid tw:grid-cols-2 tw:gap-0 tw:sm:grid-cols-3 tw:md:grid-cols-5" style={{ border: "1px solid var(--ss-border)" }}>
             {DATABASES.map((db, i) => (
-              <div key={db.name} className="ld-card border-0 px-4 py-4" style={{ borderRight: (i + 1) % 5 !== 0 ? "1px solid var(--ss-border)" : "none", borderBottom: i < 5 ? "1px solid var(--ss-border)" : "none" }}>
-                <div className="mb-2 text-xs font-black uppercase tracking-wider" style={{ color: "var(--ss-foreground)" }}>
+              <div key={db.name} className="ld-card tw:border-0 tw:px-4 tw:py-4" style={{ borderRight: (i + 1) % 5 !== 0 ? "1px solid var(--ss-border)" : "none", borderBottom: i < 5 ? "1px solid var(--ss-border)" : "none" }}>
+                <div className="tw:mb-2 tw:text-xs tw:font-black tw:uppercase tw:tracking-wider" style={{ color: "var(--ss-foreground)" }}>
                   {db.name}
                 </div>
-                <div className="mb-1.5 text-xs" style={{ color: "var(--ss-primary)" }}>
+                <div className="tw:mb-1.5 tw:text-xs" style={{ color: "var(--ss-primary)" }}>
                   {db.command}
                 </div>
-                <div className="text-xs" style={{ color: "var(--ss-muted-dim)" }}>
+                <div className="tw:text-xs" style={{ color: "var(--ss-muted-dim)" }}>
                   {db.description}
                 </div>
               </div>
@@ -206,36 +206,36 @@ export default function LandingPage() {
       </section>
 
       {/* FEATURES */}
-      <section className="relative overflow-hidden" style={{ borderBottom: "2px solid var(--ss-border)" }}>
+      <section className="tw:relative tw:overflow-hidden" style={{ borderBottom: "2px solid var(--ss-border)" }}>
         <div className="ld-watermark" style={{ fontSize: "30vw", top: "10%", left: "-5%" }}>
           JOIN
         </div>
-        <div className="relative z-10 mx-auto max-w-6xl px-6 py-20 md:py-28">
-          <div className="ld-scroll mb-2">
-            <span className="text-xs font-bold tracking-widest" style={{ color: "var(--ss-primary)" }}>
+        <div className="tw:relative tw:z-10 tw:mx-auto tw:max-w-6xl tw:px-6 tw:py-20 tw:md:py-28">
+          <div className="ld-scroll tw:mb-2">
+            <span className="tw:text-xs tw:font-bold tw:tracking-widest" style={{ color: "var(--ss-primary)" }}>
               [02] FEATURES
             </span>
           </div>
-          <h2 className="ld-scroll mb-4 text-3xl font-black uppercase tracking-tighter md:text-5xl">
+          <h2 className="ld-scroll tw:mb-4 tw:text-3xl tw:font-black tw:uppercase tw:tracking-tighter tw:md:text-5xl">
             EVERYTHING YOU NEED<br />TO EXPLORE.
           </h2>
-          <p className="ld-scroll mb-12 max-w-md text-sm" style={{ color: "var(--ss-muted-dim)" }}>
+          <p className="ld-scroll tw:mb-12 tw:max-w-md tw:text-sm" style={{ color: "var(--ss-muted-dim)" }}>
             Overview dashboards, table browsers, a full SQL editor, and interactive ERD diagrams.
           </p>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+          <div className="tw:grid tw:grid-cols-1 tw:gap-4 tw:md:grid-cols-12">
             {FEATURES.map((feature, i) => {
-              const span = i === 0 || i === 3 ? "md:col-span-7" : "md:col-span-5";
+              const span = i === 0 || i === 3 ? "tw:md:col-span-7" : "tw:md:col-span-5";
               return (
-                <div key={feature.title} className={`ld-feature ld-scroll group ${span}`}>
-                  <div className="p-3 md:p-4">
-                    <img src={feature.image} alt={feature.title} className="w-full object-contain" loading="lazy" />
+                <div key={feature.title} className={`ld-feature ld-scroll tw:group ${span}`}>
+                  <div className="tw:p-3 tw:md:p-4">
+                    <img src={feature.image} alt={feature.title} className="tw:w-full tw:object-contain" loading="lazy" />
                   </div>
-                  <div className="border-t px-4 py-3 md:px-5 md:py-4" style={{ borderColor: "var(--ss-border)" }}>
-                    <div className="mb-1.5 inline-block border px-2 py-0.5 text-xs font-black tracking-widest" style={{ borderColor: "var(--ss-primary)", color: "var(--ss-primary)" }}>
+                  <div className="tw:border-t tw:px-4 tw:py-3 tw:md:px-5 tw:md:py-4" style={{ borderColor: "var(--ss-border)" }}>
+                    <div className="tw:mb-1.5 tw:inline-block tw:border tw:px-2 tw:py-0.5 tw:text-xs tw:font-black tw:tracking-widest" style={{ borderColor: "var(--ss-primary)", color: "var(--ss-primary)" }}>
                       {feature.title}
                     </div>
-                    <p className="mt-1.5 text-xs leading-relaxed" style={{ color: "var(--ss-muted)" }}>
+                    <p className="tw:mt-1.5 tw:text-xs tw:leading-relaxed" style={{ color: "var(--ss-muted)" }}>
                       {feature.description}
                     </p>
                   </div>
@@ -248,30 +248,30 @@ export default function LandingPage() {
 
       {/* INSTALL */}
       <section style={{ borderBottom: "2px solid var(--ss-border)" }}>
-        <div className="mx-auto max-w-6xl px-6 py-20 md:py-28">
-          <div className="ld-scroll mb-2">
-            <span className="text-xs font-bold tracking-widest" style={{ color: "var(--ss-primary)" }}>
+        <div className="tw:mx-auto tw:max-w-6xl tw:px-6 tw:py-20 tw:md:py-28">
+          <div className="ld-scroll tw:mb-2">
+            <span className="tw:text-xs tw:font-bold tw:tracking-widest" style={{ color: "var(--ss-primary)" }}>
               [03] INSTALL
             </span>
           </div>
-          <h2 className="ld-scroll mb-4 text-3xl font-black uppercase tracking-tighter md:text-5xl">
+          <h2 className="ld-scroll tw:mb-4 tw:text-3xl tw:font-black tw:uppercase tw:tracking-tighter tw:md:text-5xl">
             GET STARTED<br />IN SECONDS.
           </h2>
-          <p className="ld-scroll mb-12 max-w-md text-sm" style={{ color: "var(--ss-muted-dim)" }}>
+          <p className="ld-scroll tw:mb-12 tw:max-w-md tw:text-sm" style={{ color: "var(--ss-muted-dim)" }}>
             No configuration files. No dependencies to manage.
           </p>
 
-          <div className="grid grid-cols-1 gap-4">
+          <div className="tw:grid tw:grid-cols-1 tw:gap-4">
             {INSTALL_METHODS.map((method) => (
               <div key={method.label} className="ld-install ld-scroll">
-                <div className="flex items-center justify-between border-b px-4 py-2" style={{ borderColor: "var(--ss-border)" }}>
-                  <span className="text-xs font-black tracking-widest" style={{ color: "var(--ss-muted-dim)" }}>
+                <div className="tw:flex tw:items-center tw:justify-between tw:border-b tw:px-4 tw:py-2" style={{ borderColor: "var(--ss-border)" }}>
+                  <span className="tw:text-xs tw:font-black tw:tracking-widest" style={{ color: "var(--ss-muted-dim)" }}>
                     {method.label}
                   </span>
                   <CopyButton text={method.command} />
                 </div>
-                <div className="px-4 py-4">
-                  <code className="block whitespace-pre-wrap break-all text-xs leading-relaxed" style={{ color: "var(--ss-primary)" }}>
+                <div className="tw:px-4 tw:py-4">
+                  <code className="tw:block tw:whitespace-pre-wrap tw:break-all tw:text-xs tw:leading-relaxed" style={{ color: "var(--ss-primary)" }}>
                     $ {method.command}
                   </code>
                 </div>
@@ -279,10 +279,10 @@ export default function LandingPage() {
             ))}
           </div>
 
-          <div className="ld-scroll mt-10" style={{ color: "var(--ss-muted-dim)" }}>
-            <p className="text-sm">
+          <div className="ld-scroll tw:mt-10" style={{ color: "var(--ss-muted-dim)" }}>
+            <p className="tw:text-sm">
               Or try the built-in preview:{" "}
-              <code className="border px-2 py-0.5 text-xs" style={{ borderColor: "var(--ss-border)", color: "var(--ss-primary)" }}>
+              <code className="tw:border tw:px-2 tw:py-0.5 tw:text-xs" style={{ borderColor: "var(--ss-border)", color: "var(--ss-primary)" }}>
                 sql-studio sqlite preview
               </code>
             </p>
@@ -291,17 +291,17 @@ export default function LandingPage() {
       </section>
 
       {/* FOOTER */}
-      <footer className="px-6 py-12">
-        <div className="mx-auto flex max-w-6xl flex-col items-center gap-5 md:flex-row md:justify-between">
+      <footer className="tw:px-6 tw:py-12">
+        <div className="tw:mx-auto tw:flex tw:max-w-6xl tw:flex-col tw:items-center tw:gap-5 tw:md:flex-row tw:md:justify-between">
           <Link href="/" style={{ color: "var(--ss-primary)" }}>
             <Logo width={100} />
           </Link>
-          <div className="flex gap-6 text-xs tracking-widest" style={{ color: "var(--ss-muted-dim)" }}>
-            <Link href="/docs" className="transition-colors duration-100 hover:text-white">DOCS</Link>
-            <Link href="https://github.com/frectonz/sql-studio" className="transition-colors duration-100 hover:text-white" target="_blank" rel="noopener noreferrer">GITHUB</Link>
-            <Link href="https://github.com/frectonz/sql-studio/releases" className="transition-colors duration-100 hover:text-white" target="_blank" rel="noopener noreferrer">RELEASES</Link>
+          <div className="tw:flex tw:gap-6 tw:text-xs tw:tracking-widest" style={{ color: "var(--ss-muted-dim)" }}>
+            <Link href="/docs" className="tw:transition-colors tw:duration-100 tw:hover:text-white">DOCS</Link>
+            <Link href="https://github.com/frectonz/sql-studio" className="tw:transition-colors tw:duration-100 tw:hover:text-white" target="_blank" rel="noopener noreferrer">GITHUB</Link>
+            <Link href="https://github.com/frectonz/sql-studio/releases" className="tw:transition-colors tw:duration-100 tw:hover:text-white" target="_blank" rel="noopener noreferrer">RELEASES</Link>
           </div>
-          <span className="text-xs" style={{ color: "var(--ss-border)" }}>RUST + REACT</span>
+          <span className="tw:text-xs" style={{ color: "var(--ss-border)" }}>RUST + REACT</span>
         </div>
       </footer>
     </div>

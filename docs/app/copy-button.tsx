@@ -12,7 +12,7 @@ export function CopyButton({ text }: { text: string }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }}
-      className="text-xs tracking-widest transition-colors duration-100"
+      className="tw:text-xs tw:tracking-widest tw:transition-colors tw:duration-100"
       style={{ color: copied ? "var(--ss-primary)" : "var(--ss-muted-dim)" }}
     >
       {copied ? "COPIED" : "COPY"}

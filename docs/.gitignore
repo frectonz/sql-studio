@@ -1,6 +1,8 @@
 node_modules
 .next
+.docs
 out
+*.tsbuildinfo
 next-env.d.ts
 public/og
 .DS_Store

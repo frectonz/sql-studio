@@ -1,8 +1,11 @@
-@import "tailwindcss";
+/* The theme CSS ships its own precompiled Tailwind bundle, so our utilities are
+   prefixed (`tw:`) to keep the two from overriding each other in the cascade. */
+@import "tailwindcss" prefix(tw);
 @import "@farming-labs/theme/greentree/css";
 
 /* Hide search triggers — static export, no search API */
 @layer base {
+
   button[data-search],
   button[data-search-full] {
     display: none !important;
@@ -31,6 +34,7 @@ body:has(.ld-bg) {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
