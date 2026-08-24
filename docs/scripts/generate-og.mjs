@@ -1,7 +1,7 @@
+import { Resvg } from "@resvg/resvg-js";
 import fs from "fs";
 import path from "path";
 import satori from "satori";
-import { Resvg } from "@resvg/resvg-js";
 
 const BG = "#071611";
 const PRIMARY = "#00ff9f";

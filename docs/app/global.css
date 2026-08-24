@@ -5,7 +5,6 @@
 
 /* Hide search triggers — static export, no search API */
 @layer base {
-
   button[data-search],
   button[data-search-full] {
     display: none !important;
@@ -70,7 +69,10 @@ body:has(.ld-bg) {
 .ld-card {
   background: var(--ss-card);
   border: 1px solid var(--ss-border);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .ld-card:hover {
@@ -84,7 +86,10 @@ body:has(.ld-bg) {
   background: var(--ss-card);
   border: 1px solid var(--ss-border);
   overflow: hidden;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
 }
 
 .ld-feature:hover {
