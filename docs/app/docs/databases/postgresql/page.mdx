@@ -41,11 +41,37 @@ sql-studio postgres [OPTIONS] <URL>
 postgresql://user:password@host:port/database
 ```
 
+Key-value connection strings are also accepted:
+
+```
+host=localhost port=5432 user=me dbname=mydb
+```
+
+## Notes
+
+All parts of the connection string are optional. Omitted parts use the same defaults as `psql`:
+
+- With no host, SQL Studio connects to the default unix socket directories (`/var/run/postgresql`, `/tmp`), then falls back to `localhost`. A different socket directory can be given with the `host` parameter.
+- The user defaults to the current OS username, and the database to the user name.
+- A password is required only if the server uses password authentication.
+
 ## Examples
 
 ```bash
 # Connect to a local PostgreSQL database
 sql-studio postgres postgresql://postgres:postgres@127.0.0.1/sample
+
+# Connect over the local unix socket
+sql-studio postgres postgresql:///
+
+# Connect over the local unix socket to a specific database
+sql-studio postgres postgresql:///mydb
+
+# Connect using a custom socket directory
+sql-studio postgres "postgresql:///mydb?host=/path/to/socket/dir"
+
+# Connect using a key-value connection string
+sql-studio postgres "host=localhost port=5432 user=me dbname=mydb"
 
 # Specify a schema
 sql-studio postgres --schema myschema postgresql://user:pass@localhost/mydb
