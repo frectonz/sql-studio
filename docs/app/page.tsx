@@ -347,7 +347,7 @@ export default function LandingPage() {
           </p>
 
           <div
-            className="tw:grid tw:grid-cols-2 tw:gap-px tw:sm:grid-cols-3 tw:md:grid-cols-5"
+            className="tw:grid tw:grid-cols-1 tw:gap-px tw:sm:grid-cols-3"
             style={{
               background: "var(--ss-border)",
               border: "1px solid var(--ss-border)",
