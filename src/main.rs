@@ -806,8 +806,8 @@ mod sqlite {
                     let mut stmt = match conn.prepare(&format!(
                         r#"
                         SELECT *
-                        FROM '{name}'
-                        ORDER BY {first_column}
+                        FROM "{name}"
+                        ORDER BY "{first_column}"
                         LIMIT {ROWS_PER_PAGE}
                         OFFSET {offset}
                         "#
@@ -1392,8 +1392,8 @@ mod libsql {
                     &format!(
                         r#"
                 SELECT *
-                FROM '{name}'
-                ORDER BY {first_column}
+                FROM "{name}"
+                ORDER BY "{first_column}"
                 LIMIT {ROWS_PER_PAGE}
                 OFFSET {offset}
                         "#,
@@ -2233,6 +2233,10 @@ mod mysql {
         query_timeout: Duration,
     }
 
+    fn quote_ident(name: &str) -> String {
+        format!("`{}`", name.replace('`', "``"))
+    }
+
     impl Db {
         pub async fn open(url: String, query_timeout: Duration) -> color_eyre::Result<Self> {
             let pool = Pool::from_url(&url)?;
@@ -2343,7 +2347,7 @@ mod mysql {
             .await?;
 
             for count in row_counts.iter_mut() {
-                count.count = format!("SELECT count(*) AS count FROM {}", count.name)
+                count.count = format!("SELECT count(*) AS count FROM {}", quote_ident(&count.name))
                     .with(())
                     .first(&mut conn)
                     .await?
@@ -2434,7 +2438,7 @@ mod mysql {
             .await?;
 
             for table in tables.iter_mut() {
-                table.count = format!("SELECT count(*) AS count FROM {}", table.name)
+                table.count = format!("SELECT count(*) AS count FROM {}", quote_ident(&table.name))
                     .with(())
                     .first(&mut conn)
                     .await?
@@ -2457,7 +2461,7 @@ mod mysql {
                 .map(|(_, sql): (String, String)| sql)
                 .ok_or_eyre("couldn't get table sql")?;
 
-            let row_count = format!("SELECT count(*) AS count FROM {name}")
+            let row_count = format!("SELECT count(*) AS count FROM {}", quote_ident(&name))
                 .with(())
                 .first(&mut conn)
                 .await?
@@ -2536,11 +2540,13 @@ mod mysql {
             let offset = (page - 1) * ROWS_PER_PAGE;
             let sql = format!(
                 r#"
-            SELECT * FROM {name}
-            ORDER BY {first_column}
+            SELECT * FROM {}
+            ORDER BY {}
             LIMIT {ROWS_PER_PAGE}
             OFFSET {offset}
-                "#
+                "#,
+                quote_ident(&name),
+                quote_ident(&first_column),
             );
 
             let stmt = conn.prep(&sql).await?;
