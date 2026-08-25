@@ -4386,6 +4386,10 @@ mod mssql {
         query_timeout: Duration,
     }
 
+    fn quote_ident(name: &str) -> String {
+        format!("[{}]", name.replace(']', "]]"))
+    }
+
     impl Db {
         pub async fn open(connection: String, query_timeout: Duration) -> color_eyre::Result<Self> {
             use tokio_util::compat::TokioAsyncWriteCompatExt;
@@ -4550,7 +4554,7 @@ mod mssql {
                 .await;
 
             for count in row_counts.iter_mut() {
-                let sql = format!("SELECT count(*) AS count FROM {}", count.name);
+                let sql = format!("SELECT count(*) AS count FROM {}", quote_ident(&count.name));
 
                 count.count = client
                     .query(sql, &[])
@@ -4696,7 +4700,7 @@ mod mssql {
                 .await;
 
             for count in tables.iter_mut() {
-                let sql = format!("SELECT count(*) AS count FROM {}", count.name);
+                let sql = format!("SELECT count(*) AS count FROM {}", quote_ident(&count.name));
 
                 count.count = client
                     .query(sql, &[])
@@ -4716,7 +4720,10 @@ mod mssql {
             let mut client = self.client.lock().await;
 
             let row_count: i32 = client
-                .query(format!("SELECT count(*) AS count FROM {name}"), &[])
+                .query(
+                    format!("SELECT count(*) AS count FROM {}", quote_ident(&name)),
+                    &[],
+                )
                 .await?
                 .into_row()
                 .await?
@@ -4812,10 +4819,12 @@ mod mssql {
             let offset = (page - 1) * ROWS_PER_PAGE;
             let sql = format!(
                 r#"
-            SELECT * FROM "{name}"
-            ORDER BY {first_column}
+            SELECT * FROM {}
+            ORDER BY {}
             OFFSET {offset} ROWS FETCH NEXT {ROWS_PER_PAGE} ROWS ONLY;
-                "#
+                "#,
+                quote_ident(&name),
+                quote_ident(&first_column),
             );
 
             let mut query = client.query(sql, &[]).await?;
