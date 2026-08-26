@@ -491,14 +491,14 @@ mod sqlite {
             // This is meant to test if the file at path is actually a DB.
             let tables = db
                 .call(|conn| {
-                    Ok(conn.query_row(
+                    conn.query_row(
                         r#"
             SELECT count(*) FROM sqlite_master
             WHERE type="table"
                 "#,
                         (),
                         |r| r.get::<_, i32>(0),
-                    )?)
+                    )
                 })
                 .await?;
 
@@ -590,7 +590,7 @@ mod sqlite {
                         .map(|(name, count)| responses::Count { name, count })
                         .collect::<Vec<_>>();
 
-                    row_counts.sort_by(|a, b| b.count.cmp(&a.count));
+                    row_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
                     let mut column_counts = HashMap::with_capacity(tables as usize);
                     for name in table_names.iter() {
@@ -610,7 +610,7 @@ mod sqlite {
                         .map(|(name, count)| responses::Count { name, count })
                         .collect::<Vec<_>>();
 
-                    column_counts.sort_by(|a, b| b.count.cmp(&a.count));
+                    column_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
                     let mut index_counts = HashMap::with_capacity(tables as usize);
                     for name in table_names.iter() {
@@ -639,7 +639,7 @@ mod sqlite {
                         .map(|(name, count)| responses::Count { name, count })
                         .collect::<Vec<_>>();
 
-                    index_counts.sort_by(|a, b| b.count.cmp(&a.count));
+                    index_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
                     Ok((
                         tables,
@@ -1129,7 +1129,7 @@ mod libsql {
                 .map(|(name, count)| responses::Count { name, count })
                 .collect::<Vec<_>>();
 
-            row_counts.sort_by(|a, b| b.count.cmp(&a.count));
+            row_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
             let mut column_counts = HashMap::with_capacity(table_names.len());
             for name in table_names.iter() {
@@ -1152,7 +1152,7 @@ mod libsql {
                 .map(|(name, count)| responses::Count { name, count })
                 .collect::<Vec<_>>();
 
-            column_counts.sort_by(|a, b| b.count.cmp(&a.count));
+            column_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
             let mut index_counts = HashMap::with_capacity(table_names.len());
             for name in table_names.iter() {
@@ -1190,7 +1190,7 @@ mod libsql {
                 .map(|(name, count)| responses::Count { name, count })
                 .collect::<Vec<_>>();
 
-            index_counts.sort_by(|a, b| b.count.cmp(&a.count));
+            index_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
             Ok(responses::Overview {
                 file_name,
@@ -1707,7 +1707,7 @@ mod postgres {
                 table.count = count as i32;
             }
 
-            row_counts.sort_by(|a, b| b.count.cmp(&a.count));
+            row_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
             let mut column_counts = self
                 .client
@@ -1745,7 +1745,7 @@ mod postgres {
                 table.count = count as i32;
             }
 
-            column_counts.sort_by(|a, b| b.count.cmp(&a.count));
+            column_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
             let mut index_counts = self
                 .client
@@ -1783,7 +1783,7 @@ mod postgres {
                 table.count = count as i32;
             }
 
-            index_counts.sort_by(|a, b| b.count.cmp(&a.count));
+            index_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
             Ok(responses::Overview {
                 file_name,
@@ -2263,7 +2263,7 @@ mod mysql {
                     .ok_or_eyre("couldn't count rows")?;
             }
 
-            row_counts.sort_by(|a, b| b.count.cmp(&a.count));
+            row_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
             let mut column_counts = r#"
             SELECT TABLE_NAME AS name
@@ -2289,7 +2289,7 @@ mod mysql {
                 .ok_or_eyre("couldn't count columns")?;
             }
 
-            column_counts.sort_by(|a, b| b.count.cmp(&a.count));
+            column_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
             let mut index_counts = r#"
             SELECT TABLE_NAME AS name
@@ -2315,7 +2315,7 @@ mod mysql {
                 .ok_or_eyre("couldn't count indexes")?;
             }
 
-            index_counts.sort_by(|a, b| b.count.cmp(&a.count));
+            index_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
             Ok(responses::Overview {
                 file_name,
@@ -2792,7 +2792,7 @@ mod duckdb {
                         });
                     }
 
-                    row_counts.sort_by(|a, b| b.count.cmp(&a.count));
+                    row_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
                     let mut column_counts = Vec::with_capacity(table_names.len());
                     for name in table_names.iter() {
@@ -2808,7 +2808,7 @@ mod duckdb {
                         });
                     }
 
-                    column_counts.sort_by(|a, b| b.count.cmp(&a.count));
+                    column_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
                     let mut index_counts = Vec::with_capacity(table_names.len());
                     for name in table_names.iter() {
@@ -2824,7 +2824,7 @@ mod duckdb {
                         });
                     }
 
-                    index_counts.sort_by(|a, b| b.count.cmp(&a.count));
+                    index_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
                     eyre::Ok((
                         tables,
@@ -3942,7 +3942,7 @@ mod clickhouse {
                 .await?;
             }
 
-            row_counts.sort_by(|a, b| b.count.cmp(&a.count));
+            row_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
             let mut column_counts = self
                 .conn
@@ -3957,7 +3957,7 @@ mod clickhouse {
                 .fetch_all::<ClickhouseCount>()
                 .await?;
 
-            column_counts.sort_by(|a, b| b.count.cmp(&a.count));
+            column_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
             let mut index_counts = self
                 .conn
@@ -3991,7 +3991,7 @@ mod clickhouse {
                 .await?;
             }
 
-            index_counts.sort_by(|a, b| b.count.cmp(&a.count));
+            index_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
             Ok(responses::Overview {
                 file_name,
@@ -4456,7 +4456,7 @@ mod mssql {
                     .ok_or_eyre("couldn't count rows")?;
             }
 
-            row_counts.sort_by(|a, b| b.count.cmp(&a.count));
+            row_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
             let mut column_counts = client
                 .query(
@@ -4502,7 +4502,7 @@ mod mssql {
                     .ok_or_eyre("couldn't count columns")?;
             }
 
-            column_counts.sort_by(|a, b| b.count.cmp(&a.count));
+            column_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
             let mut index_counts = client
                 .query(
@@ -4548,7 +4548,7 @@ mod mssql {
                     .ok_or_eyre("couldn't count indexes")?;
             }
 
-            index_counts.sort_by(|a, b| b.count.cmp(&a.count));
+            index_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
             Ok(responses::Overview {
                 file_name,
@@ -4602,7 +4602,7 @@ mod mssql {
                     .ok_or_eyre("couldn't count rows")?;
             }
 
-            tables.sort_by(|a, b| b.count.cmp(&a.count));
+            tables.sort_by_key(|c| std::cmp::Reverse(c.count));
 
             Ok(responses::Tables { tables })
         }
@@ -5187,7 +5187,7 @@ mod handlers {
     use tokio::sync::mpsc;
     use warp::Filter;
 
-    use crate::{Database, rejections, responses::Metadata};
+    use crate::{Database, ROWS_PER_PAGE, rejections, responses::Metadata};
 
     fn same_site() -> impl Filter<Extract = (), Error = warp::Rejection> + Clone {
         warp::header::optional::<String>("sec-fetch-site")
@@ -5323,10 +5323,7 @@ mod handlers {
         db: impl Database,
         data: PageQuery,
     ) -> Result<impl warp::Reply, warp::Rejection> {
-        let page = data
-            .page
-            .unwrap_or(1)
-            .clamp(1, i32::MAX / crate::ROWS_PER_PAGE);
+        let page = data.page.unwrap_or(1).clamp(1, i32::MAX / ROWS_PER_PAGE);
         let data = db.table_data(decode_name(&name), page).await.map_err(|e| {
             tracing::error!("error while getting table: {e}");
             warp::reject::custom(rejections::InternalServerError)
