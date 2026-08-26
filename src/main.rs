@@ -174,11 +174,6 @@ async fn main() -> color_eyre::Result<()> {
         index_html = index_html.replace("/__ASSETS_PATH__", "");
     }
 
-    let cors = warp::cors()
-        .allow_any_origin()
-        .allow_methods(vec!["GET", "POST", "DELETE"])
-        .allow_headers(vec!["Content-Length", "Content-Type"]);
-
     let (shutdown_tx, mut shutdown_rx) = mpsc::channel(1);
 
     let api = warp::path("api").and(
@@ -196,8 +191,7 @@ async fn main() -> color_eyre::Result<()> {
     let routes = api
         .or(statics)
         .or(homepage)
-        .recover(rejections::handle_rejection)
-        .with(cors);
+        .recover(rejections::handle_rejection);
 
     if args.base_path.is_none() && !args.no_browser {
         let res = open::that(format!("http://{}", args.address));
@@ -5268,6 +5262,36 @@ mod handlers {
 
     use crate::{Database, rejections, responses::Metadata};
 
+    fn same_site() -> impl Filter<Extract = (), Error = warp::Rejection> + Clone {
+        warp::header::optional::<String>("sec-fetch-site")
+            .and_then(|site: Option<String>| async move {
+                if site.as_deref() == Some("cross-site") {
+                    Err(warp::reject::custom(rejections::Forbidden))
+                } else {
+                    Ok(())
+                }
+            })
+            .untuple_one()
+    }
+
+    fn json_content_type() -> impl Filter<Extract = (), Error = warp::Rejection> + Clone {
+        warp::header::optional::<String>("content-type")
+            .and_then(|content_type: Option<String>| async move {
+                match content_type {
+                    Some(ct)
+                        if ct
+                            .trim()
+                            .to_ascii_lowercase()
+                            .starts_with("application/json") =>
+                    {
+                        Ok(())
+                    }
+                    _ => Err(warp::reject::custom(rejections::UnsupportedMediaType)),
+                }
+            })
+            .untuple_one()
+    }
+
     pub fn routes(
         db: impl Database + 'static,
         no_shutdown: bool,
@@ -5296,6 +5320,7 @@ mod handlers {
             .and_then(autocomplete);
         let query = warp::path!("query")
             .and(warp::post())
+            .and(json_content_type())
             .and(with_state(&db))
             .and(warp::body::json::<QueryBody>())
             .and_then(query);
@@ -5313,15 +5338,17 @@ mod handlers {
             .and(with_state(&db))
             .and_then(erd);
 
-        overview
-            .or(tables)
-            .or(table)
-            .or(autocomplete)
-            .or(query)
-            .or(data)
-            .or(metadata)
-            .or(shutdown)
-            .or(erd)
+        same_site().and(
+            overview
+                .or(tables)
+                .or(table)
+                .or(autocomplete)
+                .or(query)
+                .or(data)
+                .or(metadata)
+                .or(shutdown)
+                .or(erd),
+        )
     }
 
     #[derive(Deserialize)]
@@ -5448,7 +5475,7 @@ mod rejections {
         };
     }
 
-    rejects!(InternalServerError);
+    rejects!(InternalServerError, Forbidden, UnsupportedMediaType);
 
     pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> {
         let code;
@@ -5467,6 +5494,14 @@ mod rejections {
         } else if let Some(InternalServerError) = err.find() {
             code = StatusCode::INTERNAL_SERVER_ERROR;
             message = "INTERNAL_SERVER_ERROR";
+        } else if let Some(Forbidden) = err.find() {
+            code = StatusCode::FORBIDDEN;
+            message = "FORBIDDEN";
+        } else if err.find::<UnsupportedMediaType>().is_some()
+            || err.find::<warp::reject::UnsupportedMediaType>().is_some()
+        {
+            code = StatusCode::UNSUPPORTED_MEDIA_TYPE;
+            message = "UNSUPPORTED_MEDIA_TYPE";
         } else if err.find::<warp::reject::MethodNotAllowed>().is_some() {
             code = StatusCode::METHOD_NOT_ALLOWED;
             message = "METHOD_NOT_ALLOWED";
