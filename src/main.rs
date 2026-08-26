@@ -585,7 +585,7 @@ mod sqlite {
                     let mut row_counts = HashMap::with_capacity(tables as usize);
                     for name in table_names.iter() {
                         let count = conn
-                            .query_row(&format!("SELECT count(*) FROM '{name}'"), (), |r| {
+                            .query_row(&format!("SELECT count(*) FROM \"{name}\""), (), |r| {
                                 r.get::<_, i32>(0)
                             })
                             .unwrap_or(0);
@@ -603,7 +603,7 @@ mod sqlite {
                     let mut column_counts = HashMap::with_capacity(tables as usize);
                     for name in table_names.iter() {
                         let count = conn
-                            .prepare(&format!("PRAGMA table_info('{name}')"))
+                            .prepare(&format!("PRAGMA table_info(\"{name}\")"))
                             .and_then(|mut columns| {
                                 Ok(columns.query_map((), |r| r.get::<_, String>(1))?.count()
                                     as i32)
@@ -631,7 +631,7 @@ mod sqlite {
                             .unwrap_or(0);
 
                         let has_primary_key = conn
-                            .query_row(&format!("PRAGMA table_info('{name}')"), [], |r| {
+                            .query_row(&format!("PRAGMA table_info(\"{name}\")"), [], |r| {
                                 r.get::<_, i32>(5)
                             })
                             .map(|v| v == 1)
@@ -690,7 +690,7 @@ mod sqlite {
                     for name in table_names {
                         let name = name?;
                         let count = conn
-                            .query_row(&format!("SELECT count(*) FROM '{name}'"), (), |r| {
+                            .query_row(&format!("SELECT count(*) FROM \"{name}\""), (), |r| {
                                 r.get::<_, i32>(0)
                             })
                             .unwrap_or(0);
@@ -728,7 +728,7 @@ mod sqlite {
                     )?;
 
                     let row_count = conn
-                        .query_row(&format!("SELECT count(*) FROM '{name}'"), (), |r| {
+                        .query_row(&format!("SELECT count(*) FROM \"{name}\""), (), |r| {
                             r.get::<_, i32>(0)
                         })
                         .unwrap_or(0);
@@ -754,7 +754,7 @@ mod sqlite {
                         .unwrap_or(0);
 
                     let has_primary_key = conn
-                        .query_row(&format!("PRAGMA table_info('{name}')"), [], |r| {
+                        .query_row(&format!("PRAGMA table_info(\"{name}\")"), [], |r| {
                             r.get::<_, i32>(5)
                         })
                         .map(|v| v == 1)
@@ -766,7 +766,7 @@ mod sqlite {
                     };
 
                     let column_count = conn
-                        .prepare(&format!("PRAGMA table_info('{name}')"))
+                        .prepare(&format!("PRAGMA table_info(\"{name}\")"))
                         .and_then(|mut columns| {
                             Ok(columns.query_map((), |r| r.get::<_, String>(1))?.count() as i32)
                         })
@@ -792,20 +792,12 @@ mod sqlite {
             Ok(self
                 .call(move |conn| {
                     let first_column =
-                        match conn.query_row(&format!("PRAGMA table_info('{name}')"), [], |r| {
+                        conn.query_row(&format!("PRAGMA table_info(\"{name}\")"), [], |r| {
                             r.get::<_, String>(1)
-                        }) {
-                            Ok(col) => col,
-                            Err(_) => {
-                                return Ok(responses::TableData {
-                                    columns: vec![],
-                                    rows: vec![],
-                                });
-                            }
-                        };
+                        })?;
 
                     let offset = (page - 1) * ROWS_PER_PAGE;
-                    let mut stmt = match conn.prepare(&format!(
+                    let mut stmt = conn.prepare(&format!(
                         r#"
                         SELECT *
                         FROM "{name}"
@@ -813,15 +805,7 @@ mod sqlite {
                         LIMIT {ROWS_PER_PAGE}
                         OFFSET {offset}
                         "#
-                    )) {
-                        Ok(stmt) => stmt,
-                        Err(_) => {
-                            return Ok(responses::TableData {
-                                columns: vec![],
-                                rows: vec![],
-                            });
-                        }
-                    };
+                    ))?;
                     let columns = stmt
                         .column_names()
                         .into_iter()
@@ -1142,7 +1126,7 @@ mod libsql {
             let mut row_counts = HashMap::with_capacity(table_names.len());
             for name in table_names.iter() {
                 let count = conn
-                    .query(&format!("SELECT count(*) FROM '{name}'"), ())
+                    .query(&format!("SELECT count(*) FROM \"{name}\""), ())
                     .await?
                     .next()
                     .await?
@@ -1162,7 +1146,7 @@ mod libsql {
             let mut column_counts = HashMap::with_capacity(table_names.len());
             for name in table_names.iter() {
                 let count = conn
-                    .query(&format!("PRAGMA table_info('{name}')"), ())
+                    .query(&format!("PRAGMA table_info(\"{name}\")"), ())
                     .await?
                     .into_stream()
                     .map_ok(|r| r.get::<String>(1))
@@ -1197,7 +1181,7 @@ mod libsql {
                     .get::<i32>(0)?;
 
                 let has_primary_key = conn
-                    .query(&format!("PRAGMA table_info('{name}')"), ())
+                    .query(&format!("PRAGMA table_info(\"{name}\")"), ())
                     .await?
                     .next()
                     .await?
@@ -1255,7 +1239,7 @@ mod libsql {
             let mut table_counts = HashMap::with_capacity(table_names.len());
             for name in table_names {
                 let count = conn
-                    .query(&format!("SELECT count(*) FROM '{name}'"), ())
+                    .query(&format!("SELECT count(*) FROM \"{name}\""), ())
                     .await?
                     .next()
                     .await?
@@ -1293,7 +1277,7 @@ mod libsql {
                 .get::<String>(0)?;
 
             let row_count = conn
-                .query(&format!("SELECT count(*) FROM '{name}'"), ())
+                .query(&format!("SELECT count(*) FROM \"{name}\""), ())
                 .await?
                 .next()
                 .await?
@@ -1324,7 +1308,7 @@ mod libsql {
                 .get::<i32>(0)?;
 
             let has_primary_key = conn
-                .query(&format!("PRAGMA table_info('{name}')"), ())
+                .query(&format!("PRAGMA table_info(\"{name}\")"), ())
                 .await?
                 .next()
                 .await?
@@ -1339,7 +1323,7 @@ mod libsql {
             };
 
             let column_count = conn
-                .query(&format!("PRAGMA table_info('{name}')"), ())
+                .query(&format!("PRAGMA table_info(\"{name}\")"), ())
                 .await?
                 .into_stream()
                 .map_ok(|r| r.get::<String>(1))
@@ -1368,7 +1352,7 @@ mod libsql {
             let conn = self.db.connect()?;
 
             let first_column = conn
-                .query(&format!("PRAGMA table_info('{name}')"), ())
+                .query(&format!("PRAGMA table_info(\"{name}\")"), ())
                 .await?
                 .next()
                 .await?
@@ -1376,7 +1360,7 @@ mod libsql {
                 .get::<String>(1)?;
 
             let columns = conn
-                .query(&format!("PRAGMA table_info('{name}')"), ())
+                .query(&format!("PRAGMA table_info(\"{name}\")"), ())
                 .await?
                 .into_stream()
                 .map_ok(|r| r.get::<String>(1))
@@ -1465,47 +1449,27 @@ mod libsql {
         async fn query(&self, query: String) -> color_eyre::Result<responses::Query> {
             let conn = self.db.connect()?;
             let stmt = conn.prepare(&query).await?;
+            let rows = stmt.query(()).await?;
 
-            let rows = stmt
-                .query(())
-                .await?
+            let columns = (0..rows.column_count())
+                .map(|i| rows.column_name(i).unwrap_or_default().to_owned())
+                .collect::<Vec<_>>();
+            let columns_len = columns.len();
+
+            let rows = rows
                 .into_stream()
                 .map_ok(|r| {
-                    let mut rows = HashMap::new();
-                    let mut index = 0;
-
-                    while let Some(name) = r.column_name(index) {
-                        let val = helpers::libsql_value_to_json(r.get_value(index)?);
-                        rows.insert(name.to_owned(), val);
-                        index += 1;
-                    }
-
-                    color_eyre::eyre::Ok(rows)
+                    (0..columns_len)
+                        .map(|i| Ok(helpers::libsql_value_to_json(r.get_value(i as i32)?)))
+                        .collect::<color_eyre::Result<Vec<_>>>()
                 })
                 .collect::<Vec<_>>();
 
-            let rows = tokio::time::timeout(self.query_timeout, rows).await?;
-
-            let rows = rows
+            let rows = tokio::time::timeout(self.query_timeout, rows)
+                .await?
                 .into_iter()
                 .filter_map(|r| r.ok())
                 .filter_map(|r| r.ok())
-                .collect::<Vec<_>>();
-
-            let columns = rows
-                .first()
-                .map(|r| r.keys().map(ToOwned::to_owned).collect::<Vec<_>>())
-                .unwrap_or_default();
-
-            let rows = rows
-                .into_iter()
-                .map(|mut r| {
-                    let mut rows = Vec::with_capacity(columns.len());
-                    for col in columns.iter() {
-                        rows.push(r.remove(col).unwrap());
-                    }
-                    rows
-                })
                 .collect::<Vec<_>>();
 
             Ok(responses::Query { columns, rows })
@@ -1994,6 +1958,7 @@ mod postgres {
             FROM information_schema.columns
             WHERE table_schema = '{schema}'
             AND table_name = '{name}'
+            ORDER BY ordinal_position
             LIMIT 1
                         "#
                     ),
@@ -2529,7 +2494,8 @@ mod mysql {
 
             let first_column = r#"
             SELECT column_name FROM information_schema.columns
-            WHERE table_schema = DATABASE() AND table_name = :table_name LIMIT 1
+            WHERE table_schema = DATABASE() AND table_name = :table_name
+            ORDER BY ordinal_position LIMIT 1
                 "#
             .with(params! {
                 "table_name" => &name
@@ -4812,7 +4778,8 @@ mod mssql {
                 SELECT TOP 1 column_name AS name
                 FROM information_schema.columns
                 WHERE table_schema = SCHEMA_NAME()
-                AND table_name = @P1;
+                AND table_name = @P1
+                ORDER BY ordinal_position;
                     "#,
                     &[&name],
                 )
@@ -5383,8 +5350,14 @@ mod handlers {
         Ok(warp::reply::json(&tables))
     }
 
+    fn decode_name(name: &str) -> String {
+        percent_encoding::percent_decode_str(name)
+            .decode_utf8_lossy()
+            .into_owned()
+    }
+
     async fn table(name: String, db: impl Database) -> Result<impl warp::Reply, warp::Rejection> {
-        let tables = db.table(name).await.map_err(|e| {
+        let tables = db.table(decode_name(&name)).await.map_err(|e| {
             tracing::error!("error while getting table: {e}");
             warp::reject::custom(rejections::InternalServerError)
         })?;
@@ -5396,13 +5369,14 @@ mod handlers {
         db: impl Database,
         data: PageQuery,
     ) -> Result<impl warp::Reply, warp::Rejection> {
-        let data = db
-            .table_data(name, data.page.unwrap_or(1))
-            .await
-            .map_err(|e| {
-                tracing::error!("error while getting table: {e}");
-                warp::reject::custom(rejections::InternalServerError)
-            })?;
+        let page = data
+            .page
+            .unwrap_or(1)
+            .clamp(1, i32::MAX / crate::ROWS_PER_PAGE);
+        let data = db.table_data(decode_name(&name), page).await.map_err(|e| {
+            tracing::error!("error while getting table: {e}");
+            warp::reject::custom(rejections::InternalServerError)
+        })?;
         Ok(warp::reply::json(&data))
     }
 

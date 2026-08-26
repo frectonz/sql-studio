@@ -3482,6 +3482,7 @@ dependencies = [
  "libsql",
  "mysql_async",
  "open",
+ "percent-encoding",
  "rustls 0.23.43",
  "serde",
  "serde_json",

@@ -82,9 +82,9 @@ const $fetch = createZodFetcher();
 export const fetchOverview = () => $fetch(overview, `${BASE_URL}/`);
 export const fetchTables = () => $fetch(tables, `${BASE_URL}/tables`);
 export const fetchTable = (name: string) =>
-  $fetch(table, `${BASE_URL}/tables/${name}`);
+  $fetch(table, `${BASE_URL}/tables/${encodeURIComponent(name)}`);
 export const fetchTableData = (name: string, page: number) =>
-  $fetch(tableData, `${BASE_URL}/tables/${name}/data?page=${page}`);
+  $fetch(tableData, `${BASE_URL}/tables/${encodeURIComponent(name)}/data?page=${page}`);
 export const fetchQuery = (value: string) =>
   $fetch(query, `${BASE_URL}/query`, {
     method: "POST",
