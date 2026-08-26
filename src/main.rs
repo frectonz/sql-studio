@@ -190,7 +190,8 @@ async fn main() -> color_eyre::Result<()> {
     let routes = api
         .or(statics)
         .or(homepage)
-        .recover(rejections::handle_rejection);
+        .recover(rejections::handle_rejection)
+        .with(warp::log::custom(log_request));
 
     if args.base_path.is_none() && !args.no_browser {
         let res = open::that(format!("http://{}", args.address));
@@ -207,6 +208,7 @@ async fn main() -> color_eyre::Result<()> {
     };
 
     let address = args.address.parse::<std::net::SocketAddr>()?;
+    tracing::info!("listening on http://{address}");
     warp::serve(routes)
         .bind(address)
         .await
@@ -225,6 +227,29 @@ async fn main() -> color_eyre::Result<()> {
     tracing::info!("shutting down...");
 
     Ok(())
+}
+
+fn log_request(info: warp::log::Info) {
+    let line = format!(
+        "{} {} {} {:?}",
+        info.method(),
+        info.path(),
+        info.status().as_u16(),
+        info.elapsed()
+    );
+    if info.path().contains("/api") {
+        tracing::info!(target: "sql_studio::http", "{line}");
+    } else {
+        tracing::debug!(target: "sql_studio::http", "{line}");
+    }
+}
+
+macro_rules! sql {
+    ($($arg:tt)*) => {{
+        let sql = indoc::formatdoc!($($arg)*);
+        tracing::debug!(target: "sql_studio::sql", "{}", sql.trim_end());
+        sql
+    }};
 }
 
 mod statics {
@@ -491,10 +516,12 @@ mod sqlite {
             let tables = db
                 .call(|conn| {
                     conn.query_row(
-                        r#"
-            SELECT count(*) FROM sqlite_master
-            WHERE type="table"
-                "#,
+                        &sql!(
+                            r#"
+                            SELECT count(*) FROM sqlite_master
+                            WHERE type="table"
+                            "#
+                        ),
                         (),
                         |r| r.get::<_, i32>(0),
                     )
@@ -533,50 +560,58 @@ mod sqlite {
             let (tables, indexes, triggers, views, row_counts, column_counts, index_counts) = self
                 .call(move |conn| {
                     let tables = conn.query_row(
-                        r#"
-            SELECT count(*) FROM sqlite_master
-            WHERE type="table"
-                "#,
+                        &sql!(
+                            r#"
+                            SELECT count(*) FROM sqlite_master
+                            WHERE type="table"
+                            "#
+                        ),
                         (),
                         |r| r.get::<_, i32>(0),
                     )?;
 
                     let indexes = conn.query_row(
-                        r#"
-            SELECT count(*) FROM sqlite_master
-            WHERE type="index"
-                "#,
+                        &sql!(
+                            r#"
+                            SELECT count(*) FROM sqlite_master
+                            WHERE type="index"
+                            "#
+                        ),
                         (),
                         |r| r.get::<_, i32>(0),
                     )?;
 
                     let triggers = conn.query_row(
-                        r#"
-            SELECT count(*) FROM sqlite_master
-            WHERE type="trigger"
-                "#,
+                        &sql!(
+                            r#"
+                            SELECT count(*) FROM sqlite_master
+                            WHERE type="trigger"
+                            "#
+                        ),
                         (),
                         |r| r.get::<_, i32>(0),
                     )?;
 
                     let views = conn.query_row(
-                        r#"
-            SELECT count(*) FROM sqlite_master
-            WHERE type="view"
-                "#,
+                        &sql!(
+                            r#"
+                            SELECT count(*) FROM sqlite_master
+                            WHERE type="view"
+                            "#
+                        ),
                         (),
                         |r| r.get::<_, i32>(0),
                     )?;
 
                     let mut stmt =
-                        conn.prepare(r#"SELECT name FROM sqlite_master WHERE type="table""#)?;
+                        conn.prepare(&sql!(r#"SELECT name FROM sqlite_master WHERE type="table""#))?;
                     let table_names = stmt.query_map([], |row| row.get::<_, String>(0))?;
                     let table_names = table_names.collect::<Result<Vec<_>, _>>()?;
 
                     let mut row_counts = HashMap::with_capacity(tables as usize);
                     for name in table_names.iter() {
                         let count = conn
-                            .query_row(&format!("SELECT count(*) FROM \"{name}\""), (), |r| {
+                            .query_row(&sql!("SELECT count(*) FROM \"{name}\""), (), |r| {
                                 r.get::<_, i32>(0)
                             })
                             .unwrap_or(0);
@@ -594,7 +629,7 @@ mod sqlite {
                     let mut column_counts = HashMap::with_capacity(tables as usize);
                     for name in table_names.iter() {
                         let count = conn
-                            .prepare("SELECT * FROM pragma_table_info(?1)")
+                            .prepare(&sql!("SELECT * FROM pragma_table_info(?1)"))
                             .and_then(|mut columns| {
                                 Ok(columns.query_map([&name], |r| r.get::<_, String>(1))?.count()
                                     as i32)
@@ -615,14 +650,14 @@ mod sqlite {
                     for name in table_names.iter() {
                         let count = conn
                             .query_row(
-                                "SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=?1",
+                                &sql!("SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=?1"),
                                 [name],
                                 |r| r.get::<_, i32>(0),
                             )
                             .unwrap_or(0);
 
                         let has_primary_key = conn
-                            .query_row("SELECT * FROM pragma_table_info(?1)", [&name], |r| {
+                            .query_row(&sql!("SELECT * FROM pragma_table_info(?1)"), [&name], |r| {
                                 r.get::<_, i32>(5)
                             })
                             .map(|v| v == 1)
@@ -671,8 +706,9 @@ mod sqlite {
         async fn tables(&self) -> color_eyre::Result<responses::Tables> {
             let tables = self
                 .call(move |conn| {
-                    let mut stmt =
-                        conn.prepare(r#"SELECT name FROM sqlite_master WHERE type="table""#)?;
+                    let mut stmt = conn.prepare(&sql!(
+                        r#"SELECT name FROM sqlite_master WHERE type="table""#
+                    ))?;
                     let table_names = stmt
                         .query_map([], |row| row.get::<_, String>(0))?
                         .collect::<Vec<_>>();
@@ -681,7 +717,7 @@ mod sqlite {
                     for name in table_names {
                         let name = name?;
                         let count = conn
-                            .query_row(&format!("SELECT count(*) FROM \"{name}\""), (), |r| {
+                            .query_row(&sql!("SELECT count(*) FROM \"{name}\""), (), |r| {
                                 r.get::<_, i32>(0)
                             })
                             .unwrap_or(0);
@@ -710,16 +746,18 @@ mod sqlite {
             Ok(self
                 .call(move |conn| {
                     let sql = conn.query_row(
-                        r#"
-                        SELECT sql FROM sqlite_master
-                        WHERE type="table" AND name = ?1
-                        "#,
+                        &sql!(
+                            r#"
+                            SELECT sql FROM sqlite_master
+                            WHERE type="table" AND name = ?1
+                            "#
+                        ),
                         [&name],
                         |r| r.get::<_, String>(0),
                     )?;
 
                     let row_count = conn
-                        .query_row(&format!("SELECT count(*) FROM \"{name}\""), (), |r| {
+                        .query_row(&sql!("SELECT count(*) FROM \"{name}\""), (), |r| {
                             r.get::<_, i32>(0)
                         })
                         .unwrap_or(0);
@@ -728,7 +766,7 @@ mod sqlite {
                         "> 5GB".to_owned()
                     } else {
                         conn.query_row(
-                            "SELECT SUM(pgsize) FROM dbstat WHERE name = ?1",
+                            &sql!("SELECT SUM(pgsize) FROM dbstat WHERE name = ?1"),
                             [&name],
                             |r| r.get::<_, i64>(0),
                         )
@@ -738,14 +776,14 @@ mod sqlite {
 
                     let index_count = conn
                         .query_row(
-                            "SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=?1",
+                            &sql!("SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=?1"),
                             [&name],
                             |r| r.get::<_, i32>(0),
                         )
                         .unwrap_or(0);
 
                     let has_primary_key = conn
-                        .query_row("SELECT * FROM pragma_table_info(?1)", [&name], |r| {
+                        .query_row(&sql!("SELECT * FROM pragma_table_info(?1)"), [&name], |r| {
                             r.get::<_, i32>(5)
                         })
                         .map(|v| v == 1)
@@ -757,7 +795,7 @@ mod sqlite {
                     };
 
                     let column_count = conn
-                        .prepare("SELECT * FROM pragma_table_info(?1)")
+                        .prepare(&sql!("SELECT * FROM pragma_table_info(?1)"))
                         .and_then(|mut columns| {
                             Ok(columns
                                 .query_map([&name], |r| r.get::<_, String>(1))?
@@ -784,13 +822,14 @@ mod sqlite {
         ) -> color_eyre::Result<responses::TableData> {
             Ok(self
                 .call(move |conn| {
-                    let first_column =
-                        conn.query_row("SELECT * FROM pragma_table_info(?1)", [&name], |r| {
-                            r.get::<_, String>(1)
-                        })?;
+                    let first_column = conn.query_row(
+                        &sql!("SELECT * FROM pragma_table_info(?1)"),
+                        [&name],
+                        |r| r.get::<_, String>(1),
+                    )?;
 
                     let offset = (page - 1) * ROWS_PER_PAGE;
-                    let mut stmt = conn.prepare(&format!(
+                    let mut stmt = conn.prepare(&sql!(
                         r#"
                         SELECT *
                         FROM "{name}"
@@ -826,8 +865,9 @@ mod sqlite {
         async fn tables_with_columns(&self) -> color_eyre::Result<responses::TablesWithColumns> {
             Ok(self
                 .call(move |conn| {
-                    let mut stmt =
-                        conn.prepare(r#"SELECT name FROM sqlite_master WHERE type="table""#)?;
+                    let mut stmt = conn.prepare(&sql!(
+                        r#"SELECT name FROM sqlite_master WHERE type="table""#
+                    ))?;
                     let table_names = stmt
                         .query_map([], |row| row.get::<_, String>(0))?
                         .collect::<Vec<_>>();
@@ -837,7 +877,7 @@ mod sqlite {
                         let table_name = name?;
 
                         let columns = conn
-                            .prepare("SELECT * FROM pragma_table_info(?1)")
+                            .prepare(&sql!("SELECT * FROM pragma_table_info(?1)"))
                             .and_then(|mut columns| {
                                 Ok(columns
                                     .query_map([&table_name], |r| r.get::<_, String>(1))?
@@ -893,8 +933,9 @@ mod sqlite {
             Ok(self
                 .call(move |conn| {
                     // Get all table names
-                    let mut stmt =
-                        conn.prepare(r#"SELECT name FROM sqlite_master WHERE type="table""#)?;
+                    let mut stmt = conn.prepare(&sql!(
+                        r#"SELECT name FROM sqlite_master WHERE type="table""#
+                    ))?;
                     let table_names = stmt
                         .query_map([], |row| row.get::<_, String>(0))?
                         .collect::<Result<Vec<_>, _>>()?;
@@ -904,7 +945,8 @@ mod sqlite {
 
                     for table_name in table_names {
                         // Get column info: cid, name, type, notnull, dflt_value, pk
-                        let mut col_stmt = conn.prepare("SELECT * FROM pragma_table_info(?1)")?;
+                        let mut col_stmt =
+                            conn.prepare(&sql!("SELECT * FROM pragma_table_info(?1)"))?;
                         let columns = col_stmt
                             .query_map([&table_name], |r| {
                                 Ok(responses::ErdColumn {
@@ -918,7 +960,7 @@ mod sqlite {
 
                         // Get foreign keys: id, seq, table, from, to, on_update, on_delete, match
                         let mut fk_stmt =
-                            conn.prepare("SELECT * FROM pragma_foreign_key_list(?1)")?;
+                            conn.prepare(&sql!("SELECT * FROM pragma_foreign_key_list(?1)"))?;
                         let fks = fk_stmt
                             .query_map([&table_name], |r| {
                                 Ok(responses::ErdRelationship {
@@ -986,10 +1028,12 @@ mod libsql {
 
             let tables = conn
                 .query(
-                    r#"
-            SELECT count(*) FROM sqlite_master
-            WHERE type="table"
-                "#,
+                    &sql!(
+                        r#"
+                        SELECT count(*) FROM sqlite_master
+                        WHERE type="table"
+                        "#
+                    ),
                     (),
                 )
                 .await?
@@ -1018,7 +1062,7 @@ mod libsql {
             let conn = self.db.connect()?;
 
             let sqlite_version = conn
-                .query("SELECT sqlite_version();", ())
+                .query(&sql!("SELECT sqlite_version();"), ())
                 .await?
                 .next()
                 .await?
@@ -1026,14 +1070,14 @@ mod libsql {
                 .get::<String>(0)?;
 
             let page_count = conn
-                .query("PRAGMA page_count;", ())
+                .query(&sql!("PRAGMA page_count;"), ())
                 .await?
                 .next()
                 .await?
                 .ok_or_eyre("could not get page count")?
                 .get::<u64>(0)?;
             let page_size = conn
-                .query("PRAGMA page_size;", ())
+                .query(&sql!("PRAGMA page_size;"), ())
                 .await?
                 .next()
                 .await?
@@ -1046,10 +1090,12 @@ mod libsql {
 
             let tables = conn
                 .query(
-                    r#"
-            SELECT count(*) FROM sqlite_master
-            WHERE type="table"
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT count(*) FROM sqlite_master
+                        WHERE type="table"
+                        "#
+                    ),
                     (),
                 )
                 .await?
@@ -1060,10 +1106,12 @@ mod libsql {
 
             let indexes = conn
                 .query(
-                    r#"
-            SELECT count(*) FROM sqlite_master
-            WHERE type="index"
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT count(*) FROM sqlite_master
+                        WHERE type="index"
+                        "#
+                    ),
                     (),
                 )
                 .await?
@@ -1074,10 +1122,12 @@ mod libsql {
 
             let triggers = conn
                 .query(
-                    r#"
-            SELECT count(*) FROM sqlite_master
-            WHERE type="trigger"
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT count(*) FROM sqlite_master
+                        WHERE type="trigger"
+                        "#
+                    ),
                     (),
                 )
                 .await?
@@ -1088,10 +1138,12 @@ mod libsql {
 
             let views = conn
                 .query(
-                    r#"
-            SELECT count(*) FROM sqlite_master
-            WHERE type="view"
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT count(*) FROM sqlite_master
+                        WHERE type="view"
+                        "#
+                    ),
                     (),
                 )
                 .await?
@@ -1101,7 +1153,10 @@ mod libsql {
                 .get::<i32>(0)?;
 
             let table_names = conn
-                .query(r#"SELECT name FROM sqlite_master WHERE type="table""#, ())
+                .query(
+                    &sql!(r#"SELECT name FROM sqlite_master WHERE type="table""#),
+                    (),
+                )
                 .await?
                 .into_stream()
                 .map_ok(|r| r.get::<String>(0))
@@ -1113,7 +1168,7 @@ mod libsql {
             let mut row_counts = HashMap::with_capacity(table_names.len());
             for name in table_names.iter() {
                 let count = conn
-                    .query(&format!("SELECT count(*) FROM \"{name}\""), ())
+                    .query(&sql!("SELECT count(*) FROM \"{name}\""), ())
                     .await?
                     .next()
                     .await?
@@ -1133,7 +1188,10 @@ mod libsql {
             let mut column_counts = HashMap::with_capacity(table_names.len());
             for name in table_names.iter() {
                 let count = conn
-                    .query("SELECT * FROM pragma_table_info(?1)", [name.to_owned()])
+                    .query(
+                        &sql!("SELECT * FROM pragma_table_info(?1)"),
+                        [name.to_owned()],
+                    )
                     .await?
                     .into_stream()
                     .map_ok(|r| r.get::<String>(1))
@@ -1157,7 +1215,9 @@ mod libsql {
             for name in table_names.iter() {
                 let index_count = conn
                     .query(
-                        "SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=?1",
+                        &sql!(
+                            "SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=?1"
+                        ),
                         [name.to_owned()],
                     )
                     .await?
@@ -1167,7 +1227,10 @@ mod libsql {
                     .get::<i32>(0)?;
 
                 let has_primary_key = conn
-                    .query("SELECT * FROM pragma_table_info(?1)", [name.to_owned()])
+                    .query(
+                        &sql!("SELECT * FROM pragma_table_info(?1)"),
+                        [name.to_owned()],
+                    )
                     .await?
                     .next()
                     .await?
@@ -1211,7 +1274,10 @@ mod libsql {
             let conn = self.db.connect()?;
 
             let table_names = conn
-                .query(r#"SELECT name FROM sqlite_master WHERE type="table""#, ())
+                .query(
+                    &sql!(r#"SELECT name FROM sqlite_master WHERE type="table""#),
+                    (),
+                )
                 .await?
                 .into_stream()
                 .map_ok(|r| r.get::<String>(0))
@@ -1223,7 +1289,7 @@ mod libsql {
             let mut table_counts = HashMap::with_capacity(table_names.len());
             for name in table_names {
                 let count = conn
-                    .query(&format!("SELECT count(*) FROM \"{name}\""), ())
+                    .query(&sql!("SELECT count(*) FROM \"{name}\""), ())
                     .await?
                     .next()
                     .await?
@@ -1248,10 +1314,12 @@ mod libsql {
 
             let sql = conn
                 .query(
-                    r#"
-                SELECT sql FROM sqlite_master
-                WHERE type="table" AND name = ?1
-                "#,
+                    &sql!(
+                        r#"
+                        SELECT sql FROM sqlite_master
+                        WHERE type="table" AND name = ?1
+                        "#
+                    ),
                     [name.to_owned()],
                 )
                 .await?
@@ -1261,7 +1329,7 @@ mod libsql {
                 .get::<String>(0)?;
 
             let row_count = conn
-                .query(&format!("SELECT count(*) FROM \"{name}\""), ())
+                .query(&sql!("SELECT count(*) FROM \"{name}\""), ())
                 .await?
                 .next()
                 .await?
@@ -1270,7 +1338,7 @@ mod libsql {
 
             let table_size = conn
                 .query(
-                    "SELECT SUM(pgsize) FROM dbstat WHERE name = ?1",
+                    &sql!("SELECT SUM(pgsize) FROM dbstat WHERE name = ?1"),
                     [name.to_owned()],
                 )
                 .await?
@@ -1282,7 +1350,7 @@ mod libsql {
 
             let index_count = conn
                 .query(
-                    "SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=?1",
+                    &sql!("SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=?1"),
                     [name.to_owned()],
                 )
                 .await?
@@ -1292,7 +1360,10 @@ mod libsql {
                 .get::<i32>(0)?;
 
             let has_primary_key = conn
-                .query("SELECT * FROM pragma_table_info(?1)", [name.to_owned()])
+                .query(
+                    &sql!("SELECT * FROM pragma_table_info(?1)"),
+                    [name.to_owned()],
+                )
                 .await?
                 .next()
                 .await?
@@ -1307,7 +1378,10 @@ mod libsql {
             };
 
             let column_count = conn
-                .query("SELECT * FROM pragma_table_info(?1)", [name.to_owned()])
+                .query(
+                    &sql!("SELECT * FROM pragma_table_info(?1)"),
+                    [name.to_owned()],
+                )
                 .await?
                 .into_stream()
                 .map_ok(|r| r.get::<String>(1))
@@ -1335,7 +1409,10 @@ mod libsql {
             let conn = self.db.connect()?;
 
             let first_column = conn
-                .query("SELECT * FROM pragma_table_info(?1)", [name.to_owned()])
+                .query(
+                    &sql!("SELECT * FROM pragma_table_info(?1)"),
+                    [name.to_owned()],
+                )
                 .await?
                 .next()
                 .await?
@@ -1343,7 +1420,10 @@ mod libsql {
                 .get::<String>(1)?;
 
             let columns = conn
-                .query("SELECT * FROM pragma_table_info(?1)", [name.to_owned()])
+                .query(
+                    &sql!("SELECT * FROM pragma_table_info(?1)"),
+                    [name.to_owned()],
+                )
                 .await?
                 .into_stream()
                 .map_ok(|r| r.get::<String>(1))
@@ -1356,13 +1436,13 @@ mod libsql {
             let offset = (page - 1) * ROWS_PER_PAGE;
             let rows = conn
                 .query(
-                    &format!(
+                    &sql!(
                         r#"
-                SELECT *
-                FROM "{name}"
-                ORDER BY "{first_column}"
-                LIMIT {ROWS_PER_PAGE}
-                OFFSET {offset}
+                        SELECT *
+                        FROM "{name}"
+                        ORDER BY "{first_column}"
+                        LIMIT {ROWS_PER_PAGE}
+                        OFFSET {offset}
                         "#,
                     ),
                     (),
@@ -1389,7 +1469,10 @@ mod libsql {
             let conn = self.db.connect()?;
 
             let table_names = conn
-                .query(r#"SELECT name FROM sqlite_master WHERE type="table""#, ())
+                .query(
+                    &sql!(r#"SELECT name FROM sqlite_master WHERE type="table""#),
+                    (),
+                )
                 .await?
                 .into_stream()
                 .map_ok(|r| r.get::<String>(0))
@@ -1402,7 +1485,7 @@ mod libsql {
             for table_name in table_names {
                 let columns = conn
                     .query(
-                        "SELECT * FROM pragma_table_info(?1)",
+                        &sql!("SELECT * FROM pragma_table_info(?1)"),
                         [table_name.to_owned()],
                     )
                     .await?
@@ -1456,7 +1539,10 @@ mod libsql {
 
             // Get all table names
             let table_names = conn
-                .query(r#"SELECT name FROM sqlite_master WHERE type="table""#, ())
+                .query(
+                    &sql!(r#"SELECT name FROM sqlite_master WHERE type="table""#),
+                    (),
+                )
                 .await?
                 .into_stream()
                 .map_ok(|r| r.get::<String>(0))
@@ -1472,7 +1558,7 @@ mod libsql {
                 // Get column info: cid, name, type, notnull, dflt_value, pk
                 let columns = conn
                     .query(
-                        "SELECT * FROM pragma_table_info(?1)",
+                        &sql!("SELECT * FROM pragma_table_info(?1)"),
                         [table_name.to_owned()],
                     )
                     .await?
@@ -1493,7 +1579,7 @@ mod libsql {
                 // Get foreign keys: id, seq, table, from, to, on_update, on_delete, match
                 let fks = conn
                     .query(
-                        "SELECT * FROM pragma_foreign_key_list(?1)",
+                        &sql!("SELECT * FROM pragma_foreign_key_list(?1)"),
                         [table_name.to_owned()],
                     )
                     .await?
@@ -1582,12 +1668,14 @@ mod postgres {
 
             let tables: i64 = client
                 .query_one(
-                    r#"
-            SELECT count(*)
-            FROM information_schema.tables
-            WHERE table_schema = $1
-            AND table_type = 'BASE TABLE'
-                        "#,
+                    &sql!(
+                        r#"
+                        SELECT count(*)
+                        FROM information_schema.tables
+                        WHERE table_schema = $1
+                        AND table_type = 'BASE TABLE'
+                        "#
+                    ),
                     &[&schema],
                 )
                 .await?
@@ -1612,13 +1700,13 @@ mod postgres {
 
             let file_name: String = self
                 .client
-                .query_one("SELECT current_database()", &[])
+                .query_one(&sql!("SELECT current_database()"), &[])
                 .await?
                 .get(0);
 
             let db_size: i64 = self
                 .client
-                .query_one("SELECT pg_database_size($1)", &[&file_name])
+                .query_one(&sql!("SELECT pg_database_size($1)"), &[&file_name])
                 .await?
                 .get(0);
             let db_size = helpers::format_size(db_size as f64);
@@ -1629,12 +1717,14 @@ mod postgres {
             let tables: i64 = self
                 .client
                 .query_one(
-                    r#"
-            SELECT count(*)
-            FROM information_schema.tables
-            WHERE table_schema = $1
-            AND table_type = 'BASE TABLE'
-                        "#,
+                    &sql!(
+                        r#"
+                        SELECT count(*)
+                        FROM information_schema.tables
+                        WHERE table_schema = $1
+                        AND table_type = 'BASE TABLE'
+                        "#
+                    ),
                     &[schema],
                 )
                 .await?
@@ -1643,11 +1733,13 @@ mod postgres {
             let indexes: i64 = self
                 .client
                 .query_one(
-                    r#"
-            SELECT count(*) 
-            FROM pg_indexes 
-            WHERE schemaname = $1
-                       "#,
+                    &sql!(
+                        r#"
+                        SELECT count(*)
+                        FROM pg_indexes
+                        WHERE schemaname = $1
+                        "#
+                    ),
                     &[schema],
                 )
                 .await?
@@ -1656,11 +1748,13 @@ mod postgres {
             let triggers: i64 = self
                 .client
                 .query_one(
-                    r#"
-            SELECT count(*)
-            FROM information_schema.triggers
-            WHERE trigger_schema = $1
-                        "#,
+                    &sql!(
+                        r#"
+                        SELECT count(*)
+                        FROM information_schema.triggers
+                        WHERE trigger_schema = $1
+                        "#
+                    ),
                     &[schema],
                 )
                 .await?
@@ -1669,11 +1763,13 @@ mod postgres {
             let views: i64 = self
                 .client
                 .query_one(
-                    r#"
-            SELECT count(*)
-            FROM information_schema.views
-            WHERE table_schema = $1;
-                        "#,
+                    &sql!(
+                        r#"
+                        SELECT count(*)
+                        FROM information_schema.views
+                        WHERE table_schema = $1;
+                        "#
+                    ),
                     &[schema],
                 )
                 .await?
@@ -1682,11 +1778,13 @@ mod postgres {
             let mut row_counts = self
                 .client
                 .query(
-                    r#"
-            SELECT table_name
-            FROM information_schema.tables
-            WHERE table_schema = $1
-                        "#,
+                    &sql!(
+                        r#"
+                        SELECT table_name
+                        FROM information_schema.tables
+                        WHERE table_schema = $1
+                        "#
+                    ),
                     &[schema],
                 )
                 .await?
@@ -1700,7 +1798,7 @@ mod postgres {
             for table in row_counts.iter_mut() {
                 let count: i64 = self
                     .client
-                    .query_one(&format!(r#"SELECT count(*) FROM "{}""#, table.name), &[])
+                    .query_one(&sql!(r#"SELECT count(*) FROM "{}""#, table.name), &[])
                     .await?
                     .get(0);
                 table.count = count as i32;
@@ -1711,11 +1809,13 @@ mod postgres {
             let mut column_counts = self
                 .client
                 .query(
-                    r#"
-            SELECT table_name
-            FROM information_schema.tables
-            WHERE table_schema = $1
-                        "#,
+                    &sql!(
+                        r#"
+                        SELECT table_name
+                        FROM information_schema.tables
+                        WHERE table_schema = $1
+                        "#
+                    ),
                     &[schema],
                 )
                 .await?
@@ -1730,12 +1830,14 @@ mod postgres {
                 let count: i64 = self
                     .client
                     .query_one(
-                        r#"
-                SELECT count(*)
-                FROM information_schema.columns
-                WHERE table_schema = $1
-                AND table_name = $2
-                        "#,
+                        &sql!(
+                            r#"
+                            SELECT count(*)
+                            FROM information_schema.columns
+                            WHERE table_schema = $1
+                            AND table_name = $2
+                            "#
+                        ),
                         &[schema, &table.name],
                     )
                     .await?
@@ -1749,11 +1851,13 @@ mod postgres {
             let mut index_counts = self
                 .client
                 .query(
-                    r#"
-            SELECT table_name
-            FROM information_schema.tables
-            WHERE table_schema = $1
-                        "#,
+                    &sql!(
+                        r#"
+                        SELECT table_name
+                        FROM information_schema.tables
+                        WHERE table_schema = $1
+                        "#
+                    ),
                     &[schema],
                 )
                 .await?
@@ -1768,12 +1872,14 @@ mod postgres {
                 let count: i64 = self
                     .client
                     .query_one(
-                        r#"
-                SELECT count(*)
-                FROM pg_indexes
-                WHERE schemaname = $1
-                AND tablename = $2
-                        "#,
+                        &sql!(
+                            r#"
+                            SELECT count(*)
+                            FROM pg_indexes
+                            WHERE schemaname = $1
+                            AND tablename = $2
+                            "#
+                        ),
                         &[schema, &table.name],
                     )
                     .await?
@@ -1806,11 +1912,13 @@ mod postgres {
             let mut tables = self
                 .client
                 .query(
-                    r#"
-            SELECT table_name
-            FROM information_schema.tables
-            WHERE table_schema = $1
-                        "#,
+                    &sql!(
+                        r#"
+                        SELECT table_name
+                        FROM information_schema.tables
+                        WHERE table_schema = $1
+                        "#
+                    ),
                     &[schema],
                 )
                 .await?
@@ -1824,7 +1932,7 @@ mod postgres {
             for table in tables.iter_mut() {
                 let count: i64 = self
                     .client
-                    .query_one(&format!(r#"SELECT count(*) FROM "{}""#, table.name), &[])
+                    .query_one(&sql!(r#"SELECT count(*) FROM "{}""#, table.name), &[])
                     .await?
                     .get(0);
                 table.count = count as i32;
@@ -1840,14 +1948,14 @@ mod postgres {
 
             let row_count: i64 = self
                 .client
-                .query_one(&format!(r#"SELECT count(*) FROM "{name}""#), &[])
+                .query_one(&sql!(r#"SELECT count(*) FROM "{name}""#), &[])
                 .await?
                 .get(0);
 
             let table_size: i64 = self
                 .client
                 .query_one(
-                    "SELECT pg_total_relation_size(format('%I.%I', $1::text, $2::text)::regclass)",
+                    &sql!("SELECT pg_total_relation_size(format('%I.%I', $1::text, $2::text)::regclass)"),
                     &[schema, &name],
                 )
                 .await?
@@ -1857,12 +1965,14 @@ mod postgres {
             let index_count: i64 = self
                 .client
                 .query_one(
-                    r#"
-            SELECT count(*)
-            FROM pg_indexes
-            WHERE schemaname = $1
-            AND tablename = $2
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT count(*)
+                        FROM pg_indexes
+                        WHERE schemaname = $1
+                        AND tablename = $2
+                        "#
+                    ),
                     &[schema, &name],
                 )
                 .await?
@@ -1871,12 +1981,14 @@ mod postgres {
             let column_count: i64 = self
                 .client
                 .query_one(
-                    r#"
-            SELECT count(*)
-            FROM information_schema.columns
-            WHERE table_schema = $1
-            AND table_name = $2
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT count(*)
+                        FROM information_schema.columns
+                        WHERE table_schema = $1
+                        AND table_name = $2
+                        "#
+                    ),
                     &[schema, &name],
                 )
                 .await?
@@ -1902,26 +2014,28 @@ mod postgres {
             let first_column: String = self
                 .client
                 .query_one(
-                    r#"
-            SELECT column_name
-            FROM information_schema.columns
-            WHERE table_schema = $1
-            AND table_name = $2
-            ORDER BY ordinal_position
-            LIMIT 1
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT column_name
+                        FROM information_schema.columns
+                        WHERE table_schema = $1
+                        AND table_name = $2
+                        ORDER BY ordinal_position
+                        LIMIT 1
+                        "#
+                    ),
                     &[schema, &name],
                 )
                 .await?
                 .get(0);
 
             let offset = (page - 1) * ROWS_PER_PAGE;
-            let sql = format!(
+            let sql = sql!(
                 r#"
-            SELECT * FROM "{name}"
-            ORDER BY "{first_column}"
-            LIMIT {ROWS_PER_PAGE}
-            OFFSET {offset}
+                SELECT * FROM "{name}"
+                ORDER BY "{first_column}"
+                LIMIT {ROWS_PER_PAGE}
+                OFFSET {offset}
                 "#
             );
 
@@ -1965,11 +2079,13 @@ mod postgres {
             let table_names = self
                 .client
                 .query(
-                    r#"
-            SELECT table_name
-            FROM information_schema.tables
-            WHERE table_schema = $1
-                        "#,
+                    &sql!(
+                        r#"
+                        SELECT table_name
+                        FROM information_schema.tables
+                        WHERE table_schema = $1
+                        "#
+                    ),
                     &[schema],
                 )
                 .await?
@@ -1982,12 +2098,14 @@ mod postgres {
                 let columns = self
                     .client
                     .query(
-                        r#"
-                SELECT column_name
-                FROM information_schema.columns
-                WHERE table_schema = $1
-                AND table_name = $2
-                        "#,
+                        &sql!(
+                            r#"
+                            SELECT column_name
+                            FROM information_schema.columns
+                            WHERE table_schema = $1
+                            AND table_name = $2
+                            "#
+                        ),
                         &[schema, &table_name],
                     )
                     .await?
@@ -2044,7 +2162,8 @@ mod postgres {
             let schema = &self.schema;
 
             // Get all tables with columns
-            let columns_query = r#"
+            let columns_query = &sql!(
+                r#"
                 SELECT
                     c.table_name,
                     c.column_name,
@@ -2063,7 +2182,8 @@ mod postgres {
                     AND c.table_name = kcu.table_name
                 WHERE c.table_schema = $1
                 ORDER BY c.table_name, c.ordinal_position
-                "#;
+                "#
+            );
 
             let column_rows = self.client.query(columns_query, &[schema]).await?;
 
@@ -2087,7 +2207,8 @@ mod postgres {
                 .collect();
 
             // Get foreign key relationships
-            let fk_query = r#"
+            let fk_query = &sql!(
+                r#"
                 SELECT
                     kcu.table_name as from_table,
                     kcu.column_name as from_column,
@@ -2102,7 +2223,8 @@ mod postgres {
                     AND ccu.table_schema = tc.table_schema
                 WHERE tc.constraint_type = 'FOREIGN KEY'
                 AND tc.table_schema = $1
-                "#;
+                "#
+            );
 
             let fk_rows = self.client.query(fk_query, &[schema]).await?;
             let relationships: Vec<responses::ErdRelationship> = fk_rows
@@ -2149,12 +2271,14 @@ mod mysql {
             let pool = Pool::from_url(&url)?;
             let conn = pool.get_conn().await?;
 
-            let tables = r#"
-            SELECT count(*) as count
-            FROM information_schema.tables
-            WHERE table_schema = DATABASE()
-            AND table_type = 'BASE TABLE'
+            let tables = sql!(
+                r#"
+                SELECT count(*) as count
+                FROM information_schema.tables
+                WHERE table_schema = DATABASE()
+                AND table_type = 'BASE TABLE'
                 "#
+            )
             .with(())
             .first(conn)
             .await?
@@ -2177,18 +2301,20 @@ mod mysql {
         async fn overview(&self) -> color_eyre::Result<responses::Overview> {
             let mut conn = self.pool.get_conn().await?;
 
-            let file_name = "SELECT database() AS name"
+            let file_name = sql!("SELECT database() AS name")
                 .with(())
                 .first(&mut conn)
                 .await?
                 .map(|name: String| name)
                 .ok_or_eyre("couldn't get database name")?;
 
-            let db_size = r#"
-            SELECT coalesce(sum(data_length + index_length), 0) AS size
-            FROM information_schema.tables
-            WHERE table_schema = database()
+            let db_size = sql!(
+                r#"
+                SELECT coalesce(sum(data_length + index_length), 0) AS size
+                FROM information_schema.tables
+                WHERE table_schema = database()
                 "#
+            )
             .with(())
             .first(&mut conn)
             .await?
@@ -2199,62 +2325,72 @@ mod mysql {
             let modified = None;
             let created = None;
 
-            let tables = r#"
-            SELECT count(*) AS count
-            FROM information_schema.tables
-            WHERE table_schema = database()
-            AND table_type = 'BASE TABLE'
+            let tables = sql!(
+                r#"
+                SELECT count(*) AS count
+                FROM information_schema.tables
+                WHERE table_schema = database()
+                AND table_type = 'BASE TABLE'
                 "#
+            )
             .with(())
             .first(&mut conn)
             .await?
             .map(|count: i32| count)
             .ok_or_eyre("couldn't count tables")?;
 
-            let indexes = r#"
-            SELECT count(*) AS count
-            FROM information_schema.statistics
-            WHERE table_schema = database()
+            let indexes = sql!(
+                r#"
+                SELECT count(*) AS count
+                FROM information_schema.statistics
+                WHERE table_schema = database()
                 "#
+            )
             .with(())
             .first(&mut conn)
             .await?
             .map(|count: i32| count)
             .ok_or_eyre("couldn't count indexes")?;
 
-            let triggers = r#"
-            SELECT count(*) AS count
-            FROM information_schema.triggers
-            WHERE trigger_schema = database()
+            let triggers = sql!(
+                r#"
+                SELECT count(*) AS count
+                FROM information_schema.triggers
+                WHERE trigger_schema = database()
                 "#
+            )
             .with(())
             .first(&mut conn)
             .await?
             .map(|count: i32| count)
             .ok_or_eyre("couldn't count triggers")?;
 
-            let views = r#"
-            SELECT COUNT(*) AS count
-            FROM information_schema.views
-            WHERE table_schema = database()
+            let views = sql!(
+                r#"
+                SELECT COUNT(*) AS count
+                FROM information_schema.views
+                WHERE table_schema = database()
                 "#
+            )
             .with(())
             .first(&mut conn)
             .await?
             .map(|count: i32| count)
             .ok_or_eyre("couldn't count views")?;
 
-            let mut row_counts = r#"
-            SELECT TABLE_NAME AS name
-            FROM information_schema.tables
-            WHERE table_schema = database()
+            let mut row_counts = sql!(
+                r#"
+                SELECT TABLE_NAME AS name
+                FROM information_schema.tables
+                WHERE table_schema = database()
                 "#
+            )
             .with(())
             .map(&mut conn, |name| Count { name, count: 0 })
             .await?;
 
             for count in row_counts.iter_mut() {
-                count.count = format!("SELECT count(*) AS count FROM {}", quote_ident(&count.name))
+                count.count = sql!("SELECT count(*) AS count FROM {}", quote_ident(&count.name))
                     .with(())
                     .first(&mut conn)
                     .await?
@@ -2264,21 +2400,25 @@ mod mysql {
 
             row_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
-            let mut column_counts = r#"
-            SELECT TABLE_NAME AS name
-            FROM information_schema.tables
-            WHERE table_schema = database()
+            let mut column_counts = sql!(
+                r#"
+                SELECT TABLE_NAME AS name
+                FROM information_schema.tables
+                WHERE table_schema = database()
                 "#
+            )
             .with(())
             .map(&mut conn, |name| Count { name, count: 0 })
             .await?;
 
             for count in column_counts.iter_mut() {
-                count.count = r#"
-                SELECT count(*) AS count
-                FROM information_schema.columns
-                WHERE table_schema = database() AND table_name = :table_name
-                "#
+                count.count = sql!(
+                    r#"
+                    SELECT count(*) AS count
+                    FROM information_schema.columns
+                    WHERE table_schema = database() AND table_name = :table_name
+                    "#
+                )
                 .with(params! {
                     "table_name" => &count.name
                 })
@@ -2290,21 +2430,25 @@ mod mysql {
 
             column_counts.sort_by_key(|c| std::cmp::Reverse(c.count));
 
-            let mut index_counts = r#"
-            SELECT TABLE_NAME AS name
-            FROM information_schema.tables
-            WHERE table_schema = database()
+            let mut index_counts = sql!(
+                r#"
+                SELECT TABLE_NAME AS name
+                FROM information_schema.tables
+                WHERE table_schema = database()
                 "#
+            )
             .with(())
             .map(&mut conn, |name| Count { name, count: 0 })
             .await?;
 
             for count in index_counts.iter_mut() {
-                count.count = r#"
-                SELECT COUNT(*) AS count
-                FROM information_schema.statistics
-                WHERE table_schema = database() AND table_name = :table_name
-                "#
+                count.count = sql!(
+                    r#"
+                    SELECT COUNT(*) AS count
+                    FROM information_schema.statistics
+                    WHERE table_schema = database() AND table_name = :table_name
+                    "#
+                )
                 .with(params! {
                     "table_name" => &count.name
                 })
@@ -2335,17 +2479,19 @@ mod mysql {
         async fn tables(&self) -> color_eyre::Result<responses::Tables> {
             let mut conn = self.pool.get_conn().await?;
 
-            let mut tables = r#"
-            SELECT TABLE_NAME AS name
-            FROM information_schema.tables
-            WHERE table_schema = database()
+            let mut tables = sql!(
+                r#"
+                SELECT TABLE_NAME AS name
+                FROM information_schema.tables
+                WHERE table_schema = database()
                 "#
+            )
             .with(())
             .map(&mut conn, |name| Count { name, count: 0 })
             .await?;
 
             for table in tables.iter_mut() {
-                table.count = format!("SELECT count(*) AS count FROM {}", quote_ident(&table.name))
+                table.count = sql!("SELECT count(*) AS count FROM {}", quote_ident(&table.name))
                     .with(())
                     .first(&mut conn)
                     .await?
@@ -2361,25 +2507,27 @@ mod mysql {
         async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
             let mut conn = self.pool.get_conn().await?;
 
-            let sql = format!("SHOW CREATE TABLE {}", quote_ident(&name))
+            let sql = sql!("SHOW CREATE TABLE {}", quote_ident(&name))
                 .with(())
                 .first(&mut conn)
                 .await?
                 .and_then(|row: mysql_async::Row| row.get_opt::<String, _>(1))
                 .ok_or_eyre("couldn't get table sql")??;
 
-            let row_count = format!("SELECT count(*) AS count FROM {}", quote_ident(&name))
+            let row_count = sql!("SELECT count(*) AS count FROM {}", quote_ident(&name))
                 .with(())
                 .first(&mut conn)
                 .await?
                 .map(|count: i32| count)
                 .ok_or_eyre("couldn't count rows")?;
 
-            let table_size = r#"
-            SELECT coalesce(data_length + index_length, 0) AS size
-            FROM information_schema.tables
-            WHERE table_schema = database() AND table_name = :table_name
+            let table_size = sql!(
+                r#"
+                SELECT coalesce(data_length + index_length, 0) AS size
+                FROM information_schema.tables
+                WHERE table_schema = database() AND table_name = :table_name
                 "#
+            )
             .with(params! {
                 "table_name" => &name
             })
@@ -2389,11 +2537,13 @@ mod mysql {
             .ok_or_eyre("couldn't get table size")?;
             let table_size = helpers::format_size(table_size as f64);
 
-            let index_count = r#"
-            SELECT COUNT(*) AS count
-            FROM information_schema.statistics
-            WHERE table_schema = database() AND table_name = :table_name
+            let index_count = sql!(
+                r#"
+                SELECT COUNT(*) AS count
+                FROM information_schema.statistics
+                WHERE table_schema = database() AND table_name = :table_name
                 "#
+            )
             .with(params! {
                 "table_name" => &name
             })
@@ -2402,11 +2552,13 @@ mod mysql {
             .map(|count: i32| count)
             .ok_or_eyre("couldn't count indexes")?;
 
-            let column_count = r#"
-            SELECT count(*) AS count
-            FROM information_schema.columns
-            WHERE table_schema = database() AND table_name = :table_name
+            let column_count = sql!(
+                r#"
+                SELECT count(*) AS count
+                FROM information_schema.columns
+                WHERE table_schema = database() AND table_name = :table_name
                 "#
+            )
             .with(params! {
                 "table_name" => &name
             })
@@ -2432,11 +2584,13 @@ mod mysql {
         ) -> color_eyre::Result<responses::TableData> {
             let mut conn = self.pool.get_conn().await?;
 
-            let first_column = r#"
-            SELECT column_name FROM information_schema.columns
-            WHERE table_schema = DATABASE() AND table_name = :table_name
-            ORDER BY ordinal_position LIMIT 1
+            let first_column = sql!(
+                r#"
+                SELECT column_name FROM information_schema.columns
+                WHERE table_schema = DATABASE() AND table_name = :table_name
+                ORDER BY ordinal_position LIMIT 1
                 "#
+            )
             .with(params! {
                 "table_name" => &name
             })
@@ -2446,12 +2600,12 @@ mod mysql {
             .ok_or_eyre("couldn't get first column")?;
 
             let offset = (page - 1) * ROWS_PER_PAGE;
-            let sql = format!(
+            let sql = sql!(
                 r#"
-            SELECT * FROM {}
-            ORDER BY {}
-            LIMIT {ROWS_PER_PAGE}
-            OFFSET {offset}
+                SELECT * FROM {}
+                ORDER BY {}
+                LIMIT {ROWS_PER_PAGE}
+                OFFSET {offset}
                 "#,
                 quote_ident(&name),
                 quote_ident(&first_column),
@@ -2493,22 +2647,26 @@ mod mysql {
         async fn tables_with_columns(&self) -> color_eyre::Result<responses::TablesWithColumns> {
             let mut conn = self.pool.get_conn().await?;
 
-            let table_names = r#"
-            SELECT TABLE_NAME AS name
-            FROM information_schema.tables
-            WHERE table_schema = database()
+            let table_names = sql!(
+                r#"
+                SELECT TABLE_NAME AS name
+                FROM information_schema.tables
+                WHERE table_schema = database()
                 "#
+            )
             .with(())
             .map(&mut conn, |name: String| name)
             .await?;
 
             let mut tables = Vec::with_capacity(table_names.len());
             for table_name in table_names {
-                let columns = r#"
-                SELECT COLUMN_NAME AS name
-                FROM information_schema.columns
-                WHERE table_schema = database() AND table_name = :table_name
-                "#
+                let columns = sql!(
+                    r#"
+                    SELECT COLUMN_NAME AS name
+                    FROM information_schema.columns
+                    WHERE table_schema = database() AND table_name = :table_name
+                    "#
+                )
                 .with(params! {
                     "table_name" => &table_name
                 })
@@ -2566,7 +2724,8 @@ mod mysql {
             let mut conn = self.pool.get_conn().await?;
 
             // Get all tables with columns
-            let columns_query = r#"
+            let columns_query = &sql!(
+                r#"
                 SELECT
                     c.TABLE_NAME,
                     c.COLUMN_NAME,
@@ -2576,7 +2735,8 @@ mod mysql {
                 FROM information_schema.columns c
                 WHERE c.TABLE_SCHEMA = database()
                 ORDER BY c.TABLE_NAME, c.ORDINAL_POSITION
-            "#;
+                "#
+            );
 
             let column_rows: Vec<(String, String, String, String, String)> = columns_query
                 .with(())
@@ -2613,7 +2773,8 @@ mod mysql {
                 .collect();
 
             // Get foreign key relationships
-            let fk_query = r#"
+            let fk_query = &sql!(
+                r#"
                 SELECT
                     TABLE_NAME as from_table,
                     COLUMN_NAME as from_column,
@@ -2622,7 +2783,8 @@ mod mysql {
                 FROM information_schema.KEY_COLUMN_USAGE
                 WHERE TABLE_SCHEMA = database()
                 AND REFERENCED_TABLE_NAME IS NOT NULL
-            "#;
+                "#
+            );
 
             let relationships: Vec<responses::ErdRelationship> = fk_query
                 .with(())
@@ -2688,11 +2850,13 @@ mod duckdb {
             let c = conn.try_clone()?;
             let tables = tokio::task::spawn_blocking(move || {
                 let tables: i32 = c.query_row(
-                    r#"
-                SELECT count(*) 
-                FROM information_schema.tables 
-                WHERE table_schema = 'main' AND table_type = 'BASE TABLE'
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT count(*)
+                        FROM information_schema.tables
+                        WHERE table_schema = 'main' AND table_type = 'BASE TABLE'
+                        "#
+                    ),
                     [],
                     |row| row.get(0),
                 )?;
@@ -2734,45 +2898,53 @@ mod duckdb {
                     let c = c.lock().expect("could not get lock on connection");
 
                     let tables: i32 = c.query_row(
-                        r#"
-                    SELECT count(*) 
-                    FROM information_schema.tables 
-                    WHERE table_schema = 'main' AND table_type = 'BASE TABLE'
-                    "#,
+                        &sql!(
+                            r#"
+                            SELECT count(*)
+                            FROM information_schema.tables
+                            WHERE table_schema = 'main' AND table_type = 'BASE TABLE'
+                            "#
+                        ),
                         [],
                         |row| row.get(0),
                     )?;
 
                     let indexes: i32 =
-                        c.query_row("SELECT count(*) FROM duckdb_indexes;", [], |row| row.get(0))?;
+                        c.query_row(&sql!("SELECT count(*) FROM duckdb_indexes;"), [], |row| {
+                            row.get(0)
+                        })?;
 
                     let triggers: i32 = c.query_row(
-                        r#"
-                    SELECT count(*)
-                    FROM duckdb_constraints
-                    WHERE constraint_type = 'TRIGGER'
-                    "#,
+                        &sql!(
+                            r#"
+                            SELECT count(*)
+                            FROM duckdb_constraints
+                            WHERE constraint_type = 'TRIGGER'
+                            "#
+                        ),
                         [],
                         |row| row.get(0),
                     )?;
 
                     let views: i32 = c.query_row(
-                        r#"
-                    SELECT count(*)
-                    FROM information_schema.tables
-                    WHERE table_schema = 'main' AND table_type = 'VIEW'
-                    "#,
+                        &sql!(
+                            r#"
+                            SELECT count(*)
+                            FROM information_schema.tables
+                            WHERE table_schema = 'main' AND table_type = 'VIEW'
+                            "#
+                        ),
                         [],
                         |row| row.get(0),
                     )?;
 
-                    let mut table_names_stmt = c.prepare(
+                    let mut table_names_stmt = c.prepare(&sql!(
                         r#"
-                    SELECT table_name
-                    FROM information_schema.tables
-                    WHERE table_schema = 'main' AND table_type = 'BASE TABLE'
-                        "#,
-                    )?;
+                            SELECT table_name
+                            FROM information_schema.tables
+                            WHERE table_schema = 'main' AND table_type = 'BASE TABLE'
+                            "#
+                    ))?;
                     let table_names = table_names_stmt
                         .query_map([], |row| row.get(0))?
                         .filter_map(|n| n.ok())
@@ -2781,7 +2953,7 @@ mod duckdb {
                     let mut row_counts = Vec::with_capacity(table_names.len());
                     for name in table_names.iter() {
                         let count: i32 =
-                            c.query_row(&format!(r#"SELECT count(*) FROM "{name}""#), [], |row| {
+                            c.query_row(&sql!(r#"SELECT count(*) FROM "{name}""#), [], |row| {
                                 row.get(0)
                             })?;
 
@@ -2796,7 +2968,7 @@ mod duckdb {
                     let mut column_counts = Vec::with_capacity(table_names.len());
                     for name in table_names.iter() {
                         let count: i32 = c.query_row(
-                            "SELECT column_count FROM duckdb_tables WHERE table_name = ?",
+                            &sql!("SELECT column_count FROM duckdb_tables WHERE table_name = ?"),
                             [&name],
                             |row| row.get(0),
                         )?;
@@ -2812,7 +2984,7 @@ mod duckdb {
                     let mut index_counts = Vec::with_capacity(table_names.len());
                     for name in table_names.iter() {
                         let count: i32 = c.query_row(
-                            "SELECT index_count FROM duckdb_tables WHERE table_name = ?",
+                            &sql!("SELECT index_count FROM duckdb_tables WHERE table_name = ?"),
                             [&name],
                             |row| row.get(0),
                         )?;
@@ -2858,13 +3030,13 @@ mod duckdb {
             let tables = tokio::task::spawn_blocking(move || {
                 let c = c.lock().expect("could not get lock on connection");
 
-                let mut table_names_stmt = c.prepare(
+                let mut table_names_stmt = c.prepare(&sql!(
                     r#"
-                    SELECT table_name
-                    FROM information_schema.tables
-                    WHERE table_schema = 'main' AND table_type = 'BASE TABLE'
-                        "#,
-                )?;
+                        SELECT table_name
+                        FROM information_schema.tables
+                        WHERE table_schema = 'main' AND table_type = 'BASE TABLE'
+                        "#
+                ))?;
                 let table_names = table_names_stmt
                     .query_map([], |row| row.get(0))?
                     .filter_map(|n| n.ok())
@@ -2873,7 +3045,7 @@ mod duckdb {
                 let mut counts = Vec::with_capacity(table_names.len());
                 for name in table_names {
                     let count: i32 =
-                        c.query_row(&format!(r#"SELECT count(*) FROM "{name}""#), [], |row| {
+                        c.query_row(&sql!(r#"SELECT count(*) FROM "{name}""#), [], |row| {
                             row.get(0)
                         })?;
 
@@ -2899,25 +3071,25 @@ mod duckdb {
                     let sql = None;
 
                     let row_count: i32 =
-                        c.query_row(&format!(r#"SELECT count(*) FROM "{name}""#), [], |row| {
+                        c.query_row(&sql!(r#"SELECT count(*) FROM "{name}""#), [], |row| {
                             row.get(0)
                         })?;
 
                     let table_size: i64 = c.query_row(
-                        "SELECT estimated_size FROM duckdb_tables WHERE table_name = ?",
+                        &sql!("SELECT estimated_size FROM duckdb_tables WHERE table_name = ?"),
                         [&name],
                         |row| row.get(0),
                     )?;
                     let table_size = helpers::format_size(table_size as f64);
 
                     let index_count: i32 = c.query_row(
-                        "SELECT index_count FROM duckdb_tables WHERE table_name = ?",
+                        &sql!("SELECT index_count FROM duckdb_tables WHERE table_name = ?"),
                         [&name],
                         |row| row.get(0),
                     )?;
 
                     let column_count: i32 = c.query_row(
-                        "SELECT column_count FROM duckdb_tables WHERE table_name = ?",
+                        &sql!("SELECT column_count FROM duckdb_tables WHERE table_name = ?"),
                         [&name],
                         |row| row.get(0),
                     )?;
@@ -2947,15 +3119,15 @@ mod duckdb {
                 let c = c.lock().expect("could not get lock on connection");
 
                 let first_column: String =
-                    c.query_row("SELECT column_name FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ? ORDER BY column_index LIMIT 1", [&name], |row| row.get(0))?;
+                    c.query_row(&sql!("SELECT column_name FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ? ORDER BY column_index LIMIT 1"), [&name], |row| row.get(0))?;
 
                 let offset = (page - 1) * ROWS_PER_PAGE;
-                let sql = format!(
+                let sql = sql!(
                     r#"
-                SELECT * FROM "{name}"
-                ORDER BY "{first_column}"
-                LIMIT {ROWS_PER_PAGE}
-                OFFSET {offset};
+                    SELECT * FROM "{name}"
+                    ORDER BY "{first_column}"
+                    LIMIT {ROWS_PER_PAGE}
+                    OFFSET {offset};
                     "#
                 );
                 let mut stmt = c.prepare(&sql)?;
@@ -2989,13 +3161,13 @@ mod duckdb {
             tokio::task::spawn_blocking(move || {
                 let c = c.lock().expect("could not get lock on connection");
 
-                let mut table_names_stmt = c.prepare(
+                let mut table_names_stmt = c.prepare(&sql!(
                     r#"
-                    SELECT table_name
-                    FROM information_schema.tables
-                    WHERE table_schema = 'main' AND table_type = 'BASE TABLE'
-                        "#,
-                )?;
+                        SELECT table_name
+                        FROM information_schema.tables
+                        WHERE table_schema = 'main' AND table_type = 'BASE TABLE'
+                        "#
+                ))?;
                 let table_names = table_names_stmt
                     .query_map([], |row| row.get(0))?
                     .filter_map(|n| n.ok())
@@ -3003,7 +3175,7 @@ mod duckdb {
 
                 let mut tables = Vec::with_capacity(table_names.len());
                 for table_name in table_names {
-                    let sql = format!(r#"SELECT * FROM "{table_name}" WHERE false"#);
+                    let sql = sql!(r#"SELECT * FROM "{table_name}" WHERE false"#);
                     let mut stmt = c.prepare(&sql)?;
                     let _ = stmt.query_map([], |_| Ok(()))?;
                     let columns = stmt.column_names();
@@ -3060,18 +3232,18 @@ mod duckdb {
                 let c = c.lock().expect("could not get lock on connection");
 
                 // Get all tables with columns from information_schema
-                let mut col_stmt = c.prepare(
+                let mut col_stmt = c.prepare(&sql!(
                     r#"
-                    SELECT
-                        table_name,
-                        column_name,
-                        data_type,
-                        is_nullable
-                    FROM information_schema.columns
-                    WHERE table_schema = current_schema()
-                    ORDER BY table_name, ordinal_position
-                    "#,
-                )?;
+                        SELECT
+                            table_name,
+                            column_name,
+                            data_type,
+                            is_nullable
+                        FROM information_schema.columns
+                        WHERE table_schema = current_schema()
+                        ORDER BY table_name, ordinal_position
+                        "#
+                ))?;
 
                 let column_rows = col_stmt
                     .query_map([], |row| {
@@ -3085,13 +3257,13 @@ mod duckdb {
                     .collect::<Result<Vec<(String, String, String, String)>, _>>()?;
 
                 // Get primary key info - using a query that returns table_name and column_name pairs
-                let mut pk_stmt = c.prepare(
+                let mut pk_stmt = c.prepare(&sql!(
                     r#"
-                    SELECT table_name, unnest(constraint_column_names) as column_name
-                    FROM duckdb_constraints()
-                    WHERE constraint_type = 'PRIMARY KEY'
-                    "#,
-                )?;
+                        SELECT table_name, unnest(constraint_column_names) as column_name
+                        FROM duckdb_constraints()
+                        WHERE constraint_type = 'PRIMARY KEY'
+                        "#
+                ))?;
 
                 let pk_columns: std::collections::HashSet<(String, String)> = pk_stmt
                     .query_map([], |row| {
@@ -3208,12 +3380,12 @@ mod parquet {
                 let c = c.lock().expect("could not get lock on connection");
 
                 let row_count: i32 = c.query_row(
-                    &format!(r#"SELECT count(*) FROM "{table_name}""#),
+                    &sql!(r#"SELECT count(*) FROM "{table_name}""#),
                     [],
                     |row| row.get(0),
                 )?;
 
-                let column_count: i32 = c.query_row("SELECT count(*) FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ?", [&table_name], |row| row.get(0))?;
+                let column_count: i32 = c.query_row(&sql!("SELECT count(*) FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ?"), [&table_name], |row| row.get(0))?;
 
                 eyre::Ok((row_count, column_count))
             })
@@ -3256,11 +3428,10 @@ mod parquet {
             let count = tokio::task::spawn_blocking(move || {
                 let c = c.lock().expect("could not get lock on connection");
 
-                let count: i32 = c.query_row(
-                    &format!(r#"SELECT count(*) FROM "{table_name}""#),
-                    [],
-                    |row| row.get(0),
-                )?;
+                let count: i32 =
+                    c.query_row(&sql!(r#"SELECT count(*) FROM "{table_name}""#), [], |row| {
+                        row.get(0)
+                    })?;
 
                 eyre::Ok(count)
             })
@@ -3282,11 +3453,11 @@ mod parquet {
                 let c = c.lock().expect("could not get lock on connection");
 
                 let row_count: i32 =
-                    c.query_row(&format!(r#"SELECT count(*) FROM "{name}""#), [], |row| {
+                    c.query_row(&sql!(r#"SELECT count(*) FROM "{name}""#), [], |row| {
                         row.get(0)
                     })?;
 
-                let column_count: i32 = c.query_row("SELECT count(*) FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ?", [&name], |row| row.get(0))?;
+                let column_count: i32 = c.query_row(&sql!("SELECT count(*) FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ?"), [&name], |row| row.get(0))?;
 
                 eyre::Ok((row_count, column_count))
             })
@@ -3313,15 +3484,15 @@ mod parquet {
                 let c = c.lock().expect("could not get lock on connection");
 
                 let first_column: String =
-                    c.query_row("SELECT column_name FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ? ORDER BY column_index LIMIT 1", [&name], |row| row.get(0))?;
+                    c.query_row(&sql!("SELECT column_name FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ? ORDER BY column_index LIMIT 1"), [&name], |row| row.get(0))?;
 
                 let offset = (page - 1) * ROWS_PER_PAGE;
-                let sql = format!(
+                let sql = sql!(
                     r#"
-                SELECT * FROM "{name}"
-                ORDER BY "{first_column}"
-                LIMIT {ROWS_PER_PAGE}
-                OFFSET {offset};
+                    SELECT * FROM "{name}"
+                    ORDER BY "{first_column}"
+                    LIMIT {ROWS_PER_PAGE}
+                    OFFSET {offset};
                     "#
                 );
                 let mut stmt = c.prepare(&sql)?;
@@ -3356,7 +3527,7 @@ mod parquet {
             tokio::task::spawn_blocking(move || {
                 let c = c.lock().expect("could not get lock on connection");
 
-                let sql = format!(r#"SELECT * FROM "{table_name}" WHERE false"#);
+                let sql = sql!(r#"SELECT * FROM "{table_name}" WHERE false"#);
                 let mut stmt = c.prepare(&sql)?;
                 let _ = stmt.query_map([], |_| Ok(()))?;
                 let columns = stmt.column_names();
@@ -3410,17 +3581,17 @@ mod parquet {
             tokio::task::spawn_blocking(move || {
                 let c = c.lock().expect("could not get lock on connection");
 
-                let mut col_stmt = c.prepare(
+                let mut col_stmt = c.prepare(&sql!(
                     r#"
-                    SELECT
-                        column_name,
-                        data_type,
-                        is_nullable
-                    FROM information_schema.columns
-                    WHERE table_name = ?
-                    ORDER BY ordinal_position
-                    "#,
-                )?;
+                        SELECT
+                            column_name,
+                            data_type,
+                            is_nullable
+                        FROM information_schema.columns
+                        WHERE table_name = ?
+                        ORDER BY ordinal_position
+                        "#
+                ))?;
 
                 let columns = col_stmt
                     .query_map([&table_name], |row| {
@@ -3527,12 +3698,12 @@ mod csv {
                 let c = c.lock().expect("could not get lock on connection");
 
                 let row_count: i32 = c.query_row(
-                    &format!(r#"SELECT count(*) FROM "{table_name}""#),
+                    &sql!(r#"SELECT count(*) FROM "{table_name}""#),
                     [],
                     |row| row.get(0),
                 )?;
 
-                let column_count: i32 = c.query_row("SELECT count(*) FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ?", [&table_name], |row| row.get(0))?;
+                let column_count: i32 = c.query_row(&sql!("SELECT count(*) FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ?"), [&table_name], |row| row.get(0))?;
 
                 eyre::Ok((row_count, column_count))
             })
@@ -3575,11 +3746,10 @@ mod csv {
             let count = tokio::task::spawn_blocking(move || {
                 let c = c.lock().expect("could not get lock on connection");
 
-                let count: i32 = c.query_row(
-                    &format!(r#"SELECT count(*) FROM "{table_name}""#),
-                    [],
-                    |row| row.get(0),
-                )?;
+                let count: i32 =
+                    c.query_row(&sql!(r#"SELECT count(*) FROM "{table_name}""#), [], |row| {
+                        row.get(0)
+                    })?;
 
                 eyre::Ok(count)
             })
@@ -3601,11 +3771,11 @@ mod csv {
                 let c = c.lock().expect("could not get lock on connection");
 
                 let row_count: i32 =
-                    c.query_row(&format!(r#"SELECT count(*) FROM "{name}""#), [], |row| {
+                    c.query_row(&sql!(r#"SELECT count(*) FROM "{name}""#), [], |row| {
                         row.get(0)
                     })?;
 
-                let column_count: i32 = c.query_row("SELECT count(*) FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ?", [&name], |row| row.get(0))?;
+                let column_count: i32 = c.query_row(&sql!("SELECT count(*) FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ?"), [&name], |row| row.get(0))?;
 
                 eyre::Ok((row_count, column_count))
             })
@@ -3632,15 +3802,15 @@ mod csv {
                 let c = c.lock().expect("could not get lock on connection");
 
                 let first_column: String =
-                    c.query_row("SELECT column_name FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ? ORDER BY column_index LIMIT 1", [&name], |row| row.get(0))?;
+                    c.query_row(&sql!("SELECT column_name FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ? ORDER BY column_index LIMIT 1"), [&name], |row| row.get(0))?;
 
                 let offset = (page - 1) * ROWS_PER_PAGE;
-                let sql = format!(
+                let sql = sql!(
                     r#"
-                SELECT * FROM "{name}"
-                ORDER BY "{first_column}"
-                LIMIT {ROWS_PER_PAGE}
-                OFFSET {offset};
+                    SELECT * FROM "{name}"
+                    ORDER BY "{first_column}"
+                    LIMIT {ROWS_PER_PAGE}
+                    OFFSET {offset};
                     "#
                 );
                 let mut stmt = c.prepare(&sql)?;
@@ -3675,7 +3845,7 @@ mod csv {
             tokio::task::spawn_blocking(move || {
                 let c = c.lock().expect("could not get lock on connection");
 
-                let sql = format!(r#"SELECT * FROM "{table_name}" WHERE false"#);
+                let sql = sql!(r#"SELECT * FROM "{table_name}" WHERE false"#);
                 let mut stmt = c.prepare(&sql)?;
                 let _ = stmt.query_map([], |_| Ok(()))?;
                 let columns = stmt.column_names();
@@ -3729,17 +3899,17 @@ mod csv {
             tokio::task::spawn_blocking(move || {
                 let c = c.lock().expect("could not get lock on connection");
 
-                let mut col_stmt = c.prepare(
+                let mut col_stmt = c.prepare(&sql!(
                     r#"
-                    SELECT
-                        column_name,
-                        data_type,
-                        is_nullable
-                    FROM information_schema.columns
-                    WHERE table_name = ?
-                    ORDER BY ordinal_position
-                    "#,
-                )?;
+                        SELECT
+                            column_name,
+                            data_type,
+                            is_nullable
+                        FROM information_schema.columns
+                        WHERE table_name = ?
+                        ORDER BY ordinal_position
+                        "#
+                ))?;
 
                 let columns = col_stmt
                     .query_map([&table_name], |row| {
@@ -3846,13 +4016,13 @@ mod clickhouse {
                 .with_password(password)
                 .with_database(&database);
 
-            let tables = fetch_count(conn.query(
+            let tables = fetch_count(conn.query(&sql!(
                 r#"
-            SELECT count(*)
-            FROM system.tables
-            WHERE database = currentDatabase()
-                    "#,
-            ))
+                    SELECT count(*)
+                    FROM system.tables
+                    WHERE database = currentDatabase()
+                    "#
+            )))
             .await?;
 
             tracing::info!(
@@ -3874,59 +4044,59 @@ mod clickhouse {
 
             let db_size: String = self
                 .conn
-                .query(
+                .query(&sql!(
                     r#"
-            SELECT formatReadableSize(sum(bytes))
-            FROM system.parts
-            WHERE database = currentDatabase()
-            AND active
-                    "#,
-                )
+                        SELECT formatReadableSize(sum(bytes))
+                        FROM system.parts
+                        WHERE database = currentDatabase()
+                        AND active
+                        "#
+                ))
                 .fetch_one()
                 .await?;
             let modified = None;
             let created = None;
 
-            let tables = fetch_count(self.conn.query(
+            let tables = fetch_count(self.conn.query(&sql!(
                 r#"
-            SELECT count(*)
-            FROM system.tables
-            WHERE database = currentDatabase()
-                    "#,
-            ))
+                    SELECT count(*)
+                    FROM system.tables
+                    WHERE database = currentDatabase()
+                    "#
+            )))
             .await?;
 
-            let indexes = fetch_count(self.conn.query(
+            let indexes = fetch_count(self.conn.query(&sql!(
                 r#"
-            SELECT count(*)
-            FROM system.columns
-            WHERE database = currentDatabase() 
-            AND (is_in_primary_key = true OR is_in_sorting_key = true)
-                    "#,
-            ))
+                    SELECT count(*)
+                    FROM system.columns
+                    WHERE database = currentDatabase()
+                    AND (is_in_primary_key = true OR is_in_sorting_key = true)
+                    "#
+            )))
             .await?;
 
             let triggers: i32 = 0;
 
-            let views = fetch_count(self.conn.query(
+            let views = fetch_count(self.conn.query(&sql!(
                 r#"
-            SELECT count(*)
-            FROM system.tables
-            WHERE database = currentDatabase() 
-            AND engine = 'View'
-                    "#,
-            ))
+                    SELECT count(*)
+                    FROM system.tables
+                    WHERE database = currentDatabase()
+                    AND engine = 'View'
+                    "#
+            )))
             .await?;
 
             let mut row_counts = self
                 .conn
-                .query(
+                .query(&sql!(
                     r#"
-            SELECT name
-            FROM system.tables
-            WHERE database = currentDatabase()
-                    "#,
-                )
+                        SELECT name
+                        FROM system.tables
+                        WHERE database = currentDatabase()
+                        "#
+                ))
                 .fetch_all()
                 .await?
                 .into_iter()
@@ -3934,10 +4104,10 @@ mod clickhouse {
                 .collect::<Vec<_>>();
 
             for count in row_counts.iter_mut() {
-                count.count = fetch_count(self.conn.query(&format!(
-                    "SELECT count(*) FROM {}",
-                    quote_ident(&count.name)
-                )))
+                count.count = fetch_count(
+                    self.conn
+                        .query(&sql!("SELECT count(*) FROM {}", quote_ident(&count.name))),
+                )
                 .await?;
             }
 
@@ -3945,14 +4115,14 @@ mod clickhouse {
 
             let mut column_counts = self
                 .conn
-                .query(
+                .query(&sql!(
                     r#"
-            SELECT table AS name, count() AS count
-            FROM system.columns
-            WHERE database = currentDatabase()
-            GROUP BY table
-                    "#,
-                )
+                        SELECT table AS name, count() AS count
+                        FROM system.columns
+                        WHERE database = currentDatabase()
+                        GROUP BY table
+                        "#
+                ))
                 .fetch_all::<ClickhouseCount>()
                 .await?;
 
@@ -3960,13 +4130,13 @@ mod clickhouse {
 
             let mut index_counts = self
                 .conn
-                .query(
+                .query(&sql!(
                     r#"
-            SELECT name
-            FROM system.tables
-            WHERE database = currentDatabase()
-                    "#,
-                )
+                        SELECT name
+                        FROM system.tables
+                        WHERE database = currentDatabase()
+                        "#
+                ))
                 .fetch_all()
                 .await?
                 .into_iter()
@@ -3976,15 +4146,15 @@ mod clickhouse {
             for count in index_counts.iter_mut() {
                 count.count = fetch_count(
                     self.conn
-                        .query(
+                        .query(&sql!(
                             r#"
-                SELECT count(*)
-                FROM system.columns
-                WHERE database = currentDatabase() 
-                AND table = ?
-                AND (is_in_primary_key = true OR is_in_sorting_key = true)
-                        "#,
-                        )
+                                SELECT count(*)
+                                FROM system.columns
+                                WHERE database = currentDatabase()
+                                AND table = ?
+                                AND (is_in_primary_key = true OR is_in_sorting_key = true)
+                                "#
+                        ))
                         .bind(&count.name),
                 )
                 .await?;
@@ -4017,13 +4187,13 @@ mod clickhouse {
         async fn tables(&self) -> color_eyre::Result<responses::Tables> {
             let mut tables = self
                 .conn
-                .query(
+                .query(&sql!(
                     r#"
-            SELECT name
-            FROM system.tables
-            WHERE database = currentDatabase()
-                    "#,
-                )
+                        SELECT name
+                        FROM system.tables
+                        WHERE database = currentDatabase()
+                        "#
+                ))
                 .fetch_all()
                 .await?
                 .into_iter()
@@ -4031,10 +4201,10 @@ mod clickhouse {
                 .collect::<Vec<_>>();
 
             for count in tables.iter_mut() {
-                count.count = fetch_count(self.conn.query(&format!(
-                    "SELECT count(*) FROM {}",
-                    quote_ident(&count.name)
-                )))
+                count.count = fetch_count(
+                    self.conn
+                        .query(&sql!("SELECT count(*) FROM {}", quote_ident(&count.name))),
+                )
                 .await?;
             }
 
@@ -4046,62 +4216,62 @@ mod clickhouse {
         async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
             let sql: String = self
                 .conn
-                .query(
+                .query(&sql!(
                     r#"
-            SELECT create_table_query
-            FROM system.tables
-            WHERE database = currentDatabase()
-            AND table = ?
-                    "#,
-                )
+                        SELECT create_table_query
+                        FROM system.tables
+                        WHERE database = currentDatabase()
+                        AND table = ?
+                        "#
+                ))
                 .bind(&name)
                 .fetch_one()
                 .await?;
 
             let row_count = fetch_count(
                 self.conn
-                    .query(&format!("SELECT count(*) FROM {}", quote_ident(&name))),
+                    .query(&sql!("SELECT count(*) FROM {}", quote_ident(&name))),
             )
             .await?;
 
             let table_size = self
                 .conn
-                .query(
+                .query(&sql!(
                     r#"
-            SELECT
-            formatReadableSize(sum(bytes)) as size
-            FROM system.parts WHERE table = ?
-                    "#,
-                )
+                        SELECT
+                        formatReadableSize(sum(bytes)) as size
+                        FROM system.parts WHERE table = ?
+                        "#
+                ))
                 .bind(&name)
                 .fetch_one::<String>()
                 .await?;
 
             let index_count = fetch_count(
                 self.conn
-                    .query(
+                    .query(&sql!(
                         r#"
-            SELECT count(*)
-            FROM system.columns
-            WHERE database = currentDatabase() 
-            AND table = ?
-            AND (is_in_primary_key = true OR is_in_sorting_key = true)
-                    "#,
-                    )
+                            SELECT count(*)
+                            FROM system.columns
+                            WHERE database = currentDatabase()
+                            AND table = ?
+                            AND (is_in_primary_key = true OR is_in_sorting_key = true)
+                            "#
+                    ))
                     .bind(&name),
             )
             .await?;
 
             let column_count = fetch_count(
                 self.conn
-                    .query(
+                    .query(&sql!(
                         r#"
-            SELECT count() AS count
-            FROM system.columns
-            WHERE database = currentDatabase()
-            AND table =  ?
-                    "#,
-                    )
+                            SELECT count() AS count
+                            FROM system.columns
+                            WHERE database = currentDatabase()
+                            AND table =  ?
+                            "#
+                    ))
                     .bind(&name),
             )
             .await?;
@@ -4123,27 +4293,27 @@ mod clickhouse {
         ) -> color_eyre::Result<responses::TableData> {
             let first_column: String = self
                 .conn
-                .query(
+                .query(&sql!(
                     r#"
-            SELECT name
-            FROM system.columns
-            WHERE database = currentDatabase()
-            AND table = ?
-            ORDER BY position
-            LIMIT 1
-                    "#,
-                )
+                        SELECT name
+                        FROM system.columns
+                        WHERE database = currentDatabase()
+                        AND table = ?
+                        ORDER BY position
+                        LIMIT 1
+                        "#
+                ))
                 .bind(&name)
                 .fetch_one()
                 .await?;
 
             let offset = (page - 1) * ROWS_PER_PAGE;
-            let sql = format!(
+            let sql = sql!(
                 r#"
-            SELECT * FROM {}
-            ORDER BY {}
-            LIMIT {ROWS_PER_PAGE}
-            OFFSET {offset}
+                SELECT * FROM {}
+                ORDER BY {}
+                LIMIT {ROWS_PER_PAGE}
+                OFFSET {offset}
                 "#,
                 quote_ident(&name),
                 quote_ident(&first_column),
@@ -4157,13 +4327,13 @@ mod clickhouse {
         async fn tables_with_columns(&self) -> color_eyre::Result<responses::TablesWithColumns> {
             let table_names = self
                 .conn
-                .query(
+                .query(&sql!(
                     r#"
-            SELECT name
-            FROM system.tables
-            WHERE database = currentDatabase()
-                    "#,
-                )
+                        SELECT name
+                        FROM system.tables
+                        WHERE database = currentDatabase()
+                        "#
+                ))
                 .fetch_all::<String>()
                 .await?;
 
@@ -4171,15 +4341,15 @@ mod clickhouse {
             for table_name in table_names {
                 let columns = self
                     .conn
-                    .query(
+                    .query(&sql!(
                         r#"
-                        SELECT name
-                        FROM system.columns
-                        WHERE database = currentDatabase()
-                        AND table = ?
-                        ORDER BY position
-                        "#,
-                    )
+                            SELECT name
+                            FROM system.columns
+                            WHERE database = currentDatabase()
+                            AND table = ?
+                            ORDER BY position
+                            "#
+                    ))
                     .bind(&table_name)
                     .fetch_all::<String>()
                     .await?;
@@ -4214,18 +4384,18 @@ mod clickhouse {
 
             let column_rows = self
                 .conn
-                .query(
+                .query(&sql!(
                     r#"
-                    SELECT
-                        table,
-                        name,
-                        type,
-                        is_in_primary_key
-                    FROM system.columns
-                    WHERE database = currentDatabase()
-                    ORDER BY table, position
-                    "#,
-                )
+                        SELECT
+                            table,
+                            name,
+                            type,
+                            is_in_primary_key
+                        FROM system.columns
+                        WHERE database = currentDatabase()
+                        ORDER BY table, position
+                        "#
+                ))
                 .fetch_all::<ColumnInfo>()
                 .await?;
 
@@ -4292,12 +4462,14 @@ mod mssql {
 
             let tables: i32 = client
                 .query(
-                    r#"
-                SELECT COUNT(*) AS count
-                FROM sys.tables t
-                JOIN sys.schemas s ON t.schema_id = s.schema_id
-                WHERE s.name = SCHEMA_NAME();
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT COUNT(*) AS count
+                        FROM sys.tables t
+                        JOIN sys.schemas s ON t.schema_id = s.schema_id
+                        WHERE s.name = SCHEMA_NAME();
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -4324,9 +4496,11 @@ mod mssql {
 
             let file_name = client
                 .query(
-                    r#"
-                SELECT DB_NAME() AS name;
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT DB_NAME() AS name;
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -4337,13 +4511,15 @@ mod mssql {
 
             let db_size: i64 = client
                 .query(
-                    r#"
-                SELECT SUM(a.total_pages * 8) AS size_kb
-                FROM sys.tables t
-                JOIN sys.indexes i ON t.object_id = i.object_id
-                JOIN sys.partitions p ON i.object_id = p.object_id AND i.index_id = p.index_id
-                JOIN sys.allocation_units a ON p.partition_id = a.container_id;
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT SUM(a.total_pages * 8) AS size_kb
+                        FROM sys.tables t
+                        JOIN sys.indexes i ON t.object_id = i.object_id
+                        JOIN sys.partitions p ON i.object_id = p.object_id AND i.index_id = p.index_id
+                        JOIN sys.allocation_units a ON p.partition_id = a.container_id;
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -4358,12 +4534,14 @@ mod mssql {
 
             let tables: i32 = client
                 .query(
-                    r#"
-                SELECT COUNT(*) AS count
-                FROM sys.tables t
-                JOIN sys.schemas s ON t.schema_id = s.schema_id
-                WHERE s.name = SCHEMA_NAME();
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT COUNT(*) AS count
+                        FROM sys.tables t
+                        JOIN sys.schemas s ON t.schema_id = s.schema_id
+                        WHERE s.name = SCHEMA_NAME();
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -4374,13 +4552,15 @@ mod mssql {
 
             let indexes: i32 = client
                 .query(
-                    r#"
-                SELECT COUNT(*) AS count
-                FROM sys.stats s
-                JOIN sys.tables t ON s.object_id = t.object_id
-                JOIN sys.schemas sc ON t.schema_id = sc.schema_id
-                WHERE sc.name = SCHEMA_NAME();
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT COUNT(*) AS count
+                        FROM sys.stats s
+                        JOIN sys.tables t ON s.object_id = t.object_id
+                        JOIN sys.schemas sc ON t.schema_id = sc.schema_id
+                        WHERE sc.name = SCHEMA_NAME();
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -4391,13 +4571,15 @@ mod mssql {
 
             let triggers: i32 = client
                 .query(
-                    r#"
-                SELECT COUNT(*) AS count
-                FROM sys.triggers t
-                JOIN sys.tables tbl ON t.parent_id = tbl.object_id
-                JOIN sys.schemas s ON tbl.schema_id = s.schema_id
-                WHERE s.name = SCHEMA_NAME();
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT COUNT(*) AS count
+                        FROM sys.triggers t
+                        JOIN sys.tables tbl ON t.parent_id = tbl.object_id
+                        JOIN sys.schemas s ON tbl.schema_id = s.schema_id
+                        WHERE s.name = SCHEMA_NAME();
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -4408,12 +4590,14 @@ mod mssql {
 
             let views: i32 = client
                 .query(
-                    r#"
-                SELECT COUNT(*) AS count
-                FROM sys.views v
-                JOIN sys.schemas s ON v.schema_id = s.schema_id
-                WHERE s.name = SCHEMA_NAME();
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT COUNT(*) AS count
+                        FROM sys.views v
+                        JOIN sys.schemas s ON v.schema_id = s.schema_id
+                        WHERE s.name = SCHEMA_NAME();
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -4424,12 +4608,14 @@ mod mssql {
 
             let mut row_counts = client
                 .query(
-                    r#"
-                SELECT t.name AS name
-                FROM sys.tables t
-                JOIN sys.schemas s ON t.schema_id = s.schema_id
-                WHERE s.name = SCHEMA_NAME();
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT t.name AS name
+                        FROM sys.tables t
+                        JOIN sys.schemas s ON t.schema_id = s.schema_id
+                        WHERE s.name = SCHEMA_NAME();
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -4444,7 +4630,7 @@ mod mssql {
                 .await;
 
             for count in row_counts.iter_mut() {
-                let sql = format!("SELECT count(*) AS count FROM {}", quote_ident(&count.name));
+                let sql = sql!("SELECT count(*) AS count FROM {}", quote_ident(&count.name));
 
                 count.count = client
                     .query(sql, &[])
@@ -4459,12 +4645,14 @@ mod mssql {
 
             let mut column_counts = client
                 .query(
-                    r#"
-                SELECT t.name AS name
-                FROM sys.tables t
-                JOIN sys.schemas s ON t.schema_id = s.schema_id
-                WHERE s.name = SCHEMA_NAME();
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT t.name AS name
+                        FROM sys.tables t
+                        JOIN sys.schemas s ON t.schema_id = s.schema_id
+                        WHERE s.name = SCHEMA_NAME();
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -4484,14 +4672,16 @@ mod mssql {
             for count in column_counts.iter_mut() {
                 count.count = client
                     .query(
-                        r#"
-                    SELECT COUNT(*) AS count
-                    FROM sys.columns c
-                    JOIN sys.tables t ON c.object_id = t.object_id
-                    JOIN sys.schemas s ON t.schema_id = s.schema_id
-                    WHERE s.name = SCHEMA_NAME()
-                    AND t.name = @P1;
-                        "#,
+                        &sql!(
+                            r#"
+                            SELECT COUNT(*) AS count
+                            FROM sys.columns c
+                            JOIN sys.tables t ON c.object_id = t.object_id
+                            JOIN sys.schemas s ON t.schema_id = s.schema_id
+                            WHERE s.name = SCHEMA_NAME()
+                            AND t.name = @P1;
+                            "#
+                        ),
                         &[&count.name],
                     )
                     .await?
@@ -4505,12 +4695,14 @@ mod mssql {
 
             let mut index_counts = client
                 .query(
-                    r#"
-                SELECT t.name AS name
-                FROM sys.tables t
-                JOIN sys.schemas s ON t.schema_id = s.schema_id
-                WHERE s.name = SCHEMA_NAME();
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT t.name AS name
+                        FROM sys.tables t
+                        JOIN sys.schemas s ON t.schema_id = s.schema_id
+                        WHERE s.name = SCHEMA_NAME();
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -4530,14 +4722,16 @@ mod mssql {
             for count in index_counts.iter_mut() {
                 count.count = client
                     .query(
-                        r#"
-                    SELECT COUNT(*) AS count
-                    FROM sys.stats s
-                    JOIN sys.tables t ON s.object_id = t.object_id
-                    JOIN sys.schemas sc ON t.schema_id = sc.schema_id
-                    WHERE sc.name = SCHEMA_NAME()
-                    AND t.name = @P1;
-                        "#,
+                        &sql!(
+                            r#"
+                            SELECT COUNT(*) AS count
+                            FROM sys.stats s
+                            JOIN sys.tables t ON s.object_id = t.object_id
+                            JOIN sys.schemas sc ON t.schema_id = sc.schema_id
+                            WHERE sc.name = SCHEMA_NAME()
+                            AND t.name = @P1;
+                            "#
+                        ),
                         &[&count.name],
                     )
                     .await?
@@ -4570,12 +4764,14 @@ mod mssql {
 
             let mut tables = client
                 .query(
-                    r#"
-                SELECT t.name AS name
-                FROM sys.tables t
-                JOIN sys.schemas s ON t.schema_id = s.schema_id
-                WHERE s.name = SCHEMA_NAME();
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT t.name AS name
+                        FROM sys.tables t
+                        JOIN sys.schemas s ON t.schema_id = s.schema_id
+                        WHERE s.name = SCHEMA_NAME();
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -4590,7 +4786,7 @@ mod mssql {
                 .await;
 
             for count in tables.iter_mut() {
-                let sql = format!("SELECT count(*) AS count FROM {}", quote_ident(&count.name));
+                let sql = sql!("SELECT count(*) AS count FROM {}", quote_ident(&count.name));
 
                 count.count = client
                     .query(sql, &[])
@@ -4611,7 +4807,7 @@ mod mssql {
 
             let row_count: i32 = client
                 .query(
-                    format!("SELECT count(*) AS count FROM {}", quote_ident(&name)),
+                    sql!("SELECT count(*) AS count FROM {}", quote_ident(&name)),
                     &[],
                 )
                 .await?
@@ -4622,14 +4818,16 @@ mod mssql {
 
             let table_size: i64 = client
                 .query(
-                    r#"
-                SELECT SUM(a.total_pages) * 8 AS size_kb
-                FROM sys.partitions p
-                JOIN sys.allocation_units a ON p.partition_id = a.container_id
-                JOIN sys.tables t ON p.object_id = t.object_id
-                JOIN sys.schemas s ON t.schema_id = s.schema_id
-                WHERE s.name = SCHEMA_NAME() AND t.name = @P1;
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT SUM(a.total_pages) * 8 AS size_kb
+                        FROM sys.partitions p
+                        JOIN sys.allocation_units a ON p.partition_id = a.container_id
+                        JOIN sys.tables t ON p.object_id = t.object_id
+                        JOIN sys.schemas s ON t.schema_id = s.schema_id
+                        WHERE s.name = SCHEMA_NAME() AND t.name = @P1;
+                        "#
+                    ),
                     &[&name],
                 )
                 .await?
@@ -4641,13 +4839,15 @@ mod mssql {
 
             let index_count: i32 = client
                 .query(
-                    r#"
-                SELECT COUNT(*) AS count
-                FROM sys.stats s
-                JOIN sys.tables t ON s.object_id = t.object_id
-                JOIN sys.schemas sc ON t.schema_id = sc.schema_id
-                WHERE sc.name = SCHEMA_NAME() AND t.name = @P1;
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT COUNT(*) AS count
+                        FROM sys.stats s
+                        JOIN sys.tables t ON s.object_id = t.object_id
+                        JOIN sys.schemas sc ON t.schema_id = sc.schema_id
+                        WHERE sc.name = SCHEMA_NAME() AND t.name = @P1;
+                        "#
+                    ),
                     &[&name],
                 )
                 .await?
@@ -4658,13 +4858,15 @@ mod mssql {
 
             let column_count: i32 = client
                 .query(
-                    r#"
-                SELECT COUNT(*) AS count
-                FROM sys.columns c
-                JOIN sys.tables t ON c.object_id = t.object_id
-                JOIN sys.schemas s ON t.schema_id = s.schema_id
-                WHERE s.name = SCHEMA_NAME() AND t.name = @P1;
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT COUNT(*) AS count
+                        FROM sys.columns c
+                        JOIN sys.tables t ON c.object_id = t.object_id
+                        JOIN sys.schemas s ON t.schema_id = s.schema_id
+                        WHERE s.name = SCHEMA_NAME() AND t.name = @P1;
+                        "#
+                    ),
                     &[&name],
                 )
                 .await?
@@ -4692,13 +4894,15 @@ mod mssql {
 
             let first_column: String = client
                 .query(
-                    r#"
-                SELECT TOP 1 column_name AS name
-                FROM information_schema.columns
-                WHERE table_schema = SCHEMA_NAME()
-                AND table_name = @P1
-                ORDER BY ordinal_position;
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT TOP 1 column_name AS name
+                        FROM information_schema.columns
+                        WHERE table_schema = SCHEMA_NAME()
+                        AND table_name = @P1
+                        ORDER BY ordinal_position;
+                        "#
+                    ),
                     &[&name],
                 )
                 .await?
@@ -4708,11 +4912,11 @@ mod mssql {
                 .ok_or_eyre("couldn't count columns")?;
 
             let offset = (page - 1) * ROWS_PER_PAGE;
-            let sql = format!(
+            let sql = sql!(
                 r#"
-            SELECT * FROM {}
-            ORDER BY {}
-            OFFSET {offset} ROWS FETCH NEXT {ROWS_PER_PAGE} ROWS ONLY;
+                SELECT * FROM {}
+                ORDER BY {}
+                OFFSET {offset} ROWS FETCH NEXT {ROWS_PER_PAGE} ROWS ONLY;
                 "#,
                 quote_ident(&name),
                 quote_ident(&first_column),
@@ -4742,12 +4946,14 @@ mod mssql {
 
             let table_names = client
                 .query(
-                    r#"
-                SELECT t.name AS name
-                FROM sys.tables t
-                JOIN sys.schemas s ON t.schema_id = s.schema_id
-                WHERE s.name = SCHEMA_NAME();
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT t.name AS name
+                        FROM sys.tables t
+                        JOIN sys.schemas s ON t.schema_id = s.schema_id
+                        WHERE s.name = SCHEMA_NAME();
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -4764,12 +4970,14 @@ mod mssql {
             for table_name in table_names {
                 let columns = client
                     .query(
-                        r#"
-                    SELECT column_name AS name
-                    FROM information_schema.columns
-                    WHERE table_schema = SCHEMA_NAME()
-                    AND table_name = @P1;
-                        "#,
+                        &sql!(
+                            r#"
+                            SELECT column_name AS name
+                            FROM information_schema.columns
+                            WHERE table_schema = SCHEMA_NAME()
+                            AND table_name = @P1;
+                            "#
+                        ),
                         &[&table_name],
                     )
                     .await?
@@ -4823,24 +5031,26 @@ mod mssql {
             // Get all tables with columns
             let column_rows = client
                 .query(
-                    r#"
-                    SELECT
-                        t.name AS table_name,
-                        c.name AS column_name,
-                        ty.name AS data_type,
-                        c.is_nullable,
-                        CASE WHEN ic.object_id IS NOT NULL THEN 1 ELSE 0 END AS is_primary_key
-                    FROM sys.tables t
-                    JOIN sys.schemas s ON t.schema_id = s.schema_id
-                    JOIN sys.columns c ON t.object_id = c.object_id
-                    JOIN sys.types ty ON c.user_type_id = ty.user_type_id
-                    LEFT JOIN sys.indexes i ON t.object_id = i.object_id AND i.is_primary_key = 1
-                    LEFT JOIN sys.index_columns ic ON i.object_id = ic.object_id
-                        AND i.index_id = ic.index_id
-                        AND c.column_id = ic.column_id
-                    WHERE s.name = SCHEMA_NAME()
-                    ORDER BY t.name, c.column_id
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT
+                            t.name AS table_name,
+                            c.name AS column_name,
+                            ty.name AS data_type,
+                            c.is_nullable,
+                            CASE WHEN ic.object_id IS NOT NULL THEN 1 ELSE 0 END AS is_primary_key
+                        FROM sys.tables t
+                        JOIN sys.schemas s ON t.schema_id = s.schema_id
+                        JOIN sys.columns c ON t.object_id = c.object_id
+                        JOIN sys.types ty ON c.user_type_id = ty.user_type_id
+                        LEFT JOIN sys.indexes i ON t.object_id = i.object_id AND i.is_primary_key = 1
+                        LEFT JOIN sys.index_columns ic ON i.object_id = ic.object_id
+                            AND i.index_id = ic.index_id
+                            AND c.column_id = ic.column_id
+                        WHERE s.name = SCHEMA_NAME()
+                        ORDER BY t.name, c.column_id
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -4885,18 +5095,20 @@ mod mssql {
             // Get foreign key relationships
             let fk_rows = client
                 .query(
-                    r#"
-                    SELECT
-                        OBJECT_NAME(fk.parent_object_id) AS from_table,
-                        COL_NAME(fkc.parent_object_id, fkc.parent_column_id) AS from_column,
-                        OBJECT_NAME(fk.referenced_object_id) AS to_table,
-                        COL_NAME(fkc.referenced_object_id, fkc.referenced_column_id) AS to_column
-                    FROM sys.foreign_keys fk
-                    JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
-                    JOIN sys.tables t ON fk.parent_object_id = t.object_id
-                    JOIN sys.schemas s ON t.schema_id = s.schema_id
-                    WHERE s.name = SCHEMA_NAME()
-                    "#,
+                    &sql!(
+                        r#"
+                        SELECT
+                            OBJECT_NAME(fk.parent_object_id) AS from_table,
+                            COL_NAME(fkc.parent_object_id, fkc.parent_column_id) AS from_column,
+                            OBJECT_NAME(fk.referenced_object_id) AS to_table,
+                            COL_NAME(fkc.referenced_object_id, fkc.referenced_column_id) AS to_column
+                        FROM sys.foreign_keys fk
+                        JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
+                        JOIN sys.tables t ON fk.parent_object_id = t.object_id
+                        JOIN sys.schemas s ON t.schema_id = s.schema_id
+                        WHERE s.name = SCHEMA_NAME()
+                        "#
+                    ),
                     &[],
                 )
                 .await?
@@ -5342,11 +5554,19 @@ mod handlers {
         db: impl Database,
         query: QueryBody,
     ) -> Result<impl warp::Reply, warp::Rejection> {
-        let tables = db
-            .query(query.query)
-            .await
-            .map_err(|_| warp::reject::custom(rejections::InternalServerError))?;
-        Ok(warp::reply::json(&tables))
+        tracing::info!(target: "sql_studio::query", "{}", query.query.trim());
+        let started = std::time::Instant::now();
+        let result = db.query(query.query).await.map_err(|e| {
+            tracing::error!("error while running query: {e}");
+            warp::reject::custom(rejections::InternalServerError)
+        })?;
+        tracing::info!(
+            target: "sql_studio::query",
+            "{} rows in {:?}",
+            result.rows.len(),
+            started.elapsed()
+        );
+        Ok(warp::reply::json(&result))
     }
 
     async fn metadata(no_shutdown: bool) -> Result<impl warp::Reply, warp::Rejection> {

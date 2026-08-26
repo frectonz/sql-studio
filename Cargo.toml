@@ -32,6 +32,7 @@ warp = { version = "0.4.3", features = ["server"] }
 webpki-roots = "1.0.9"
 duckdb = { version = "1.10505.0", features = ["bundled", "parquet"] }
 percent-encoding = "2.3.2"
+indoc = "2.0.7"
 
 [profile.release]
 strip = true
