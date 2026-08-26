@@ -595,9 +595,9 @@ mod sqlite {
                     let mut column_counts = HashMap::with_capacity(tables as usize);
                     for name in table_names.iter() {
                         let count = conn
-                            .prepare(&format!("PRAGMA table_info(\"{name}\")"))
+                            .prepare("SELECT * FROM pragma_table_info(?1)")
                             .and_then(|mut columns| {
-                                Ok(columns.query_map((), |r| r.get::<_, String>(1))?.count()
+                                Ok(columns.query_map([&name], |r| r.get::<_, String>(1))?.count()
                                     as i32)
                             })
                             .unwrap_or(0);
@@ -623,7 +623,7 @@ mod sqlite {
                             .unwrap_or(0);
 
                         let has_primary_key = conn
-                            .query_row(&format!("PRAGMA table_info(\"{name}\")"), [], |r| {
+                            .query_row("SELECT * FROM pragma_table_info(?1)", [&name], |r| {
                                 r.get::<_, i32>(5)
                             })
                             .map(|v| v == 1)
@@ -746,7 +746,7 @@ mod sqlite {
                         .unwrap_or(0);
 
                     let has_primary_key = conn
-                        .query_row(&format!("PRAGMA table_info(\"{name}\")"), [], |r| {
+                        .query_row("SELECT * FROM pragma_table_info(?1)", [&name], |r| {
                             r.get::<_, i32>(5)
                         })
                         .map(|v| v == 1)
@@ -758,9 +758,11 @@ mod sqlite {
                     };
 
                     let column_count = conn
-                        .prepare(&format!("PRAGMA table_info(\"{name}\")"))
+                        .prepare("SELECT * FROM pragma_table_info(?1)")
                         .and_then(|mut columns| {
-                            Ok(columns.query_map((), |r| r.get::<_, String>(1))?.count() as i32)
+                            Ok(columns
+                                .query_map([&name], |r| r.get::<_, String>(1))?
+                                .count() as i32)
                         })
                         .unwrap_or(0);
 
@@ -784,7 +786,7 @@ mod sqlite {
             Ok(self
                 .call(move |conn| {
                     let first_column =
-                        conn.query_row(&format!("PRAGMA table_info(\"{name}\")"), [], |r| {
+                        conn.query_row("SELECT * FROM pragma_table_info(?1)", [&name], |r| {
                             r.get::<_, String>(1)
                         })?;
 
@@ -836,10 +838,10 @@ mod sqlite {
                         let table_name = name?;
 
                         let columns = conn
-                            .prepare(&format!("PRAGMA table_info('{table_name}')"))
+                            .prepare("SELECT * FROM pragma_table_info(?1)")
                             .and_then(|mut columns| {
                                 Ok(columns
-                                    .query_map((), |r| r.get::<_, String>(1))?
+                                    .query_map([&table_name], |r| r.get::<_, String>(1))?
                                     .filter_map(|res| res.ok())
                                     .collect::<Vec<_>>())
                             })
@@ -904,10 +906,9 @@ mod sqlite {
 
                     for table_name in table_names {
                         // Get column info: cid, name, type, notnull, dflt_value, pk
-                        let mut col_stmt =
-                            conn.prepare(&format!("PRAGMA table_info('{table_name}')"))?;
+                        let mut col_stmt = conn.prepare("SELECT * FROM pragma_table_info(?1)")?;
                         let columns = col_stmt
-                            .query_map((), |r| {
+                            .query_map([&table_name], |r| {
                                 Ok(responses::ErdColumn {
                                     name: r.get::<_, String>(1)?,
                                     data_type: r.get::<_, String>(2)?,
@@ -920,9 +921,9 @@ mod sqlite {
 
                         // Get foreign keys: id, seq, table, from, to, on_update, on_delete, match
                         let mut fk_stmt =
-                            conn.prepare(&format!("PRAGMA foreign_key_list('{table_name}')"))?;
+                            conn.prepare("SELECT * FROM pragma_foreign_key_list(?1)")?;
                         let fks = fk_stmt
-                            .query_map((), |r| {
+                            .query_map([&table_name], |r| {
                                 Ok(responses::ErdRelationship {
                                     from_table: table_name.clone(),
                                     from_column: r.get::<_, String>(3)?,
@@ -1138,7 +1139,7 @@ mod libsql {
             let mut column_counts = HashMap::with_capacity(table_names.len());
             for name in table_names.iter() {
                 let count = conn
-                    .query(&format!("PRAGMA table_info(\"{name}\")"), ())
+                    .query("SELECT * FROM pragma_table_info(?1)", [name.to_owned()])
                     .await?
                     .into_stream()
                     .map_ok(|r| r.get::<String>(1))
@@ -1173,7 +1174,7 @@ mod libsql {
                     .get::<i32>(0)?;
 
                 let has_primary_key = conn
-                    .query(&format!("PRAGMA table_info(\"{name}\")"), ())
+                    .query("SELECT * FROM pragma_table_info(?1)", [name.to_owned()])
                     .await?
                     .next()
                     .await?
@@ -1300,7 +1301,7 @@ mod libsql {
                 .get::<i32>(0)?;
 
             let has_primary_key = conn
-                .query(&format!("PRAGMA table_info(\"{name}\")"), ())
+                .query("SELECT * FROM pragma_table_info(?1)", [name.to_owned()])
                 .await?
                 .next()
                 .await?
@@ -1315,7 +1316,7 @@ mod libsql {
             };
 
             let column_count = conn
-                .query(&format!("PRAGMA table_info(\"{name}\")"), ())
+                .query("SELECT * FROM pragma_table_info(?1)", [name.to_owned()])
                 .await?
                 .into_stream()
                 .map_ok(|r| r.get::<String>(1))
@@ -1344,7 +1345,7 @@ mod libsql {
             let conn = self.db.connect()?;
 
             let first_column = conn
-                .query(&format!("PRAGMA table_info(\"{name}\")"), ())
+                .query("SELECT * FROM pragma_table_info(?1)", [name.to_owned()])
                 .await?
                 .next()
                 .await?
@@ -1352,7 +1353,7 @@ mod libsql {
                 .get::<String>(1)?;
 
             let columns = conn
-                .query(&format!("PRAGMA table_info(\"{name}\")"), ())
+                .query("SELECT * FROM pragma_table_info(?1)", [name.to_owned()])
                 .await?
                 .into_stream()
                 .map_ok(|r| r.get::<String>(1))
@@ -1416,7 +1417,10 @@ mod libsql {
             let mut tables = Vec::with_capacity(table_names.len());
             for table_name in table_names {
                 let columns = conn
-                    .query(&format!("PRAGMA table_info('{table_name}')"), ())
+                    .query(
+                        "SELECT * FROM pragma_table_info(?1)",
+                        [table_name.to_owned()],
+                    )
                     .await?
                     .into_stream()
                     .map_ok(|r| r.get::<String>(1))
@@ -1489,7 +1493,10 @@ mod libsql {
             for table_name in table_names {
                 // Get column info: cid, name, type, notnull, dflt_value, pk
                 let columns = conn
-                    .query(&format!("PRAGMA table_info('{table_name}')"), ())
+                    .query(
+                        "SELECT * FROM pragma_table_info(?1)",
+                        [table_name.to_owned()],
+                    )
                     .await?
                     .into_stream()
                     .map_ok(|r| {
@@ -1509,7 +1516,10 @@ mod libsql {
 
                 // Get foreign keys: id, seq, table, from, to, on_update, on_delete, match
                 let fks = conn
-                    .query(&format!("PRAGMA foreign_key_list('{table_name}')"), ())
+                    .query(
+                        "SELECT * FROM pragma_foreign_key_list(?1)",
+                        [table_name.to_owned()],
+                    )
                     .await?
                     .into_stream()
                     .map_ok(|r| {
@@ -1598,15 +1608,13 @@ mod postgres {
 
             let tables: i64 = client
                 .query_one(
-                    &format!(
-                        r#"
+                    r#"
             SELECT count(*)
             FROM information_schema.tables
-            WHERE table_schema = '{schema}'
+            WHERE table_schema = $1
             AND table_type = 'BASE TABLE'
-                        "#
-                    ),
-                    &[],
+                        "#,
+                    &[&schema],
                 )
                 .await?
                 .get(0);
@@ -1647,15 +1655,13 @@ mod postgres {
             let tables: i64 = self
                 .client
                 .query_one(
-                    &format!(
-                        r#"
+                    r#"
             SELECT count(*)
             FROM information_schema.tables
-            WHERE table_schema = '{schema}'
+            WHERE table_schema = $1
             AND table_type = 'BASE TABLE'
-                        "#
-                    ),
-                    &[],
+                        "#,
+                    &[schema],
                 )
                 .await?
                 .get(0);
@@ -1663,14 +1669,12 @@ mod postgres {
             let indexes: i64 = self
                 .client
                 .query_one(
-                    &format!(
-                        r#"
+                    r#"
             SELECT count(*) 
             FROM pg_indexes 
-            WHERE schemaname = '{schema}'
-                       "#
-                    ),
-                    &[],
+            WHERE schemaname = $1
+                       "#,
+                    &[schema],
                 )
                 .await?
                 .get(0);
@@ -1678,14 +1682,12 @@ mod postgres {
             let triggers: i64 = self
                 .client
                 .query_one(
-                    &format!(
-                        r#"
+                    r#"
             SELECT count(*)
             FROM information_schema.triggers
-            WHERE trigger_schema = '{schema}'
-                        "#
-                    ),
-                    &[],
+            WHERE trigger_schema = $1
+                        "#,
+                    &[schema],
                 )
                 .await?
                 .get(0);
@@ -1693,14 +1695,12 @@ mod postgres {
             let views: i64 = self
                 .client
                 .query_one(
-                    &format!(
-                        r#"
+                    r#"
             SELECT count(*)
             FROM information_schema.views
-            WHERE table_schema = '{schema}';
-                        "#
-                    ),
-                    &[],
+            WHERE table_schema = $1;
+                        "#,
+                    &[schema],
                 )
                 .await?
                 .get(0);
@@ -1708,14 +1708,12 @@ mod postgres {
             let mut row_counts = self
                 .client
                 .query(
-                    &format!(
-                        r#"
+                    r#"
             SELECT table_name
             FROM information_schema.tables
-            WHERE table_schema = '{schema}'
-                        "#
-                    ),
-                    &[],
+            WHERE table_schema = $1
+                        "#,
+                    &[schema],
                 )
                 .await?
                 .into_iter()
@@ -1739,14 +1737,12 @@ mod postgres {
             let mut column_counts = self
                 .client
                 .query(
-                    &format!(
-                        r#"
+                    r#"
             SELECT table_name
             FROM information_schema.tables
-            WHERE table_schema = '{schema}'
-                        "#
-                    ),
-                    &[],
+            WHERE table_schema = $1
+                        "#,
+                    &[schema],
                 )
                 .await?
                 .into_iter()
@@ -1760,16 +1756,13 @@ mod postgres {
                 let count: i64 = self
                     .client
                     .query_one(
-                        &format!(
-                            r#"
+                        r#"
                 SELECT count(*)
                 FROM information_schema.columns
-                WHERE table_schema = '{schema}'
-                AND table_name = '{}'
-                            "#,
-                            table.name
-                        ),
-                        &[],
+                WHERE table_schema = $1
+                AND table_name = $2
+                        "#,
+                        &[schema, &table.name],
                     )
                     .await?
                     .get(0);
@@ -1782,14 +1775,12 @@ mod postgres {
             let mut index_counts = self
                 .client
                 .query(
-                    &format!(
-                        r#"
+                    r#"
             SELECT table_name
             FROM information_schema.tables
-            WHERE table_schema = '{schema}'
-                        "#
-                    ),
-                    &[],
+            WHERE table_schema = $1
+                        "#,
+                    &[schema],
                 )
                 .await?
                 .into_iter()
@@ -1803,15 +1794,13 @@ mod postgres {
                 let count: i64 = self
                     .client
                     .query_one(
-                        &format!(
-                            r#"
+                        r#"
                 SELECT count(*)
                 FROM pg_indexes
-                WHERE tablename = '{}'
-                            "#,
-                            table.name
-                        ),
-                        &[],
+                WHERE schemaname = $1
+                AND tablename = $2
+                        "#,
+                        &[schema, &table.name],
                     )
                     .await?
                     .get(0);
@@ -1843,14 +1832,12 @@ mod postgres {
             let mut tables = self
                 .client
                 .query(
-                    &format!(
-                        r#"
+                    r#"
             SELECT table_name
             FROM information_schema.tables
-            WHERE table_schema = '{schema}'
-                        "#
-                    ),
-                    &[],
+            WHERE table_schema = $1
+                        "#,
+                    &[schema],
                 )
                 .await?
                 .into_iter()
@@ -1886,8 +1873,8 @@ mod postgres {
             let table_size: i64 = self
                 .client
                 .query_one(
-                    &format!(r#"SELECT pg_total_relation_size('"{name}"')"#),
-                    &[],
+                    "SELECT pg_total_relation_size(format('%I.%I', $1::text, $2::text)::regclass)",
+                    &[schema, &name],
                 )
                 .await?
                 .get(0);
@@ -1896,14 +1883,13 @@ mod postgres {
             let index_count: i64 = self
                 .client
                 .query_one(
-                    &format!(
-                        r#"
+                    r#"
             SELECT count(*)
             FROM pg_indexes
-            WHERE tablename = '{name}'
-                        "#
-                    ),
-                    &[],
+            WHERE schemaname = $1
+            AND tablename = $2
+                    "#,
+                    &[schema, &name],
                 )
                 .await?
                 .get(0);
@@ -1911,15 +1897,13 @@ mod postgres {
             let column_count: i64 = self
                 .client
                 .query_one(
-                    &format!(
-                        r#"
+                    r#"
             SELECT count(*)
             FROM information_schema.columns
-            WHERE table_schema = '{schema}'
-            AND table_name = '{name}'
-                        "#
-                    ),
-                    &[],
+            WHERE table_schema = $1
+            AND table_name = $2
+                    "#,
+                    &[schema, &name],
                 )
                 .await?
                 .get(0);
@@ -1944,17 +1928,15 @@ mod postgres {
             let first_column: String = self
                 .client
                 .query_one(
-                    &format!(
-                        r#"
+                    r#"
             SELECT column_name
             FROM information_schema.columns
-            WHERE table_schema = '{schema}'
-            AND table_name = '{name}'
+            WHERE table_schema = $1
+            AND table_name = $2
             ORDER BY ordinal_position
             LIMIT 1
-                        "#
-                    ),
-                    &[],
+                    "#,
+                    &[schema, &name],
                 )
                 .await?
                 .get(0);
@@ -2009,14 +1991,12 @@ mod postgres {
             let table_names = self
                 .client
                 .query(
-                    &format!(
-                        r#"
+                    r#"
             SELECT table_name
             FROM information_schema.tables
-            WHERE table_schema = '{schema}'
-                        "#
-                    ),
-                    &[],
+            WHERE table_schema = $1
+                        "#,
+                    &[schema],
                 )
                 .await?
                 .into_iter()
@@ -2028,15 +2008,13 @@ mod postgres {
                 let columns = self
                     .client
                     .query(
-                        &format!(
-                            r#"
+                        r#"
                 SELECT column_name
                 FROM information_schema.columns
-                WHERE table_schema = '{schema}'
-                AND table_name = '{table_name}'
-                            "#
-                        ),
-                        &[],
+                WHERE table_schema = $1
+                AND table_name = $2
+                        "#,
+                        &[schema, &table_name],
                     )
                     .await?
                     .into_iter()
@@ -2092,8 +2070,7 @@ mod postgres {
             let schema = &self.schema;
 
             // Get all tables with columns
-            let columns_query = format!(
-                r#"
+            let columns_query = r#"
                 SELECT
                     c.table_name,
                     c.column_name,
@@ -2110,12 +2087,11 @@ mod postgres {
                     AND tc.table_schema = kcu.table_schema
                     AND c.column_name = kcu.column_name
                     AND c.table_name = kcu.table_name
-                WHERE c.table_schema = '{schema}'
+                WHERE c.table_schema = $1
                 ORDER BY c.table_name, c.ordinal_position
-                "#
-            );
+                "#;
 
-            let column_rows = self.client.query(&columns_query, &[]).await?;
+            let column_rows = self.client.query(columns_query, &[schema]).await?;
 
             let mut table_map: std::collections::HashMap<String, Vec<responses::ErdColumn>> =
                 std::collections::HashMap::new();
@@ -2137,8 +2113,7 @@ mod postgres {
                 .collect();
 
             // Get foreign key relationships
-            let fk_query = format!(
-                r#"
+            let fk_query = r#"
                 SELECT
                     kcu.table_name as from_table,
                     kcu.column_name as from_column,
@@ -2152,11 +2127,10 @@ mod postgres {
                     ON ccu.constraint_name = tc.constraint_name
                     AND ccu.table_schema = tc.table_schema
                 WHERE tc.constraint_type = 'FOREIGN KEY'
-                AND tc.table_schema = '{schema}'
-                "#
-            );
+                AND tc.table_schema = $1
+                "#;
 
-            let fk_rows = self.client.query(&fk_query, &[]).await?;
+            let fk_rows = self.client.query(fk_query, &[schema]).await?;
             let relationships: Vec<responses::ErdRelationship> = fk_rows
                 .into_iter()
                 .map(|row| responses::ErdRelationship {
@@ -2999,9 +2973,7 @@ mod duckdb {
                 let c = c.lock().expect("could not get lock on connection");
 
                 let first_column: String =
-                    c.query_row(&format!("PRAGMA table_info('{name}')"), [], |row| {
-                        row.get(1)
-                    })?;
+                    c.query_row("SELECT column_name FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ? ORDER BY column_index LIMIT 1", [&name], |row| row.get(0))?;
 
                 let offset = (page - 1) * ROWS_PER_PAGE;
                 let sql = format!(
@@ -3271,9 +3243,7 @@ mod parquet {
                     |row| row.get(0),
                 )?;
 
-                let mut columns_stmt =
-                    c.prepare(&format!(r#"PRAGMA table_info('{table_name}')"#))?;
-                let column_count = columns_stmt.query_map([], |_| Ok(()))?.count() as i32;
+                let column_count: i32 = c.query_row("SELECT count(*) FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ?", [&table_name], |row| row.get(0))?;
 
                 eyre::Ok((row_count, column_count))
             })
@@ -3346,8 +3316,7 @@ mod parquet {
                         row.get(0)
                     })?;
 
-                let mut columns_stmt = c.prepare(&format!(r#"PRAGMA table_info('{name}')"#))?;
-                let column_count = columns_stmt.query_map([], |_| Ok(()))?.count() as i32;
+                let column_count: i32 = c.query_row("SELECT count(*) FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ?", [&name], |row| row.get(0))?;
 
                 eyre::Ok((row_count, column_count))
             })
@@ -3374,9 +3343,7 @@ mod parquet {
                 let c = c.lock().expect("could not get lock on connection");
 
                 let first_column: String =
-                    c.query_row(&format!("PRAGMA table_info('{name}')"), [], |row| {
-                        row.get(1)
-                    })?;
+                    c.query_row("SELECT column_name FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ? ORDER BY column_index LIMIT 1", [&name], |row| row.get(0))?;
 
                 let offset = (page - 1) * ROWS_PER_PAGE;
                 let sql = format!(
@@ -3475,20 +3442,20 @@ mod parquet {
             tokio::task::spawn_blocking(move || {
                 let c = c.lock().expect("could not get lock on connection");
 
-                let mut col_stmt = c.prepare(&format!(
+                let mut col_stmt = c.prepare(
                     r#"
                     SELECT
                         column_name,
                         data_type,
                         is_nullable
                     FROM information_schema.columns
-                    WHERE table_name = '{table_name}'
+                    WHERE table_name = ?
                     ORDER BY ordinal_position
-                    "#
-                ))?;
+                    "#,
+                )?;
 
                 let columns = col_stmt
-                    .query_map([], |row| {
+                    .query_map([&table_name], |row| {
                         Ok(responses::ErdColumn {
                             name: row.get::<_, String>(0)?,
                             data_type: row.get::<_, String>(1)?,
@@ -3598,9 +3565,7 @@ mod csv {
                     |row| row.get(0),
                 )?;
 
-                let mut columns_stmt =
-                    c.prepare(&format!(r#"PRAGMA table_info('{table_name}')"#))?;
-                let column_count = columns_stmt.query_map([], |_| Ok(()))?.count() as i32;
+                let column_count: i32 = c.query_row("SELECT count(*) FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ?", [&table_name], |row| row.get(0))?;
 
                 eyre::Ok((row_count, column_count))
             })
@@ -3673,8 +3638,7 @@ mod csv {
                         row.get(0)
                     })?;
 
-                let mut columns_stmt = c.prepare(&format!(r#"PRAGMA table_info('{name}')"#))?;
-                let column_count = columns_stmt.query_map([], |_| Ok(()))?.count() as i32;
+                let column_count: i32 = c.query_row("SELECT count(*) FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ?", [&name], |row| row.get(0))?;
 
                 eyre::Ok((row_count, column_count))
             })
@@ -3701,9 +3665,7 @@ mod csv {
                 let c = c.lock().expect("could not get lock on connection");
 
                 let first_column: String =
-                    c.query_row(&format!("PRAGMA table_info('{name}')"), [], |row| {
-                        row.get(1)
-                    })?;
+                    c.query_row("SELECT column_name FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ? ORDER BY column_index LIMIT 1", [&name], |row| row.get(0))?;
 
                 let offset = (page - 1) * ROWS_PER_PAGE;
                 let sql = format!(
@@ -3802,20 +3764,20 @@ mod csv {
             tokio::task::spawn_blocking(move || {
                 let c = c.lock().expect("could not get lock on connection");
 
-                let mut col_stmt = c.prepare(&format!(
+                let mut col_stmt = c.prepare(
                     r#"
                     SELECT
                         column_name,
                         data_type,
                         is_nullable
                     FROM information_schema.columns
-                    WHERE table_name = '{table_name}'
+                    WHERE table_name = ?
                     ORDER BY ordinal_position
-                    "#
-                ))?;
+                    "#,
+                )?;
 
                 let columns = col_stmt
-                    .query_map([], |row| {
+                    .query_map([&table_name], |row| {
                         Ok(responses::ErdColumn {
                             name: row.get::<_, String>(0)?,
                             data_type: row.get::<_, String>(1)?,
