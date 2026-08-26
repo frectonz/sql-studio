@@ -898,8 +898,7 @@ mod sqlite {
                         conn.prepare(r#"SELECT name FROM sqlite_master WHERE type="table""#)?;
                     let table_names = stmt
                         .query_map([], |row| row.get::<_, String>(0))?
-                        .filter_map(|r| r.ok())
-                        .collect::<Vec<_>>();
+                        .collect::<Result<Vec<_>, _>>()?;
 
                     let mut tables = Vec::with_capacity(table_names.len());
                     let mut relationships = Vec::new();
@@ -916,8 +915,7 @@ mod sqlite {
                                     is_primary_key: r.get::<_, i32>(5)? > 0,
                                 })
                             })?
-                            .filter_map(|r| r.ok())
-                            .collect::<Vec<_>>();
+                            .collect::<Result<Vec<_>, _>>()?;
 
                         // Get foreign keys: id, seq, table, from, to, on_update, on_delete, match
                         let mut fk_stmt =
@@ -931,8 +929,7 @@ mod sqlite {
                                     to_column: r.get::<_, String>(4)?,
                                 })
                             })?
-                            .filter_map(|r| r.ok())
-                            .collect::<Vec<_>>();
+                            .collect::<Result<Vec<_>, _>>()?;
 
                         relationships.extend(fks);
                         tables.push(responses::ErdTable {
@@ -955,7 +952,7 @@ mod libsql {
     use std::{collections::HashMap, sync::Arc, time::Duration};
 
     use color_eyre::eyre::OptionExt;
-    use futures::{StreamExt, TryStreamExt};
+    use futures::TryStreamExt;
     use libsql::Builder;
 
     use crate::{Database, ROWS_PER_PAGE, helpers, responses};
@@ -1109,12 +1106,10 @@ mod libsql {
                 .await?
                 .into_stream()
                 .map_ok(|r| r.get::<String>(0))
-                .collect::<Vec<_>>()
-                .await
+                .try_collect::<Vec<_>>()
+                .await?
                 .into_iter()
-                .filter_map(|r| r.ok())
-                .filter_map(|r| r.ok())
-                .collect::<Vec<_>>();
+                .collect::<Result<Vec<_>, _>>()?;
 
             let mut row_counts = HashMap::with_capacity(table_names.len());
             for name in table_names.iter() {
@@ -1143,12 +1138,11 @@ mod libsql {
                     .await?
                     .into_stream()
                     .map_ok(|r| r.get::<String>(1))
-                    .collect::<Vec<_>>()
-                    .await
+                    .try_collect::<Vec<_>>()
+                    .await?
                     .into_iter()
-                    .filter_map(|r| r.ok())
-                    .filter_map(|r| r.ok())
-                    .count() as i32;
+                    .collect::<Result<Vec<_>, _>>()?
+                    .len() as i32;
 
                 column_counts.insert(name.to_owned(), count);
             }
@@ -1222,12 +1216,10 @@ mod libsql {
                 .await?
                 .into_stream()
                 .map_ok(|r| r.get::<String>(0))
-                .collect::<Vec<_>>()
-                .await
+                .try_collect::<Vec<_>>()
+                .await?
                 .into_iter()
-                .filter_map(|r| r.ok())
-                .filter_map(|r| r.ok())
-                .collect::<Vec<_>>();
+                .collect::<Result<Vec<_>, _>>()?;
 
             let mut table_counts = HashMap::with_capacity(table_names.len());
             for name in table_names {
@@ -1320,12 +1312,11 @@ mod libsql {
                 .await?
                 .into_stream()
                 .map_ok(|r| r.get::<String>(1))
-                .collect::<Vec<_>>()
-                .await
+                .try_collect::<Vec<_>>()
+                .await?
                 .into_iter()
-                .filter_map(|r| r.ok())
-                .filter_map(|r| r.ok())
-                .count() as i32;
+                .collect::<Result<Vec<_>, _>>()?
+                .len() as i32;
 
             Ok(responses::Table {
                 name,
@@ -1357,12 +1348,10 @@ mod libsql {
                 .await?
                 .into_stream()
                 .map_ok(|r| r.get::<String>(1))
-                .collect::<Vec<_>>()
-                .await
+                .try_collect::<Vec<_>>()
+                .await?
                 .into_iter()
-                .filter_map(|r| r.ok())
-                .filter_map(|r| r.ok())
-                .collect::<Vec<_>>();
+                .collect::<Result<Vec<_>, _>>()?;
 
             let columns_len = columns.len();
             let offset = (page - 1) * ROWS_PER_PAGE;
@@ -1389,12 +1378,10 @@ mod libsql {
                     }
                     color_eyre::eyre::Ok(rows)
                 })
-                .collect::<Vec<_>>()
-                .await
+                .try_collect::<Vec<_>>()
+                .await?
                 .into_iter()
-                .filter_map(|r| r.ok())
-                .filter_map(|r| r.ok())
-                .collect::<Vec<_>>();
+                .collect::<Result<Vec<_>, _>>()?;
 
             Ok(responses::TableData { columns, rows })
         }
@@ -1407,12 +1394,10 @@ mod libsql {
                 .await?
                 .into_stream()
                 .map_ok(|r| r.get::<String>(0))
-                .collect::<Vec<_>>()
-                .await
+                .try_collect::<Vec<_>>()
+                .await?
                 .into_iter()
-                .filter_map(|r| r.ok())
-                .filter_map(|r| r.ok())
-                .collect::<Vec<_>>();
+                .collect::<Result<Vec<_>, _>>()?;
 
             let mut tables = Vec::with_capacity(table_names.len());
             for table_name in table_names {
@@ -1424,12 +1409,10 @@ mod libsql {
                     .await?
                     .into_stream()
                     .map_ok(|r| r.get::<String>(1))
-                    .collect::<Vec<_>>()
-                    .await
+                    .try_collect::<Vec<_>>()
+                    .await?
                     .into_iter()
-                    .filter_map(|r| r.ok())
-                    .filter_map(|r| r.ok())
-                    .collect::<Vec<_>>();
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 tables.push(responses::TableWithColumns {
                     table_name,
@@ -1459,14 +1442,12 @@ mod libsql {
                         .map(|i| Ok(helpers::libsql_value_to_json(r.get_value(i as i32)?)))
                         .collect::<color_eyre::Result<Vec<_>>>()
                 })
-                .collect::<Vec<_>>();
+                .try_collect::<Vec<_>>();
 
             let rows = tokio::time::timeout(self.query_timeout, rows)
-                .await?
+                .await??
                 .into_iter()
-                .filter_map(|r| r.ok())
-                .filter_map(|r| r.ok())
-                .collect::<Vec<_>>();
+                .collect::<Result<Vec<_>, _>>()?;
 
             Ok(responses::Query { columns, rows })
         }
@@ -1480,12 +1461,10 @@ mod libsql {
                 .await?
                 .into_stream()
                 .map_ok(|r| r.get::<String>(0))
-                .collect::<Vec<_>>()
-                .await
+                .try_collect::<Vec<_>>()
+                .await?
                 .into_iter()
-                .filter_map(|r| r.ok())
-                .filter_map(|r| r.ok())
-                .collect::<Vec<_>>();
+                .collect::<Result<Vec<_>, _>>()?;
 
             let mut tables = Vec::with_capacity(table_names.len());
             let mut relationships = Vec::new();
@@ -1507,12 +1486,10 @@ mod libsql {
                             is_primary_key: r.get::<i32>(5)? > 0,
                         })
                     })
-                    .collect::<Vec<_>>()
-                    .await
+                    .try_collect::<Vec<_>>()
+                    .await?
                     .into_iter()
-                    .filter_map(|r| r.ok())
-                    .filter_map(|r| r.ok())
-                    .collect::<Vec<_>>();
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 // Get foreign keys: id, seq, table, from, to, on_update, on_delete, match
                 let fks = conn
@@ -1531,12 +1508,10 @@ mod libsql {
                             to_column: r.get::<String>(4)?,
                         })
                     })
-                    .collect::<Vec<_>>()
-                    .await
+                    .try_collect::<Vec<_>>()
+                    .await?
                     .into_iter()
-                    .filter_map(|r| r.ok())
-                    .filter_map(|r| r.ok())
-                    .collect::<Vec<_>>();
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 relationships.extend(fks);
                 tables.push(responses::ErdTable {
@@ -2999,8 +2974,7 @@ mod duckdb {
 
                         Ok(rows)
                     })?
-                    .filter_map(|r| r.ok())
-                    .collect::<Vec<_>>();
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 let columns = stmt.column_names();
 
@@ -3069,8 +3043,7 @@ mod duckdb {
 
                         Ok(rows)
                     })?
-                    .filter_map(|r| r.ok())
-                    .collect::<Vec<_>>();
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 let columns = stmt.column_names();
 
@@ -3110,8 +3083,7 @@ mod duckdb {
                             row.get::<_, String>(3)?,
                         ))
                     })?
-                    .filter_map(|r| r.ok())
-                    .collect::<Vec<(String, String, String, String)>>();
+                    .collect::<Result<Vec<(String, String, String, String)>, _>>()?;
 
                 // Get primary key info - using a query that returns table_name and column_name pairs
                 let mut pk_stmt = c.prepare(
@@ -3126,8 +3098,7 @@ mod duckdb {
                     .query_map([], |row| {
                         Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
                     })?
-                    .filter_map(|r| r.ok())
-                    .collect();
+                    .collect::<Result<_, _>>()?;
 
                 let mut table_map: std::collections::HashMap<String, Vec<responses::ErdColumn>> =
                     std::collections::HashMap::new();
@@ -3369,8 +3340,7 @@ mod parquet {
 
                         Ok(rows)
                     })?
-                    .filter_map(|r| r.ok())
-                    .collect::<Vec<_>>();
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 let columns = stmt.column_names();
 
@@ -3423,8 +3393,7 @@ mod parquet {
 
                         Ok(rows)
                     })?
-                    .filter_map(|r| r.ok())
-                    .collect::<Vec<_>>();
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 let columns = stmt.column_names();
 
@@ -3463,8 +3432,7 @@ mod parquet {
                             is_primary_key: false,
                         })
                     })?
-                    .filter_map(|r| r.ok())
-                    .collect::<Vec<_>>();
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 let tables = vec![responses::ErdTable {
                     name: table_name,
@@ -3691,8 +3659,7 @@ mod csv {
 
                         Ok(rows)
                     })?
-                    .filter_map(|r| r.ok())
-                    .collect::<Vec<_>>();
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 let columns = stmt.column_names();
 
@@ -3745,8 +3712,7 @@ mod csv {
 
                         Ok(rows)
                     })?
-                    .filter_map(|r| r.ok())
-                    .collect::<Vec<_>>();
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 let columns = stmt.column_names();
 
@@ -3785,8 +3751,7 @@ mod csv {
                             is_primary_key: false,
                         })
                     })?
-                    .filter_map(|r| r.ok())
-                    .collect::<Vec<_>>();
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 let tables = vec![responses::ErdTable {
                     name: table_name,
