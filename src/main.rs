@@ -44,7 +44,6 @@ enum Command {
     },
 
     /// A libSQL database.
-    #[command(alias = "local-libsql")]
     Libsql {
         /// Path to a local SQLite database file, or the URL of a libSQL server.
         #[arg(env)]
