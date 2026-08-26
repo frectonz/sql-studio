@@ -2786,7 +2786,7 @@ mod duckdb {
                         r#"
                     SELECT count(*)
                     FROM information_schema.tables
-                    WHERE table_type = 'VIEW'
+                    WHERE table_schema = 'main' AND table_type = 'VIEW'
                     "#,
                         [],
                         |row| row.get(0),
@@ -2796,7 +2796,7 @@ mod duckdb {
                         r#"
                     SELECT table_name
                     FROM information_schema.tables
-                    WHERE table_type = 'BASE TABLE'
+                    WHERE table_schema = 'main' AND table_type = 'BASE TABLE'
                         "#,
                     )?;
                     let table_names = table_names_stmt
@@ -2888,7 +2888,7 @@ mod duckdb {
                     r#"
                     SELECT table_name
                     FROM information_schema.tables
-                    WHERE table_type = 'BASE TABLE'
+                    WHERE table_schema = 'main' AND table_type = 'BASE TABLE'
                         "#,
                 )?;
                 let table_names = table_names_stmt
@@ -3020,7 +3020,7 @@ mod duckdb {
                     r#"
                     SELECT table_name
                     FROM information_schema.tables
-                    WHERE table_type = 'BASE TABLE'
+                    WHERE table_schema = 'main' AND table_type = 'BASE TABLE'
                         "#,
                 )?;
                 let table_names = table_names_stmt
