@@ -113,12 +113,12 @@ const INSTALL_METHODS = [
   {
     label: "SHELL",
     command:
-      "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sql-studio/releases/download/0.1.52/sql-studio-installer.sh | sh",
+      "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/frectonz/sql-studio/releases/download/0.1.53/sql-studio-installer.sh | sh",
   },
   {
     label: "POWERSHELL",
     command:
-      'powershell -ExecutionPolicy Bypass -c "irm https://github.com/frectonz/sql-studio/releases/download/0.1.52/sql-studio-installer.ps1 | iex"',
+      'powershell -ExecutionPolicy Bypass -c "irm https://github.com/frectonz/sql-studio/releases/download/0.1.53/sql-studio-installer.ps1 | iex"',
   },
   { label: "NIX", command: "nix shell nixpkgs#sql-studio" },
   { label: "DOCKER", command: "docker run -p 3030:3030 frectonz/sql-studio" },
@@ -224,7 +224,7 @@ export default function LandingPage() {
             style={{ borderRight: "none" }}
           >
             <Link
-              href="https://github.com/frectonz/sql-studio/releases/tag/0.1.52"
+              href="https://github.com/frectonz/sql-studio/releases/tag/0.1.53"
               className="ld-up tw:mb-6 tw:inline-block tw:border tw:px-3 tw:py-1 tw:text-xs tw:font-bold tw:tracking-widest"
               style={{
                 animationDelay: "0.1s",
@@ -234,7 +234,7 @@ export default function LandingPage() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              v0.1.52
+              v0.1.53
             </Link>
 
             <h1
