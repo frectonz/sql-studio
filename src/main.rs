@@ -235,6 +235,7 @@ async fn main() -> color_eyre::Result<()> {
 }
 
 mod statics {
+    use crate::helpers;
     use std::path::Path;
 
     use color_eyre::eyre::OptionExt;
@@ -294,22 +295,19 @@ mod statics {
     pub fn homepage(
         file: String,
     ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
-        warp::get()
-            .and(warp::any().map(move || file.clone()))
-            .map(|file| {
-                Response::builder()
-                    .header(CONTENT_TYPE, "text/html")
-                    .body(file)
-                    .unwrap()
-            })
+        warp::get().and(helpers::with_state(&file)).map(|file| {
+            Response::builder()
+                .header(CONTENT_TYPE, "text/html")
+                .body(file)
+                .unwrap()
+        })
     }
 
     pub fn routes(
         base_path_replacer: String,
     ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
-        let base_path_replacer = base_path_replacer.to_owned();
         warp::path::tail()
-            .and(warp::any().map(move || base_path_replacer.to_owned()))
+            .and(helpers::with_state(&base_path_replacer))
             .and_then(send_file)
     }
 }
@@ -5020,6 +5018,14 @@ mod helpers {
     use mysql_async::Value as MysqlValue;
     use tiberius::ColumnData;
     use tokio_rusqlite::types::ValueRef as SqliteValue;
+    use warp::Filter;
+
+    pub fn with_state<T: Clone + Send>(
+        state: &T,
+    ) -> impl Filter<Extract = (T,), Error = std::convert::Infallible> + Clone + use<T> {
+        let state = state.to_owned();
+        warp::any().map(move || state.clone())
+    }
 
     pub fn format_size(mut size: f64) -> String {
         const UNITS: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
@@ -5255,18 +5261,12 @@ mod responses {
 }
 
 mod handlers {
+    use crate::helpers::with_state;
     use serde::Deserialize;
     use tokio::sync::mpsc;
     use warp::Filter;
 
     use crate::{Database, rejections, responses::Metadata};
-
-    fn with_state<T: Clone + Send>(
-        state: &T,
-    ) -> impl Filter<Extract = (T,), Error = std::convert::Infallible> + Clone + use<T> {
-        let state = state.to_owned();
-        warp::any().map(move || state.clone())
-    }
 
     pub fn routes(
         db: impl Database + 'static,
@@ -5301,12 +5301,12 @@ mod handlers {
             .and_then(query);
         let metadata = warp::get()
             .and(warp::path!("metadata"))
-            .and(warp::any().map(move || no_shutdown))
+            .and(with_state(&no_shutdown))
             .and_then(metadata);
         let shutdown = warp::path!("shutdown")
             .and(warp::post())
             .and(with_state(&shutdown_signal))
-            .and(warp::any().map(move || no_shutdown))
+            .and(with_state(&no_shutdown))
             .and_then(shutdown);
         let erd = warp::path!("erd")
             .and(warp::get())
