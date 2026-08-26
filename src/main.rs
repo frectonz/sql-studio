@@ -181,7 +181,9 @@ async fn main() -> color_eyre::Result<()> {
 
     let (shutdown_tx, mut shutdown_rx) = mpsc::channel(1);
 
-    let api = warp::path("api").and(handlers::routes(db, args.no_shutdown, shutdown_tx));
+    let api = warp::path("api").and(
+        handlers::routes(db, args.no_shutdown, shutdown_tx).recover(rejections::handle_rejection),
+    );
     let homepage = statics::homepage(index_html.clone());
     let statics = statics::routes(
         match args.base_path.as_ref() {
@@ -2278,7 +2280,7 @@ mod mysql {
                 .ok_or_eyre("couldn't get database name")?;
 
             let db_size = r#"
-            SELECT sum(data_length + index_length) AS size
+            SELECT coalesce(sum(data_length + index_length), 0) AS size
             FROM information_schema.tables
             WHERE table_schema = database()
                 "#
@@ -2454,12 +2456,12 @@ mod mysql {
         async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
             let mut conn = self.pool.get_conn().await?;
 
-            let sql = format!("SHOW CREATE TABLE {name}")
+            let sql = format!("SHOW CREATE TABLE {}", quote_ident(&name))
                 .with(())
                 .first(&mut conn)
                 .await?
-                .map(|(_, sql): (String, String)| sql)
-                .ok_or_eyre("couldn't get table sql")?;
+                .and_then(|row: mysql_async::Row| row.get_opt::<String, _>(1))
+                .ok_or_eyre("couldn't get table sql")??;
 
             let row_count = format!("SELECT count(*) AS count FROM {}", quote_ident(&name))
                 .with(())
@@ -2469,7 +2471,7 @@ mod mysql {
                 .ok_or_eyre("couldn't count rows")?;
 
             let table_size = r#"
-            SELECT (data_length + index_length) AS size
+            SELECT coalesce(data_length + index_length, 0) AS size
             FROM information_schema.tables
             WHERE table_schema = database() AND table_name = :table_name
                 "#
@@ -2558,7 +2560,7 @@ mod mysql {
 
             let columns_len = columns.len();
             let rows = conn
-                .query_iter(sql)
+                .exec_iter(&stmt, ())
                 .await?
                 .map_and_drop(|mut r| {
                     let mut row: Vec<mysql_async::Value> = Vec::with_capacity(columns_len);
@@ -2574,8 +2576,7 @@ mod mysql {
                 .into_iter()
                 .map(|r| {
                     r.into_iter()
-                        .map(|c| c.as_sql(true))
-                        .map(serde_json::Value::String)
+                        .map(helpers::mysql_value_to_json)
                         .collect::<Vec<_>>()
                 })
                 .collect::<Vec<_>>();
@@ -2630,7 +2631,7 @@ mod mysql {
                 .collect::<Vec<_>>();
 
             let columns_len = columns.len();
-            let rows = conn.query_iter(query);
+            let rows = conn.exec_iter(&stmt, ());
             let rows = tokio::time::timeout(self.query_timeout, rows)
                 .await??
                 .map_and_drop(|mut r| {
@@ -2647,8 +2648,7 @@ mod mysql {
                 .into_iter()
                 .map(|r| {
                     r.into_iter()
-                        .map(|c| c.as_sql(true))
-                        .map(serde_json::Value::String)
+                        .map(helpers::mysql_value_to_json)
                         .collect::<Vec<_>>()
                 })
                 .collect::<Vec<_>>();
@@ -5050,6 +5050,7 @@ mod mssql {
 mod helpers {
     use duckdb::types::ValueRef as DuckdbValue;
     use libsql::Value as LibsqlValue;
+    use mysql_async::Value as MysqlValue;
     use tiberius::ColumnData;
     use tokio_rusqlite::types::ValueRef as SqliteValue;
 
@@ -5084,6 +5085,34 @@ mod helpers {
             Real(x) => serde_json::json!(x),
             Text(s) => serde_json::Value::String(s),
             Blob(s) => serde_json::json!(s),
+        }
+    }
+
+    pub fn mysql_value_to_json(v: MysqlValue) -> serde_json::Value {
+        use MysqlValue::*;
+        match v {
+            NULL => serde_json::Value::Null,
+            Bytes(b) => serde_json::Value::String(String::from_utf8_lossy(&b).into_owned()),
+            Int(x) => serde_json::json!(x),
+            UInt(x) => serde_json::json!(x),
+            Float(x) => serde_json::json!(x),
+            Double(x) => serde_json::json!(x),
+            Date(y, m, d, 0, 0, 0, 0) => serde_json::Value::String(format!("{y:04}-{m:02}-{d:02}")),
+            Date(y, m, d, h, i, s, 0) => {
+                serde_json::Value::String(format!("{y:04}-{m:02}-{d:02} {h:02}:{i:02}:{s:02}"))
+            }
+            Date(y, m, d, h, i, s, us) => serde_json::Value::String(format!(
+                "{y:04}-{m:02}-{d:02} {h:02}:{i:02}:{s:02}.{us:06}"
+            )),
+            Time(neg, d, h, i, s, us) => {
+                let sign = if neg { "-" } else { "" };
+                let hours = d * 24 + h as u32;
+                serde_json::Value::String(if us == 0 {
+                    format!("{sign}{hours:02}:{i:02}:{s:02}")
+                } else {
+                    format!("{sign}{hours:02}:{i:02}:{s:02}.{us:06}")
+                })
+            }
         }
     }
 
@@ -5285,30 +5314,30 @@ mod handlers {
             .and(warp::get())
             .and(with_state(&db))
             .and_then(tables);
-        let table = warp::get()
+        let table = warp::path!("tables" / String)
+            .and(warp::get())
             .and(with_state(&db))
-            .and(warp::path!("tables" / String))
             .and_then(table);
-        let data = warp::get()
+        let data = warp::path!("tables" / String / "data")
+            .and(warp::get())
             .and(with_state(&db))
-            .and(warp::path!("tables" / String / "data"))
             .and(warp::query::<PageQuery>())
             .and_then(table_data);
         let autocomplete = warp::path!("autocomplete")
             .and(warp::get())
             .and(with_state(&db))
             .and_then(autocomplete);
-        let query = warp::post()
+        let query = warp::path!("query")
+            .and(warp::post())
             .and(with_state(&db))
-            .and(warp::path!("query"))
             .and(warp::body::json::<QueryBody>())
             .and_then(query);
         let metadata = warp::get()
             .and(warp::path!("metadata"))
             .and(warp::any().map(move || no_shutdown))
             .and_then(metadata);
-        let shutdown = warp::post()
-            .and(warp::path!("shutdown"))
+        let shutdown = warp::path!("shutdown")
+            .and(warp::post())
             .and(with_state(&shutdown_signal))
             .and(warp::any().map(move || no_shutdown))
             .and_then(shutdown);
@@ -5354,7 +5383,7 @@ mod handlers {
         Ok(warp::reply::json(&tables))
     }
 
-    async fn table(db: impl Database, name: String) -> Result<impl warp::Reply, warp::Rejection> {
+    async fn table(name: String, db: impl Database) -> Result<impl warp::Reply, warp::Rejection> {
         let tables = db.table(name).await.map_err(|e| {
             tracing::error!("error while getting table: {e}");
             warp::reject::custom(rejections::InternalServerError)
@@ -5363,8 +5392,8 @@ mod handlers {
     }
 
     async fn table_data(
-        db: impl Database,
         name: String,
+        db: impl Database,
         data: PageQuery,
     ) -> Result<impl warp::Reply, warp::Rejection> {
         let data = db
@@ -5457,6 +5486,7 @@ mod rejections {
         } else if err
             .find::<warp::filters::body::BodyDeserializeError>()
             .is_some()
+            || err.find::<warp::reject::InvalidQuery>().is_some()
         {
             code = StatusCode::BAD_REQUEST;
             message = "BAD_REQUEST";
