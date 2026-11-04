@@ -27,9 +27,14 @@ loader.config({ monaco });
 type Props = {
   value: string;
   onChange?: (value: string) => void;
+  height?: number;
 };
 
-export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
+export const Editor: FunctionComponent<Props> = ({
+  value,
+  onChange,
+  height = 200,
+}) => {
   const currentTheme = useTheme();
   const monacoInstance = useMonaco();
   const providerRef = useRef<IDisposable | null>(null);
@@ -141,7 +146,7 @@ export const Editor: FunctionComponent<Props> = ({ value, onChange }) => {
   return (
     <Card className="p-2">
       <EditorComponent
-        height="200px"
+        height={height}
         value={value}
         onChange={(val) => onChange?.(val ?? "")}
         language={ID_LANGUAGE_SQL}
