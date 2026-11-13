@@ -8,31 +8,31 @@ authors = ["frectonz"]
 
 [dependencies]
 chrono = { version = "0.4.45", features = ["serde"] }
-clap = { version = "4.6.6", features = ["derive", "env"] }
-clickhouse = { version = "0.15.1", features = ["rustls-tls"] }
+clap = { version = "4.6.7", features = ["derive", "env"] }
+clickhouse = { version = "0.15.3", features = ["rustls-tls"] }
 color-eyre = "0.6.5"
 futures = "0.3.34"
 humantime = "2.4.0"
 include_dir = "0.7.4"
-libsql = { version = "0.9.30", features = ["remote"] }
-mysql_async = { version = "0.37.0", default-features = false, features = ["rustls-tls", "default-rustls"] }
-open = "5.4.1"
-rustls = "0.23.43"
+libsql = { version = "0.10.0", features = ["remote"] }
+mysql_async = { version = "0.37.1", default-features = false, features = ["rustls-tls", "default-rustls"] }
+open = "5.4.5"
+rustls = "0.23.46"
 serde = { version = "1.0.229", features = ["derive"] }
-serde_json = "1.0.151"
-tiberius = { version = "0.12.3", default-features = false, features = ["rustls", "tds73", "tokio", "tokio-util"] }
-tokio = { version = "1.53.1", features = ["full"] }
+serde_json = "1.0.154"
+tiberius = { version = "0.13.0", default-features = false, features = ["rustls", "tds73", "tokio", "tokio-util"] }
+tokio = { version = "1.54.1", features = ["full"] }
 tokio-postgres = "0.7.18"
 tokio-postgres-rustls = "0.14.0"
-tokio-rusqlite = { version = "0.7.0", features = ["bundled"] }
-tokio-util = "0.7.19"
+tokio-rusqlite = { version = "0.9.0", features = ["bundled"] }
+tokio-util = "0.7.20"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 warp = { version = "0.4.3", features = ["server"] }
-webpki-roots = "1.0.9"
-duckdb = { version = "1.10505.0", features = ["bundled", "parquet"] }
+webpki-roots = "1.0.12"
+duckdb = { version = "1.20000.1", features = ["bundled", "parquet"] }
 percent-encoding = "2.3.2"
-indoc = "2.0.7"
+indoc = "2.0.8"
 
 [profile.release]
 strip = true

@@ -840,7 +840,6 @@ mod sqlite {
                     ))?;
                     let columns = stmt
                         .column_names()
-                        .into_iter()
                         .map(ToOwned::to_owned)
                         .collect::<Vec<_>>();
 
@@ -904,7 +903,6 @@ mod sqlite {
                 let mut stmt = conn.prepare(&query)?;
                 let columns = stmt
                     .column_names()
-                    .into_iter()
                     .map(ToOwned::to_owned)
                     .collect::<Vec<_>>();
 

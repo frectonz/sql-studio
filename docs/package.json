@@ -11,27 +11,27 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@farming-labs/docs": "^0.2.111",
-    "@farming-labs/next": "^0.2.111",
-    "@farming-labs/theme": "^0.2.111",
-    "lucide-react": "^1.33.0",
-    "next": "^16.3.2",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "simple-icons": "^16.28.0"
+    "@farming-labs/docs": "^0.2.143",
+    "@farming-labs/next": "^0.2.143",
+    "@farming-labs/theme": "^0.2.143",
+    "lucide-react": "^1.72.0",
+    "next": "^16.4.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "simple-icons": "^16.37.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.10",
+    "@biomejs/biome": "^2.6.7",
     "@resvg/resvg-js": "^2.6.2",
-    "@tailwindcss/postcss": "^4.3.3",
+    "@tailwindcss/postcss": "^4.3.5",
     "@types/mdx": "^2.0.14",
-    "@types/node": "^26.2.0",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
-    "postcss": "^8.5.26",
-    "satori": "^0.33.3",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "postcss": "^8.5.32",
+    "satori": "^0.63.2",
     "satori-html": "^0.3.2",
-    "tailwindcss": "^4.3.3",
+    "tailwindcss": "^4.3.5",
     "typescript": "^7.0.2"
   }
 }
