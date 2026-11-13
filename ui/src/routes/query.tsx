@@ -5,7 +5,7 @@ import { z } from "zod";
 import { DataGrid } from "react-data-grid";
 import { useQuery } from "@tanstack/react-query";
 import { useDebounce } from "@uidotdev/usehooks";
-import { Database, Maximize2, Play, ShieldX, Terminal } from "lucide-react";
+import { Database, Play, ShieldX, Terminal } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { cn } from "@/lib/utils";
@@ -26,7 +26,8 @@ import { useTheme } from "@/provider/theme.provider";
 
 const DEFAULT_EDITOR_HEIGHT = 200;
 const MIN_EDITOR_HEIGHT = 120;
-const MAX_EDITOR_HEIGHT = Math.min(600, Math.floor(window.innerHeight * 0.6));
+const maxEditorHeight = () =>
+  Math.min(600, Math.floor(window.innerHeight * 0.6));
 
 export const Route = createFileRoute("/query")({
   component: Query,
@@ -42,14 +43,13 @@ function Query() {
 
   const [autoExecute, setAutoExecute] = useState(true);
   const [editorHeight, setEditorHeight] = useState(DEFAULT_EDITOR_HEIGHT);
-  const [editorMinimized, setEditorMinimized] = useState(false);
 
   const isResizingRef = useRef(false);
   const resizeStartYRef = useRef(0);
   const resizeStartHeightRef = useRef(DEFAULT_EDITOR_HEIGHT);
 
   const clampEditorHeight = (height: number) =>
-    Math.min(Math.max(height, MIN_EDITOR_HEIGHT), MAX_EDITOR_HEIGHT);
+    Math.min(Math.max(height, MIN_EDITOR_HEIGHT), maxEditorHeight());
 
   const { data, error, refetch } = useQuery({
     queryKey: ["query", code],
@@ -148,39 +148,26 @@ function Query() {
   return (
     <div className="grid gap-8">
       <div className="grid gap-4 grid-cols-1">
-        {editorMinimized ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-fit"
-            onClick={() => setEditorMinimized(false)}
-          >
-            <Maximize2 className="h-4 w-4" />
-            Editor
-          </Button>
-        ) : (
-          <Editor
-            value={code}
-            onChange={(val) => setCodeState({ type: "SET_SQL", data: val })}
-            height={editorHeight}
-          />
-        )}
+        <Editor
+          value={code}
+          onChange={(val) => setCodeState({ type: "SET_SQL", data: val })}
+          height={editorHeight}
+        />
 
-        {!editorMinimized && (
-          <div
-            role="separator"
-            aria-orientation="horizontal"
-            aria-label="Resize query editor"
-            tabIndex={0}
-            onPointerDown={handleDividerPointerDown}
-            onPointerMove={handleDividerPointerMove}
-            onPointerUp={handleDividerPointerUp}
-            onKeyDown={handleDividerKeyDown}
-            className="relative z-10 flex h-3 cursor-ns-resize touch-none select-none items-center justify-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            <div className="h-0.5 w-8 rounded bg-border transition-colors hover:bg-primary" />
-          </div>
-        )}
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Resize query editor"
+          tabIndex={0}
+          onPointerDown={handleDividerPointerDown}
+          onPointerMove={handleDividerPointerMove}
+          onPointerUp={handleDividerPointerUp}
+          onPointerCancel={handleDividerPointerUp}
+          onKeyDown={handleDividerKeyDown}
+          className="relative z-10 flex h-3 cursor-ns-resize touch-none select-none items-center justify-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <div className="h-0.5 w-8 rounded bg-border transition-colors hover:bg-primary" />
+        </div>
 
         <div className="flex gap-2 justify-between">
           <div className="flex gap-2">
