@@ -732,11 +732,21 @@ mod sqlite {
 
                     counts.sort_by(|a, b| a.count.cmp(&b.count).then(a.name.cmp(&b.name)));
 
-                    Ok(counts)
+                    let views = conn
+                        .prepare(&sql!(
+                            r#"SELECT name FROM sqlite_master WHERE type="view" ORDER BY name"#
+                        ))?
+                        .query_map([], |row| row.get::<_, String>(0))?
+                        .collect::<Result<Vec<_>, _>>()?;
+
+                    Ok(responses::Tables {
+                        tables: counts,
+                        views,
+                    })
                 })
                 .await?;
 
-            Ok(responses::Tables { tables })
+            Ok(tables)
         }
 
         async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
@@ -749,7 +759,7 @@ mod sqlite {
                         &sql!(
                             r#"
                             SELECT sql FROM sqlite_master
-                            WHERE type="table" AND name = ?1
+                            WHERE type IN ('table', 'view') AND name = ?1
                             "#
                         ),
                         [&name],
@@ -1304,7 +1314,20 @@ mod libsql {
 
             tables.sort_by_key(|r| r.count);
 
-            Ok(responses::Tables { tables })
+            let views = conn
+                .query(
+                    &sql!(r#"SELECT name FROM sqlite_master WHERE type="view" ORDER BY name"#),
+                    (),
+                )
+                .await?
+                .into_stream()
+                .map_ok(|r| r.get::<String>(0))
+                .try_collect::<Vec<_>>()
+                .await?
+                .into_iter()
+                .collect::<Result<Vec<_>, _>>()?;
+
+            Ok(responses::Tables { tables, views })
         }
 
         async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
@@ -1315,7 +1338,7 @@ mod libsql {
                     &sql!(
                         r#"
                         SELECT sql FROM sqlite_master
-                        WHERE type="table" AND name = ?1
+                        WHERE type IN ('table', 'view') AND name = ?1
                         "#
                     ),
                     [name.to_owned()],
@@ -1336,7 +1359,7 @@ mod libsql {
 
             let table_size = conn
                 .query(
-                    &sql!("SELECT SUM(pgsize) FROM dbstat WHERE name = ?1"),
+                    &sql!("SELECT coalesce(SUM(pgsize), 0) FROM dbstat WHERE name = ?1"),
                     [name.to_owned()],
                 )
                 .await?
@@ -1907,25 +1930,32 @@ mod postgres {
         async fn tables(&self) -> color_eyre::Result<responses::Tables> {
             let schema = &self.schema;
 
-            let mut tables = self
+            let mut tables = Vec::new();
+            let mut views = Vec::new();
+            for row in self
                 .client
                 .query(
                     &sql!(
                         r#"
-                        SELECT table_name
+                        SELECT table_name, table_type = 'VIEW'
                         FROM information_schema.tables
                         WHERE table_schema = $1
+                        ORDER BY table_name
                         "#
                     ),
                     &[schema],
                 )
                 .await?
-                .into_iter()
-                .map(|r| Count {
-                    name: r.get(0),
-                    count: 0,
-                })
-                .collect::<Vec<_>>();
+            {
+                if row.get(1) {
+                    views.push(row.get(0));
+                } else {
+                    tables.push(Count {
+                        name: row.get(0),
+                        count: 0,
+                    });
+                }
+            }
 
             for table in tables.iter_mut() {
                 let count: i64 = self
@@ -1938,7 +1968,7 @@ mod postgres {
 
             tables.sort_by_key(|r| r.count);
 
-            Ok(responses::Tables { tables })
+            Ok(responses::Tables { tables, views })
         }
 
         async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
@@ -2477,16 +2507,26 @@ mod mysql {
         async fn tables(&self) -> color_eyre::Result<responses::Tables> {
             let mut conn = self.pool.get_conn().await?;
 
-            let mut tables = sql!(
+            let mut tables = Vec::new();
+            let mut views = Vec::new();
+            for (name, table_type) in sql!(
                 r#"
-                SELECT TABLE_NAME AS name
+                SELECT TABLE_NAME AS name, TABLE_TYPE AS type
                 FROM information_schema.tables
                 WHERE table_schema = database()
+                ORDER BY TABLE_NAME
                 "#
             )
             .with(())
-            .map(&mut conn, |name| Count { name, count: 0 })
-            .await?;
+            .fetch::<(String, String), _>(&mut conn)
+            .await?
+            {
+                if table_type == "VIEW" {
+                    views.push(name);
+                } else {
+                    tables.push(Count { name, count: 0 });
+                }
+            }
 
             for table in tables.iter_mut() {
                 table.count = sql!("SELECT count(*) AS count FROM {}", quote_ident(&table.name))
@@ -2499,7 +2539,7 @@ mod mysql {
 
             tables.sort_by_key(|r| r.count);
 
-            Ok(responses::Tables { tables })
+            Ok(responses::Tables { tables, views })
         }
 
         async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
@@ -3052,11 +3092,26 @@ mod duckdb {
 
                 counts.sort_by_key(|r| r.count);
 
-                eyre::Ok(counts)
+                let views = c
+                    .prepare(&sql!(
+                        r#"
+                        SELECT table_name
+                        FROM information_schema.tables
+                        WHERE table_schema = 'main' AND table_type = 'VIEW'
+                        ORDER BY table_name
+                        "#
+                    ))?
+                    .query_map([], |row| row.get(0))?
+                    .collect::<Result<Vec<String>, _>>()?;
+
+                eyre::Ok(responses::Tables {
+                    tables: counts,
+                    views,
+                })
             })
             .await??;
 
-            Ok(responses::Tables { tables })
+            Ok(tables)
         }
 
         async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
@@ -3066,7 +3121,11 @@ mod duckdb {
                 tokio::task::spawn_blocking(move || {
                     let c = c.lock().expect("could not get lock on connection");
 
-                    let sql = None;
+                    let sql = c.query_row(
+                        &sql!("SELECT max(sql) FROM duckdb_views() WHERE schema_name = 'main' AND view_name = ?"),
+                        [&name],
+                        |row| row.get(0),
+                    )?;
 
                     let row_count: i32 =
                         c.query_row(&sql!(r#"SELECT count(*) FROM "{name}""#), [], |row| {
@@ -3074,20 +3133,20 @@ mod duckdb {
                         })?;
 
                     let table_size: i64 = c.query_row(
-                        &sql!("SELECT estimated_size FROM duckdb_tables WHERE table_name = ?"),
+                        &sql!("SELECT coalesce(max(estimated_size), 0) FROM duckdb_tables WHERE table_name = ?"),
                         [&name],
                         |row| row.get(0),
                     )?;
                     let table_size = helpers::format_size(table_size as f64);
 
                     let index_count: i32 = c.query_row(
-                        &sql!("SELECT index_count FROM duckdb_tables WHERE table_name = ?"),
+                        &sql!("SELECT coalesce(max(index_count), 0) FROM duckdb_tables WHERE table_name = ?"),
                         [&name],
                         |row| row.get(0),
                     )?;
 
                     let column_count: i32 = c.query_row(
-                        &sql!("SELECT column_count FROM duckdb_tables WHERE table_name = ?"),
+                        &sql!("SELECT count(*) FROM duckdb_columns() WHERE schema_name = 'main' AND table_name = ?"),
                         [&name],
                         |row| row.get(0),
                     )?;
@@ -3440,6 +3499,7 @@ mod parquet {
                     name: self.table_name.clone(),
                     count,
                 }],
+                views: Vec::new(),
             })
         }
 
@@ -3758,6 +3818,7 @@ mod csv {
                     name: self.table_name.clone(),
                     count,
                 }],
+                views: Vec::new(),
             })
         }
 
@@ -4183,20 +4244,27 @@ mod clickhouse {
         }
 
         async fn tables(&self) -> color_eyre::Result<responses::Tables> {
-            let mut tables = self
+            let mut tables = Vec::new();
+            let mut views = Vec::new();
+            for (name, is_view) in self
                 .conn
                 .query(&sql!(
                     r#"
-                        SELECT name
+                        SELECT name, engine = 'View'
                         FROM system.tables
                         WHERE database = currentDatabase()
+                        ORDER BY name
                         "#
                 ))
-                .fetch_all()
+                .fetch_all::<(String, bool)>()
                 .await?
-                .into_iter()
-                .map(|name: String| Count { name, count: 0 })
-                .collect::<Vec<_>>();
+            {
+                if is_view {
+                    views.push(name);
+                } else {
+                    tables.push(Count { name, count: 0 });
+                }
+            }
 
             for count in tables.iter_mut() {
                 count.count = fetch_count(
@@ -4208,7 +4276,7 @@ mod clickhouse {
 
             tables.sort_by_key(|r| r.count);
 
-            Ok(responses::Tables { tables })
+            Ok(responses::Tables { tables, views })
         }
 
         async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
@@ -4797,7 +4865,27 @@ mod mssql {
 
             tables.sort_by_key(|c| std::cmp::Reverse(c.count));
 
-            Ok(responses::Tables { tables })
+            let views = client
+                .query(
+                    &sql!(
+                        r#"
+                        SELECT v.name AS name
+                        FROM sys.views v
+                        JOIN sys.schemas s ON v.schema_id = s.schema_id
+                        WHERE s.name = SCHEMA_NAME()
+                        ORDER BY v.name;
+                        "#
+                    ),
+                    &[],
+                )
+                .await?
+                .into_first_result()
+                .await?
+                .into_iter()
+                .filter_map(|row| row.get::<&str, &str>("name").map(ToOwned::to_owned))
+                .collect();
+
+            Ok(responses::Tables { tables, views })
         }
 
         async fn table(&self, name: String) -> color_eyre::Result<responses::Table> {
@@ -4818,7 +4906,7 @@ mod mssql {
                 .query(
                     &sql!(
                         r#"
-                        SELECT SUM(a.total_pages) * 8 AS size_kb
+                        SELECT ISNULL(SUM(a.total_pages), 0) * 8 AS size_kb
                         FROM sys.partitions p
                         JOIN sys.allocation_units a ON p.partition_id = a.container_id
                         JOIN sys.tables t ON p.object_id = t.object_id
@@ -4860,7 +4948,7 @@ mod mssql {
                         r#"
                         SELECT COUNT(*) AS count
                         FROM sys.columns c
-                        JOIN sys.tables t ON c.object_id = t.object_id
+                        JOIN sys.objects t ON c.object_id = t.object_id
                         JOIN sys.schemas s ON t.schema_id = s.schema_id
                         WHERE s.name = SCHEMA_NAME() AND t.name = @P1;
                         "#
@@ -5320,6 +5408,7 @@ mod responses {
     #[derive(Serialize)]
     pub struct Tables {
         pub tables: Vec<Count>,
+        pub views: Vec<String>,
     }
 
     #[derive(Serialize)]

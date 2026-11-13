@@ -37,7 +37,9 @@ function Tables() {
   const data = Route.useLoaderData();
   const { table } = Route.useSearch();
 
-  if (data.tables.length === 0)
+  const names = [...data.tables.map(({ name }) => name), ...data.views];
+
+  if (names.length === 0)
     return (
       <Card>
         <CardHeader className="flex items-center">
@@ -48,10 +50,7 @@ function Tables() {
       </Card>
     );
 
-  const selectedTable =
-    table && data.tables.some(({ name }) => name === table)
-      ? table
-      : data.tables[0].name;
+  const selectedTable = table && names.includes(table) ? table : names[0];
 
   const requestedTableMissing = !!table && selectedTable !== table;
 
@@ -78,8 +77,15 @@ function Tables() {
               </Link>
             </TabsTrigger>
           ))}
+          {data.views.map((name) => (
+            <TabsTrigger key={name} value={name}>
+              <Link to="/tables" search={{ table: name }}>
+                {name} [view]
+              </Link>
+            </TabsTrigger>
+          ))}
         </TabsList>
-        {data.tables.map(({ name }) => (
+        {names.map((name) => (
           <TabsContent key={name} value={name} className="py-4">
             <Table name={name} />
           </TabsContent>

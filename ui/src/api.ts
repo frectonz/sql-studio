@@ -38,6 +38,7 @@ const overview = z.object({
 
 const tables = z.object({
   tables: counts,
+  views: z.string().array(),
 });
 
 const table = z.object({
