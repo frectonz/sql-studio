@@ -334,7 +334,7 @@ export default function LandingPage() {
             </span>
           </div>
           <h2 className="ld-scroll tw:mb-4 tw:text-3xl tw:font-black tw:uppercase tw:tracking-tighter tw:md:text-5xl">
-            10 DATABASES.
+            9 DATABASES.
             <br />
             ONE TOOL.
           </h2>

@@ -41,7 +41,7 @@ pages.push({
   slug: "index",
   title: "SQL Studio",
   description:
-    "Single binary SQL database explorer. 10 databases. One interface.",
+    "Single binary SQL database explorer. 9 databases. One interface.",
 });
 
 fs.mkdirSync(OUT_DIR, { recursive: true });
