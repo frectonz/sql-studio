@@ -250,7 +250,11 @@ function TableData({ name }: TableDataProps) {
       rows={rows}
       columns={columns}
       onScroll={handleScroll}
-      defaultColumnOptions={{ resizable: true }}
+      defaultColumnOptions={{
+        resizable: true,
+        width: "max-content",
+        maxWidth: 400,
+      }}
       className={cn(currentTheme === "light" ? "rdg-light" : "rdg-dark")}
     />
   );

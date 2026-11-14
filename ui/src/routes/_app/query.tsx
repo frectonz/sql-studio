@@ -116,7 +116,11 @@ function Query() {
   ) : (
     <Card className="p-2 overflow-auto">
       <DataGrid
-        defaultColumnOptions={{ resizable: true }}
+        defaultColumnOptions={{
+          resizable: true,
+          width: "max-content",
+          maxWidth: 400,
+        }}
         columns={data.columns.map((col) => ({
           key: col,
           name: col,
