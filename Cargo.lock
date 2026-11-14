@@ -3491,7 +3491,7 @@ dependencies = [
 
 [[package]]
 name = "sql-studio"
-version = "0.1.53"
+version = "0.1.54"
 dependencies = [
  "base64 0.23.1",
  "chrono",
