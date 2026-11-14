@@ -3,8 +3,13 @@ import "./index.css";
 import ReactDOM from "react-dom/client";
 import React, { StrictMode } from "react";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 
+import { Unauthorized } from "@/api";
 import { routeTree } from "./routeTree.gen";
 import { SqlProvider } from "@/provider/sql.provider";
 import { ThemeProvider } from "@/provider/theme.provider";
@@ -30,7 +35,18 @@ const ReactQueryDevtools = import.meta.env.PROD
       })),
     );
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error) => {
+      if (error instanceof Unauthorized) router.navigate({ to: "/login" });
+    },
+  }),
+  defaultOptions: {
+    queries: {
+      retry: (count, error) => !(error instanceof Unauthorized) && count < 3,
+    },
+  },
+});
 
 const rootElement = document.getElementById("root")!;
 if (!rootElement.innerHTML) {

@@ -33,6 +33,9 @@ webpki-roots = "1.0.12"
 duckdb = { version = "1.20000.1", features = ["bundled", "parquet"] }
 percent-encoding = "2.3.2"
 indoc = "2.0.8"
+base64 = "0.23.1"
+getrandom = "0.4.3"
+subtle = "2.6.1"
 
 [profile.release]
 strip = true

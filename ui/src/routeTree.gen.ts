@@ -9,104 +9,152 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as QueryRouteImport } from './routes/query'
-import { Route as SchemaRouteImport } from './routes/schema'
-import { Route as TablesRouteImport } from './routes/tables'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppQueryRouteImport } from './routes/_app/query'
+import { Route as AppSchemaRouteImport } from './routes/_app/schema'
+import { Route as AppTablesRouteImport } from './routes/_app/tables'
 
-const IndexRoute = IndexRouteImport.update({
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const QueryRoute = QueryRouteImport.update({
+const AppQueryRoute = AppQueryRouteImport.update({
   id: '/query',
   path: '/query',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const SchemaRoute = SchemaRouteImport.update({
+const AppSchemaRoute = AppSchemaRouteImport.update({
   id: '/schema',
   path: '/schema',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const TablesRoute = TablesRouteImport.update({
+const AppTablesRoute = AppTablesRouteImport.update({
   id: '/tables',
   path: '/tables',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/query': typeof QueryRoute
-  '/schema': typeof SchemaRoute
-  '/tables': typeof TablesRoute
+  '/': typeof AppIndexRoute
+  '/login': typeof LoginRoute
+  '/query': typeof AppQueryRoute
+  '/schema': typeof AppSchemaRoute
+  '/tables': typeof AppTablesRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/query': typeof QueryRoute
-  '/schema': typeof SchemaRoute
-  '/tables': typeof TablesRoute
+  '/login': typeof LoginRoute
+  '/query': typeof AppQueryRoute
+  '/schema': typeof AppSchemaRoute
+  '/tables': typeof AppTablesRoute
+  '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/query': typeof QueryRoute
-  '/schema': typeof SchemaRoute
-  '/tables': typeof TablesRoute
+  '/_app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_app/query': typeof AppQueryRoute
+  '/_app/schema': typeof AppSchemaRoute
+  '/_app/tables': typeof AppTablesRoute
+  '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/query' | '/schema' | '/tables'
+  fullPaths: '/' | '/login' | '/query' | '/schema' | '/tables'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/query' | '/schema' | '/tables'
-  id: '__root__' | '/' | '/query' | '/schema' | '/tables'
+  to: '/login' | '/query' | '/schema' | '/tables' | '/'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/login'
+    | '/_app/query'
+    | '/_app/schema'
+    | '/_app/tables'
+    | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  QueryRoute: typeof QueryRoute
-  SchemaRoute: typeof SchemaRoute
-  TablesRoute: typeof TablesRoute
+  AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/query': {
-      id: '/query'
+    '/_app/query': {
+      id: '/_app/query'
       path: '/query'
       fullPath: '/query'
-      preLoaderRoute: typeof QueryRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppQueryRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/schema': {
-      id: '/schema'
+    '/_app/schema': {
+      id: '/_app/schema'
       path: '/schema'
       fullPath: '/schema'
-      preLoaderRoute: typeof SchemaRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppSchemaRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/tables': {
-      id: '/tables'
+    '/_app/tables': {
+      id: '/_app/tables'
       path: '/tables'
       fullPath: '/tables'
-      preLoaderRoute: typeof TablesRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppTablesRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
 
+interface AppRouteChildren {
+  AppQueryRoute: typeof AppQueryRoute
+  AppSchemaRoute: typeof AppSchemaRoute
+  AppTablesRoute: typeof AppTablesRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppQueryRoute: AppQueryRoute,
+  AppSchemaRoute: AppSchemaRoute,
+  AppTablesRoute: AppTablesRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  QueryRoute: QueryRoute,
-  SchemaRoute: SchemaRoute,
-  TablesRoute: TablesRoute,
+  AppRoute: AppRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -30,6 +30,7 @@ sql-studio [OPTIONS] <SUBCOMMAND> [ARGS...]
 | `--base-path` | `-b` | Base URL path for the UI (e.g. `/sql-studio`) | _(none)_ | `BASE_PATH` |
 | `--no-browser` | | Don't open the URL in the system browser | `false` | `NO_BROWSER` |
 | `--no-shutdown` | | Don't show the shutdown button in the UI | `false` | `NO_SHUTDOWN` |
+| `--auth` | | Require logging in with these credentials, given as `user:password` | _(none)_ | `AUTH` |
 
 ### Timeout Format
 
@@ -45,6 +46,18 @@ sql-studio --address 0.0.0.0:8080 --timeout 30secs sqlite ./my.db
 sql-studio --base-path /sql-studio sqlite ./my.db
 ```
 
+## Authentication
+
+Set `--auth` to require a username and password before the UI or API can be used. Prefer the `AUTH` environment variable, since command-line arguments are visible to other users on the machine through `ps`.
+
+```bash
+AUTH="admin:secret" sql-studio sqlite ./my.db
+```
+
+- Sessions last 7 days and are kept in memory, so restarting the server logs everyone out.
+- Failed logins are slowed down to one attempt per second.
+- Credentials are sent in plain text over HTTP. When exposing SQL Studio beyond your machine, put it behind a reverse proxy that serves HTTPS and sets `X-Forwarded-Proto: https`, so the session cookie is marked `Secure`.
+
 ## Environment Variables
 
 Every CLI option can be set via an environment variable. This is particularly useful for Docker deployments or CI environments.
@@ -55,6 +68,7 @@ export TIMEOUT="30secs"
 export BASE_PATH="/sql-studio"
 export NO_BROWSER="true"
 export NO_SHUTDOWN="true"
+export AUTH="admin:secret"
 
 sql-studio sqlite ./my.db
 ```

@@ -3493,12 +3493,14 @@ dependencies = [
 name = "sql-studio"
 version = "0.1.53"
 dependencies = [
+ "base64 0.23.1",
  "chrono",
  "clap",
  "clickhouse",
  "color-eyre",
  "duckdb",
  "futures",
+ "getrandom 0.4.3",
  "humantime",
  "include_dir",
  "indoc",
@@ -3509,6 +3511,7 @@ dependencies = [
  "rustls 0.23.46",
  "serde",
  "serde_json",
+ "subtle",
  "tiberius",
  "tokio",
  "tokio-postgres",

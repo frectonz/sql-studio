@@ -38,7 +38,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_app/")({
   component: Index,
   loader: () => fetchOverview(),
   pendingComponent: IndexSkeleton,

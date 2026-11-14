@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export const Route = createFileRoute("/schema")({
+export const Route = createFileRoute("/_app/schema")({
   component: Schema,
   loader: () => fetchErd(),
   pendingComponent: SchemaSkeleton,

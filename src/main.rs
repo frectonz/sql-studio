@@ -31,6 +31,10 @@ struct Args {
     /// Don't show the shutdown button in the UI.
     #[clap(long, env)]
     no_shutdown: bool,
+
+    /// Require logging in with these credentials. [e.g admin:secret]
+    #[clap(long, env)]
+    auth: Option<auth::Credentials>,
 }
 
 #[derive(Debug, Subcommand)]
@@ -175,9 +179,18 @@ async fn main() -> color_eyre::Result<()> {
 
     let (shutdown_tx, mut shutdown_rx) = mpsc::channel(1);
 
-    let api = warp::path("api").and(
-        handlers::routes(db, args.no_shutdown, shutdown_tx).recover(rejections::handle_rejection),
-    );
+    let api = handlers::routes(db, args.no_shutdown, args.auth.is_some(), shutdown_tx);
+    let api = match args.auth {
+        Some(credentials) => {
+            let auth = auth::Auth::new(credentials);
+            auth::routes(auth.clone())
+                .or(auth::session(auth).and(api))
+                .map(warp::Reply::into_response)
+                .boxed()
+        }
+        None => api.map(warp::Reply::into_response).boxed(),
+    };
+    let api = warp::path("api").and(api.recover(rejections::handle_rejection));
     let homepage = statics::homepage(index_html.clone());
     let statics = statics::routes(
         match args.base_path.as_ref() {
@@ -5448,6 +5461,7 @@ mod responses {
     pub struct Metadata {
         pub version: String,
         pub can_shutdown: bool,
+        pub can_logout: bool,
     }
 
     #[derive(Serialize)]
@@ -5487,7 +5501,7 @@ mod handlers {
 
     use crate::{Database, ROWS_PER_PAGE, rejections, responses::Metadata};
 
-    fn same_site() -> impl Filter<Extract = (), Error = warp::Rejection> + Clone {
+    pub fn same_site() -> impl Filter<Extract = (), Error = warp::Rejection> + Clone {
         warp::header::optional::<String>("sec-fetch-site")
             .and_then(|site: Option<String>| async move {
                 if site.as_deref() == Some("cross-site") {
@@ -5499,7 +5513,7 @@ mod handlers {
             .untuple_one()
     }
 
-    fn json_content_type() -> impl Filter<Extract = (), Error = warp::Rejection> + Clone {
+    pub fn json_content_type() -> impl Filter<Extract = (), Error = warp::Rejection> + Clone {
         warp::header::optional::<String>("content-type")
             .and_then(|content_type: Option<String>| async move {
                 match content_type {
@@ -5520,6 +5534,7 @@ mod handlers {
     pub fn routes(
         db: impl Database + 'static,
         no_shutdown: bool,
+        can_logout: bool,
         shutdown_signal: mpsc::Sender<()>,
     ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
         let overview = warp::path::end()
@@ -5552,6 +5567,7 @@ mod handlers {
         let metadata = warp::get()
             .and(warp::path!("metadata"))
             .and(with_state(&no_shutdown))
+            .and(with_state(&can_logout))
             .and_then(metadata);
         let shutdown = warp::path!("shutdown")
             .and(warp::post())
@@ -5656,10 +5672,14 @@ mod handlers {
         Ok(warp::reply::json(&result))
     }
 
-    async fn metadata(no_shutdown: bool) -> Result<impl warp::Reply, warp::Rejection> {
+    async fn metadata(
+        no_shutdown: bool,
+        can_logout: bool,
+    ) -> Result<impl warp::Reply, warp::Rejection> {
         let version = Metadata {
             version: env!("CARGO_PKG_VERSION").to_owned(),
             can_shutdown: !no_shutdown,
+            can_logout,
         };
 
         Ok(warp::reply::json(&version))
@@ -5685,6 +5705,163 @@ mod handlers {
     }
 }
 
+mod auth {
+    use std::{
+        collections::HashMap,
+        str::FromStr,
+        sync::{Arc, Mutex},
+        time::{Duration, Instant},
+    };
+
+    use base64::{Engine, prelude::BASE64_URL_SAFE_NO_PAD};
+    use serde::Deserialize;
+    use subtle::ConstantTimeEq;
+    use warp::{
+        Filter,
+        http::{StatusCode, header},
+        reject::Rejection,
+        reply::Reply,
+    };
+
+    use crate::{
+        handlers::{json_content_type, same_site},
+        helpers::with_state,
+        rejections::{InternalServerError, Unauthorized},
+    };
+
+    const COOKIE: &str = "sql_studio_session";
+    const SESSION_TTL: Duration = Duration::from_secs(7 * 24 * 60 * 60);
+    const FAILED_LOGIN_DELAY: Duration = Duration::from_secs(1);
+
+    #[derive(Debug, Clone, Deserialize)]
+    pub struct Credentials {
+        username: String,
+        password: String,
+    }
+
+    impl Credentials {
+        fn matches(&self, other: &Credentials) -> bool {
+            let username = self.username.as_bytes().ct_eq(other.username.as_bytes());
+            let password = self.password.as_bytes().ct_eq(other.password.as_bytes());
+            (username & password).into()
+        }
+    }
+
+    impl FromStr for Credentials {
+        type Err = &'static str;
+
+        fn from_str(value: &str) -> Result<Self, Self::Err> {
+            let (username, password) = value
+                .split_once(':')
+                .ok_or("expected credentials in the form username:password")?;
+            Ok(Credentials {
+                username: username.to_owned(),
+                password: password.to_owned(),
+            })
+        }
+    }
+
+    #[derive(Clone)]
+    pub struct Auth {
+        credentials: Credentials,
+        sessions: Arc<Mutex<HashMap<String, Instant>>>,
+        login_lock: Arc<tokio::sync::Mutex<()>>,
+    }
+
+    impl Auth {
+        pub fn new(credentials: Credentials) -> Self {
+            Self {
+                credentials,
+                sessions: Default::default(),
+                login_lock: Default::default(),
+            }
+        }
+    }
+
+    pub fn routes(auth: Auth) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
+        let login = warp::path!("login")
+            .and(warp::post())
+            .and(json_content_type())
+            .and(with_state(&auth))
+            .and(warp::header::optional::<String>("x-forwarded-proto"))
+            .and(warp::body::json::<Credentials>())
+            .and_then(login);
+        let logout = warp::path!("logout")
+            .and(warp::post())
+            .and(with_state(&auth))
+            .and(warp::cookie::optional::<String>(COOKIE))
+            .map(logout);
+
+        same_site().and(login.or(logout))
+    }
+
+    pub fn session(auth: Auth) -> impl Filter<Extract = (), Error = Rejection> + Clone {
+        warp::cookie::optional::<String>(COOKIE)
+            .and(with_state(&auth))
+            .and_then(check_session)
+            .untuple_one()
+    }
+
+    async fn check_session(token: Option<String>, auth: Auth) -> Result<(), Rejection> {
+        let sessions = auth.sessions.lock().unwrap();
+        match token.and_then(|token| sessions.get(&token)) {
+            Some(expires) if *expires > Instant::now() => Ok(()),
+            _ => Err(warp::reject::custom(Unauthorized)),
+        }
+    }
+
+    async fn login(
+        auth: Auth,
+        forwarded_proto: Option<String>,
+        given: Credentials,
+    ) -> Result<impl Reply, Rejection> {
+        // Holding the lock through the delay lets only one password be tried per second.
+        let _attempt = auth.login_lock.lock().await;
+        if !auth.credentials.matches(&given) {
+            tokio::time::sleep(FAILED_LOGIN_DELAY).await;
+            return Err(warp::reject::custom(Unauthorized));
+        }
+
+        let mut bytes = [0; 32];
+        getrandom::fill(&mut bytes).map_err(|e| {
+            tracing::error!("error while generating a session token: {e}");
+            warp::reject::custom(InternalServerError)
+        })?;
+        let token = BASE64_URL_SAFE_NO_PAD.encode(bytes);
+
+        let now = Instant::now();
+        let mut sessions = auth.sessions.lock().unwrap();
+        sessions.retain(|_, expires| *expires > now);
+        sessions.insert(token.clone(), now + SESSION_TTL);
+
+        let secure = if forwarded_proto.as_deref() == Some("https") {
+            "; Secure"
+        } else {
+            ""
+        };
+        Ok(warp::reply::with_header(
+            StatusCode::NO_CONTENT,
+            header::SET_COOKIE,
+            format!(
+                "{COOKIE}={token}; Path=/; Max-Age={}; HttpOnly; SameSite=Strict{secure}",
+                SESSION_TTL.as_secs()
+            ),
+        ))
+    }
+
+    fn logout(auth: Auth, token: Option<String>) -> impl Reply {
+        if let Some(token) = token {
+            auth.sessions.lock().unwrap().remove(&token);
+        }
+
+        warp::reply::with_header(
+            StatusCode::NO_CONTENT,
+            header::SET_COOKIE,
+            format!("{COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict"),
+        )
+    }
+}
+
 mod rejections {
     use std::convert::Infallible;
 
@@ -5705,7 +5882,12 @@ mod rejections {
         };
     }
 
-    rejects!(InternalServerError, Forbidden, UnsupportedMediaType);
+    rejects!(
+        InternalServerError,
+        Forbidden,
+        UnsupportedMediaType,
+        Unauthorized
+    );
 
     pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> {
         let code;
@@ -5727,6 +5909,9 @@ mod rejections {
         } else if let Some(Forbidden) = err.find() {
             code = StatusCode::FORBIDDEN;
             message = "FORBIDDEN";
+        } else if let Some(Unauthorized) = err.find() {
+            code = StatusCode::UNAUTHORIZED;
+            message = "UNAUTHORIZED";
         } else if err.find::<UnsupportedMediaType>().is_some()
             || err.find::<warp::reject::UnsupportedMediaType>().is_some()
         {

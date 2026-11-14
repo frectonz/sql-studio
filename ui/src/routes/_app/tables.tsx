@@ -26,7 +26,7 @@ import { fetchTable, fetchTableData, fetchTables } from "@/api";
 import { InfoCard, InfoCardProps } from "@/components/info-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export const Route = createFileRoute("/tables")({
+export const Route = createFileRoute("/_app/tables")({
   component: Tables,
   loader: () => fetchTables(),
   pendingComponent: TablesSkeleton,
