@@ -1,7 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Outlet, createRootRoute } from "@tanstack/react-router";
 
-import { cn } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { useTheme } from "@/provider/theme.provider";
 
@@ -22,14 +21,13 @@ export const Route = createRootRoute({
 function Root() {
   const theme = useTheme();
 
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [theme]);
+
   return (
     <>
-      <div
-        className={cn(
-          "flex min-h-screen w-full flex-col bg-background",
-          theme === "dark" && "dark",
-        )}
-      >
+      <div className="flex min-h-screen w-full flex-col bg-background">
         <Outlet />
       </div>
       <TanStackRouterDevtools />
