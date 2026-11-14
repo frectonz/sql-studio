@@ -97,7 +97,7 @@ function App() {
           {metadata.can_shutdown && <Shutdown />}
           {metadata.can_logout && <Logout />}
           <button
-            className="text-foreground "
+            className="cursor-pointer text-foreground"
             onClick={() => {
               changeTheme(theme === "dark" ? "light" : "dark");
             }}
@@ -105,12 +105,12 @@ function App() {
             {theme === "dark" ? (
               <Sun
                 size={28}
-                className="bg-primary/20 text-primary rounded-full p-1"
+                className="pointer-events-none bg-primary/20 text-primary rounded-full p-1"
               />
             ) : (
               <Moon
                 size={28}
-                className="bg-primary/10 text-primary rounded-full p-1"
+                className="pointer-events-none bg-primary/10 text-primary rounded-full p-1"
               />
             )}
           </button>
@@ -141,7 +141,11 @@ function Logout() {
   }
 
   return (
-    <button className="text-foreground" title="Log out" onClick={handleLogout}>
+    <button
+      className="cursor-pointer text-foreground"
+      title="Log out"
+      onClick={handleLogout}
+    >
       <LogOut
         size={28}
         className="bg-primary/20 text-primary rounded-full p-1"
@@ -155,7 +159,7 @@ function Shutdown() {
 
   return (
     <AlertDialog>
-      <AlertDialogTrigger className="text-foreground">
+      <AlertDialogTrigger className="cursor-pointer text-foreground">
         <Power
           size={28}
           className="bg-primary/20 text-primary rounded-full p-1"
@@ -191,7 +195,7 @@ function MobileNav() {
     <nav className="flex items-center sm:hidden justify-between">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="p-1  size-8">
+          <button className="cursor-pointer p-1 size-8">
             <svg
               viewBox="0 0 48 48"
               fill="none"
